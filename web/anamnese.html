@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anamnese Odontológica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-top: 20px; padding-bottom: 40px; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header-bg { background-color: #0d6efd; color: white; padding: 20px; border-radius: 15px 15px 0 0; }
+        .section-title { color: #0d6efd; font-weight: bold; margin-top: 20px; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
+        .hidden-details { display: none; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container" style="max-width: 800px;">
+    <div class="card">
+        <div class="header-bg text-center">
+            <h3>Ficha de Anamnese</h3>
+            <p class="mb-0">Por favor, preencha com veracidade para sua segurança.</p>
+        </div>
+        <div class="card-body p-4">
+            <form id="anamnesisForm">
+                
+                <h5 class="section-title">Estado Geral de Saúde</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Está sob tratamento médico atualmente?</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="underMedicalTreatment" onchange="toggleDetails('divMedical', this.checked)">
+                        <label class="form-check-label" for="underMedicalTreatment">Sim</label>
+                    </div>
+                    <div id="divMedical" class="hidden-details">
+                        <input type="text" class="form-control" id="medicalTreatmentDesc" placeholder="Qual tratamento?">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Toma algum medicamento de uso contínuo?</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="takingMedication" onchange="toggleDetails('divMedication', this.checked)">
+                        <label class="form-check-label" for="takingMedication">Sim</label>
+                    </div>
+                    <div id="divMedication" class="hidden-details">
+                        <input type="text" class="form-control" id="medicationDesc" placeholder="Quais medicamentos?">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Possui alergia a medicamentos ou materiais?</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="hasAllergies" onchange="toggleDetails('divAllergies', this.checked)">
+                        <label class="form-check-label" for="hasAllergies">Sim</label>
+                    </div>
+                    <div id="divAllergies" class="hidden-details">
+                        <input type="text" class="form-control" id="allergiesDesc" placeholder="Quais alergias?">
+                    </div>
+                </div>
+
+                <h5 class="section-title">Histórico Patológico</h5>
+                <p class="text-muted small">Selecione as condições que você possui ou já possuiu:</p>
+                
+                <div class="row" id="conditionsContainer">
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Diabetes" id="c1"><label class="form-check-label" for="c1">Diabetes</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Hipertensão (Pressão Alta)" id="c2"><label class="form-check-label" for="c2">Hipertensão</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Problemas Cardíacos" id="c3"><label class="form-check-label" for="c3">Problemas Cardíacos</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Problemas Renais" id="c4"><label class="form-check-label" for="c4">Problemas Renais</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Problemas Gástricos" id="c5"><label class="form-check-label" for="c5">Problemas Gástricos</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Problemas Respiratórios/Asma" id="c6"><label class="form-check-label" for="c6">Asma / Respiratórios</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Hepatite / Icterícia" id="c7"><label class="form-check-label" for="c7">Hepatite</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="HIV / AIDS" id="c8"><label class="form-check-label" for="c8">HIV / AIDS</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Anemia" id="c9"><label class="form-check-label" for="c9">Anemia</label></div></div>
+                    <div class="col-md-6"><div class="form-check"><input class="form-check-input condition-check" type="checkbox" value="Problemas de Coagulação" id="c10"><label class="form-check-label" for="c10">Coagulação</label></div></div>
+                </div>
+
+                <h5 class="section-title">Hábitos e Outros</h5>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="smoker">
+                    <label class="form-check-label" for="smoker">Fumante</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="alcohol">
+                    <label class="form-check-label" for="alcohol">Consome álcool frequentemente</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="bruxism">
+                    <label class="form-check-label" for="bruxism">Bruxismo / Aperta os dentes</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="pregnant">
+                    <label class="form-check-label" for="pregnant">Gestante ou Lactante</label>
+                </div>
+
+                <div class="mt-4">
+                    <label class="form-label fw-bold">Observações Adicionais</label>
+                    <textarea class="form-control" id="observations" rows="3"></textarea>
+                </div>
+
+                <div class="d-grid gap-2 mt-5">
+                    <button type="button" class="btn btn-primary btn-lg" onclick="saveData()">ENVIAR ANAMNESE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<script>
+    // --- 1. COLE AQUI SUAS CONFIGURAÇÕES DO FIREBASE ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCRYUvuPM3-CHwGNmVJd5Ikk46PRCvdmZ8",
+        authDomain: "odontocontrole-1c701.firebaseapp.com",
+        projectId: "odontocontrole-1c701",
+        storageBucket: "odontocontrole-1c701.firebasestorage.app",
+        messagingSenderId: "698345542344",
+        appId: "1:698345542344:web:48ffb4bc8865af973d8bfd"
+    };
+
+    // Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Pega ID da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get('id');
+
+    if (!patientId) {
+        alert("Erro: Link inválido. Identificação do paciente não encontrada.");
+        document.querySelector("button").disabled = true;
+    }
+
+    // Função Visual
+    function toggleDetails(divId, isChecked) {
+        document.getElementById(divId).style.display = isChecked ? 'block' : 'none';
+    }
+
+    // Carregar Dados Existentes (Opcional - se o paciente for editar)
+    if(patientId) {
+        db.collection("anamnesis").doc(patientId).get().then((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                
+                setCheck('underMedicalTreatment', data.underMedicalTreatment, 'divMedical', 'medicalTreatmentDesc', data.medicalTreatmentDesc);
+                setCheck('takingMedication', data.takingMedication, 'divMedication', 'medicationDesc', data.medicationDesc);
+                setCheck('hasAllergies', data.hasAllergies, 'divAllergies', 'allergiesDesc', data.allergiesDesc);
+                
+                document.getElementById('smoker').checked = data.smoker || false;
+                document.getElementById('alcohol').checked = data.alcohol || false;
+                document.getElementById('bruxism').checked = data.bruxism || false;
+                document.getElementById('pregnant').checked = data.pregnant || false;
+                document.getElementById('observations').value = data.observations || '';
+
+                // Conditions
+                if (data.conditions) {
+                    document.querySelectorAll('.condition-check').forEach(el => {
+                        if (data.conditions[el.value] === true) el.checked = true;
+                    });
+                }
+            }
+        });
+    }
+
+    function setCheck(chkId, val, divId, textId, textVal) {
+        document.getElementById(chkId).checked = val;
+        if(val) {
+            document.getElementById(divId).style.display = 'block';
+            document.getElementById(textId).value = textVal || '';
+        }
+    }
+
+    // Salvar
+    function saveData() {
+        if (!patientId) return;
+
+        const btn = document.querySelector("button");
+        btn.disabled = true;
+        btn.innerText = "Salvando...";
+
+        // Monta Objeto Conditions
+        let conditionsMap = {};
+        document.querySelectorAll('.condition-check').forEach(el => {
+            conditionsMap[el.value] = el.checked;
+        });
+
+        const dataToSave = {
+            patientId: patientId,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            
+            underMedicalTreatment: document.getElementById('underMedicalTreatment').checked,
+            medicalTreatmentDesc: document.getElementById('medicalTreatmentDesc').value,
+            
+            takingMedication: document.getElementById('takingMedication').checked,
+            medicationDesc: document.getElementById('medicationDesc').value,
+            
+            hasAllergies: document.getElementById('hasAllergies').checked,
+            allergiesDesc: document.getElementById('allergiesDesc').value,
+
+            conditions: conditionsMap,
+
+            smoker: document.getElementById('smoker').checked,
+            alcohol: document.getElementById('alcohol').checked,
+            bruxism: document.getElementById('bruxism').checked,
+            pregnant: document.getElementById('pregnant').checked,
+            observations: document.getElementById('observations').value
+        };
+
+        db.collection("anamnesis").doc(patientId).set(dataToSave)
+        .then(() => {
+            alert("Ficha enviada com sucesso! Obrigado.");
+            btn.innerText = "ENVIADO!";
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-success');
+        })
+        .catch((error) => {
+            console.error("Erro: ", error);
+            alert("Erro ao salvar. Tente novamente.");
+            btn.disabled = false;
+            btn.innerText = "ENVIAR ANAMNESE";
+        });
+    }
+</script>
+
+</body>
+</html>

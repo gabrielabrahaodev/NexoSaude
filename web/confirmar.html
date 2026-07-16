@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmar Consulta</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f4f8; }
+        .card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 90%; width: 350px; }
+        h1 { color: #2ecc71; margin-bottom: 10px; font-size: 24px; }
+        p { color: #666; line-height: 1.6; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error { color: #e74c3c; }
+        .success-icon { font-size: 50px; color: #2ecc71; display: block; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="content">
+        <div class="loader"></div>
+        <p style="margin-top: 15px; font-weight: 500;">Confirmando sua presença...</p>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // --- ATENÇÃO: COLE SUAS CHAVES REAIS AQUI ---
+        const firebaseConfig = {
+        apiKey: "AIzaSyCRYUvuPM3-CHwGNmVJd5Ikk46PRCvdmZ8",
+        authDomain: "odontocontrole-1c701.firebaseapp.com",
+        projectId: "odontocontrole-1c701",
+        storageBucket: "odontocontrole-1c701.firebasestorage.app",
+        messagingSenderId: "698345542344",
+        appId: "1:698345542344:web:48ffb4bc8865af973d8bfd"
+        };
+
+        // Inicializa
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+
+            async function confirmar() {
+                const params = new URLSearchParams(window.location.search);
+                const id = params.get('id');
+                const contentDiv = document.getElementById('content');
+
+                if (!id) {
+                    contentDiv.innerHTML = `<h1 class="error">Link Inválido</h1><p>Não identificamos o agendamento.</p>`;
+                    return;
+                }
+
+                try {
+                    // Tenta atualizar DIRETO (sem ler antes, para não dar erro de permissão)
+                    await db.collection('appointments').doc(id).update({
+                        status: 'Confirmado',
+                        confirmationDate: new Date()
+                    });
+
+                    contentDiv.innerHTML = `
+                        <span class="success-icon">✅</span>
+                        <h1>Confirmado!</h1>
+                        <p>Sua consulta está garantida.</p>
+                        <p style="font-size: 12px; margin-top: 20px; color: #999;">Pode fechar esta página.</p>
+                    `;
+
+                } catch (error) {
+                    console.error(error);
+                    contentDiv.innerHTML = `
+                        <h1 class="error">Ops!</h1>
+                        <p>Não foi possível confirmar automaticamente.</p>
+                        <p>Por favor, avise pelo WhatsApp.</p>
+                    `;
+                }
+            }
+
+            confirmar();
+        } catch(e) {
+            document.getElementById('content').innerHTML = "Erro de Configuração: Verifique as Chaves API no código.";
+        }
+    </script>
+</body>
+</html>

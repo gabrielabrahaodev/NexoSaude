@@ -1,0 +1,62 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "odontocontrole-1c701",
+          "appId": "1:698345542344:android:26c162f16d8768a93d8bfd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "odontocontrole-1c701",
+          "configurations": {
+            "android": "1:698345542344:android:26c162f16d8768a93d8bfd",
+            "ios": "1:698345542344:ios:77c6a6228e2eac3e3d8bfd",
+            "web": "1:698345542344:web:48ffb4bc8865af973d8bfd"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "redirects": [
+      {
+        "source": "/",
+        "destination": "https://dralaucielicosta.free.nf/",
+        "type": 301
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/sistema-interno/**",
+        "destination": "/sistema-interno/index.html"
+      }
+    ]
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

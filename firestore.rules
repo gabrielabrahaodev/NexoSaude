@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- FUNÇÕES AUXILIARES DE SEGURANÇA ---
+    
+    // Verifica se o usuário está logado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 1. Verifica se é a Dra. Lauciele (Super Admin)
+    function isOwner() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner';
+    }
+
+    // 2. Verifica se a funcionária tem permissão para a clínica do documento
+    function hasClinicAccess(clinicId) {
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      return isAuthenticated() && 
+             exists(userDocPath) &&
+             get(userDocPath).data.allowedClinics != null && 
+             (clinicId in get(userDocPath).data.allowedClinics);
+    }
+
+    // --- REGRAS DE COLEÇÕES ---
+
+    // A. USUÁRIOS
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(); 
+    }
+
+    // B. CLÍNICAS
+    match /clinics/{clinicId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner();
+    }
+    
+    // C. NOTÍCIAS
+    match /news/{newsId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner();
+    }
+
+    // D. EXCEÇÃO: CONFIRMAÇÃO VIA WHATSAPP
+    match /appointments/{appointmentId} {
+      allow update: if 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'confirmationDate']) &&
+        request.resource.data.status == 'Confirmado';
+    }
+
+    // E. EXCEÇÃO: ANAMNESE ONLINE (NOVA REGRA)
+    match /anamnesis/{patientId} {
+      allow get, write: if true;
+    }
+
+    // F. DADOS OPERACIONAIS (CORREÇÃO DE ACESSO PARA FUNCIONÁRIOS)
+    match /{collection}/{docId} {
+      allow read, update, delete: if 
+          isAuthenticated() &&
+          (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records']) &&
+          (isOwner() || hasClinicAccess(resource.data.clinicId));
+      
+      allow create: if 
+          isAuthenticated() &&
+          (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records']) &&
+          (isOwner() || hasClinicAccess(request.resource.data.clinicId));
+    }
+
+    // --- NOVAS REGRAS PARA O MÓDULO DE GESTÃO ---
+    match /procedures/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /inventory/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /suppliers/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // --- FINANCEIRO (Essenciais para essa tela) ---
+    match /financial/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+    match /expenses/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // --- ADICIONE ESTE BLOCO NOVO ---
+    match /lab_orders/{orderId} {
+      // Permite ler e escrever se o usuário estiver logado
+      allow read, write: if request.auth != null;
+    }
+    
+    match /plans/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /treatments/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /treatment_plans/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // --- LIBERAÇÃO GERAL DE CONFIGURAÇÕES DA CLÍNICA ---
+    // Esta regra é a que corrige o seu erro atual
+    match /clinics/{clinicId}/settings/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Permite que utilizadores logados leiam e gravem o histórico de antecipações
+    match /anticipations/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // ---------------------------------------------------------
+    // 3. SUBCOLEÇÕES (Odontograma, Prontuário dentro de Paciente)
+    // ---------------------------------------------------------
+    match /patients/{patientId}/{subcollection}/{docId} {
+       allow read, write: if 
+          isAuthenticated() &&
+          exists(/databases/$(database)/documents/patients/$(patientId)) &&
+          (isOwner() || hasClinicAccess(get(/databases/$(database)/documents/patients/$(patientId)).data.clinicId));
+    }
+  }
+}

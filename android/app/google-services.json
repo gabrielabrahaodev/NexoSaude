@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "698345542344",
+    "project_id": "odontocontrole-1c701",
+    "storage_bucket": "odontocontrole-1c701.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:698345542344:android:26c162f16d8768a93d8bfd",
+        "android_client_info": {
+          "package_name": "com.example.odonto_controle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZLqpd_cMBXSRqOIIHnlap_m0tESv-q6Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
