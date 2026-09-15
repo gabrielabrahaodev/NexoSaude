@@ -1,0 +1,473 @@
+# OdontoControle - Requisitos & Regras de Negócio
+
+Documento de regras de negócio extraídas do código-fonte. Cada regra referencia o arquivo de origem (`lib/`) para rastreabilidade. Este documento serve como fonte de verdade para implementações, correções e testes.
+
+**Papel responsável pela coleta:** 👨‍💻 Tech Lead / Senior Dev (execução e precisão técnica).
+
+---
+
+## Sumário
+
+1. [Autenticação, Roles e Multi-tenancy](#1-autenticacao-roles-e-multi-tenancy)
+2. [Agenda e Agendamentos](#2-agenda-e-agendamentos)
+3. [Pacientes](#3-pacientes)
+4. [Anamnese e Prontuário](#4-anamnese-e-prontuario)
+5. [Odontograma](#5-odontograma)
+6. [Orçamentos e Tratamentos](#6-orcamentos-e-tratamentos)
+7. [Financeiro (Receitas, Despesas, Cobranças)](#7-financeiro)
+8. [Psicologia (Pacotes e Fluxo Terapêutico)](#8-psicologia)
+9. [Laboratório](#9-laboratorio)
+10. [Gestão (Clínicas, Funcionários, Operações)](#10-gestao)
+11. [Fluxos Públicos e Leads](#11-fluxos-publicos-e-leads)
+12. [Regras de Segurança Firestore](#12-regras-de-seguranca-firestore)
+13. [Integração WhatsApp](#13-integracao-whatsapp)
+14. [Documentação de Arquivos](#14-documentacao-de-arquivos)
+
+---
+
+## 1. Autenticação, Roles e Multi-tenancy
+
+### RN-01 - Roles do sistema
+- Roles existentes: `owner` (proprietário), `recepcionista`, `dentista`, `psicologo`, `gerente`.
+- Referência: `screens/auth/login_screen.dart:67-72`, `services/user_service.dart`, `AGENTS.md`.
+
+### RN-02 - Registro de novo usuário
+- Novo usuário escolhe role (dentista/recepção) no cadastro.
+- `allowedClinics` do novo usuário é inicializado com `['matriz_santa_isabel']` (hardcoded).
+- Referência: `login_screen.dart:61-73`.
+
+### RN-03 - Visibilidade por role
+- **Owner**: vê todas as clínicas via seletor; acessa menus Clínicas e Funcionários.
+- **Staff** (recepcionista, dentista, psicologo, gerente): restrito a `allowedClinics`.
+- **Gestão** (aba Gestão): owner ou recepcionista.
+- Financeiro, Relatórios, Cobranças, Notícias e Laboratório: **sem guard de role no código** — isolamento efetivo via regras Firestore.
+- Referência: `screens/dashboard/main_web_dashboard.dart:289-331`.
+
+### RN-04 - Filtro multitenant (`applyFilter`)
+- Toda query operacional DEVE passar por `SessionManager().applyFilter()`:
+  - Owner com `clinicId == 'ALL'` ou `null` → sem filtro (vê tudo).
+  - `clinicId == null` (staff) → query com `clinicId == 'waiting_session_init'` (resultado vazio, evita erro de permissão).
+  - Demais → `clinicId == currentClinicId`.
+- Referência: `services/session_manager.dart:48-59`.
+
+> ⚠️ **Regra violada em alguns pontos (dívida técnica):** `patient_service.getAllStream:62-66`, `patient_service.getPatientRiskProfile:30-33`, `financial_service.getByPatientId:9-18`, `treatment_service.getPlansStream:21-23`, `product_service` (legado), `lab_service` filtram parcialmente ou manualmente.
+
+### RN-05 - Tipo de clínica controla a UI
+- Campo `clinicType` da clínica (`dental` | `psychology` | outros).
+- **Proibido comparar `clinicType` solto no código** — usar `ClinicCapabilities` (`isPsychology`, `canShowBudgets/Lab/Odontogram`, `canUseMonthlyPackages`, `professionalRole`, `patientTabCount`).
+- Menu "Fluxo Terapêutico" só aparece para `psychology` (telas "Novos Leads" e "Agendas Psicologia" foram removidas do menu).
+- Abas do paciente variam por tipo: **dental = 9 abas**, **psicologia = 7** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO).
+- Referência: `services/clinic_capabilities.dart`, `main_web_dashboard.dart`, `screens/patients/patient_details_screen.dart`.
+
+### RN-06 - Troca de clínica (owner)
+- Seletor busca `clinics where ownerId == user.uid`.
+- Ao trocar: `SessionManager().setClinic(id, name, type)` + rebuild de telas via `ValueKey(_currentClinicId)`.
+- Se nenhuma clínica selecionada, auto-seleciona a primeira.
+- Referência: `main_web_dashboard.dart:102-199`.
+
+---
+
+## 2. Agenda e Agendamentos
+
+### RN-07 - Ciclo de status do agendamento
+```
+Aguardando Confirmação → Confirmado → Finalizado (+ attendanceStatus)
+                                  ↘ Cancelado (+ metadados)
+Bloqueado (agendamento sintético)
+```
+- Referência: `models/appointment_model.dart:30-32`, `widgets/appointment_cards.dart`.
+
+### RN-08 - Duração da consulta
+- Múltiplos de 30 min: usuário seleciona N horários → `durationMinutes = N * 30`.
+- Células ocupadas na grade: `ceil(durationMinutes / 30)`.
+- Referência: `screens/agenda/agenda_form_screen.dart:420-489`, `screens/agenda/agenda_manager_screen.dart:961-981`.
+
+### RN-09 - Verificação de disponibilidade
+- Horários ocupados ignoram: o próprio agendamento em edição (`excludeId`) e status `Cancelado`.
+- Case-sensitivity divergente: service usa `'Cancelado'` exato; formulários usam lowercase (`'cancelado'`) — **inconsistência conhecida**.
+- Referência: `services/appointment_service.dart:20-45`, `agenda_form_screen.dart:106-156`.
+
+### RN-10 - Encaixe (2º paciente no mesmo horário)
+- Permitido apenas quando há **1 evento ativo** no slot (`concurrentCount == 1`).
+- Máximo de **2 pacientes por horário**; sem possibilidade de 3º encaixe.
+- Referência: `agenda_manager_screen.dart:435-436,580-596`.
+
+### RN-11 - Restrição por profissional
+- Dentista visualiza **apenas seus agendamentos** (`dentistId == user.uid`); recepção/owner filtram por dropdown de dentista.
+- Referência: `agenda_manager_screen.dart:937-951`.
+
+### RN-12 - Bloqueio de horários
+- Bloqueios criados como `AppointmentModel` sintético: `patientId='BLOCKED_SLOT'`, `patientName='BLOQUEADO'`, `status='Bloqueado'`, `durationMinutes=30`.
+- Faixas: Manhã 08–12h, Tarde 13–18h, Dia Todo 08–20h (via WriteBatch).
+- Liberar dia: deleta todos `status='Bloqueado'` do intervalo (respeita filtro de dentista).
+- Referência: `agenda_manager_screen.dart:99-273`.
+
+### RN-13 - Cancelamento com motivo
+- Origem obrigatória: `Paciente` ou `Clínica/Dr(a)`.
+- Motivo obrigatório (bloqueia se vazio).
+- Grava: `status='Cancelado'`, `cancelledBy`, `cancellationReason`, `cancellationSource`, `cancelledAt`.
+- **Cria registro clínico** "Cancelamento de Consulta" com origem/motivo.
+- Referência: `agenda_manager_screen.dart:308-410,600-607`.
+
+### RN-14 - Finalizar atendimento
+- Só a partir de `Confirmado`.
+- **Realizado (dental)**: exige plano ativo + procedimento do plano + evolução obrigatória; cria registro clínico; `status='Finalizado'` + `attendanceStatus='Attended'`.
+- **Realizado (psicologia)**: sem dropdown de procedimento — usa o vínculo do pacote (`planId`) e o `procedure` do agendamento; só a descrição.
+- **Não Compareceu**: motivo opcional + checkbox **Apresentou Atestado**; cria registro "Paciente Não Compareceu" (+ "Apresentou atestado."); `attendanceStatus='Missed'` + `hasMedicalCertificate`.
+- Dentista não encontrado no doc → fallback `'Dr(a). Responsável'`.
+- Referência: `agenda_manager_screen.dart` (`_showFinishAppointmentDialog`).
+
+### RN-15 - Confirmação via WhatsApp
+- Link público `https://odontocontrole-1c701.web.app/confirmar.html?id=<apptId>` permite update de status para `'Confirmado'`.
+- Pré-requisito: telefone do paciente com ≥10 dígitos e prefixo DDI `55`.
+- Referência: `agenda_manager_screen.dart:277-306,546-554`, `firestore.rules`.
+
+### RN-16 - Perfil de risco de no-show (classificação)
+- Base: últimos **20 agendamentos** do paciente.
+- Falta = `attendanceStatus=='Missed'` **sem atestado** (`hasMedicalCertificate != true`) **ou** (`status=='Cancelado'` **e** `cancellationSource=='Paciente'`).
+- Classificação: `taxa >= 0.3` **ou** `faltas >= 3` → **vermelho**; `taxa >= 0.1` → **amarelo**; senão **verde**.
+- Sem histórico ou erro → retorna `{green, 0}` (fail-safe).
+- Referência: `services/patient_service.dart:28-60`.
+
+### RN-17 - Agendamento psicologia (na agenda)
+- Célula vazia em clínica `psychology` → `AgendaCellFactory.openForm` abre o formulário com data/dia/hora **travados** (vindos da agenda).
+- Duração de sessão de psicologia: **50 min**.
+- Referência: `screens/agenda/agenda_cell_factory.dart`, `psychology_schedule_form_screen.dart`.
+
+---
+
+## 3. Pacientes
+
+### RN-18 - Campos obrigatórios e validações (cadastro)
+- Nome obrigatório; telefone com máscara `(##) #####-####` e ≥14 dígitos; CPF obrigatório.
+- Verificação de CPF duplicado por clínica (query existe; **bloqueio está comentado no código**).
+- Referência: `screens/patients/create_patient_screen.dart:82-127,148-191`.
+
+### RN-19 - Dados derivados
+- `searchKey` = nome em minúsculas (usado em buscas autocomplete).
+- `status='Ativo'` padrão; `createdAt` serverTimestamp.
+- Referência: `create_patient_screen.dart:99-110`.
+
+### RN-20 - Exclusão em cascata (atômica)
+- Batch único deleta na ordem: appointments → budgets → treatments → treatment_plans → financial → clinical_records → lab_orders → psychology_schedules → subcoleções (`odontogram`, `anamnesis`, `documents`, `photos`) → o próprio paciente.
+- Referência: `services/patient_service.dart:69-119`.
+
+### RN-21 - Parsing defensivo
+- `address` aceita String **ou** Map; `birthDate` aceita String **ou** Timestamp; `createdAt` aceita Timestamp/String/fallback `now`.
+- Referência: `models/patient_model.dart:30-95`.
+
+---
+
+## 4. Anamnese e Prontuário
+
+### RN-22 - Anamnese
+- Persistida em `anamnesis/{patientId}` (write público via link — regra Firestore).
+- Formulário: estado geral (tratamento, medicação, alergias), histórico patológico (Diabetes, Hipertensão, Cardíacos, Renais, Gástricos, Respiratórios, Hepatite, HIV, Anemia, Coagulação), hábitos (fumante, álcool, bruxismo, gestante) e observações.
+- Salvar = `set()` completo (sobrescreve doc).
+- Referência: `screens/patients/tabs/anamnesis_tab.dart:64-321`.
+
+### RN-23 - Registros clínicos (prontuário)
+- Todo registro exige: tratamento ativo (opcional vincular), procedimento e descrição obrigatória.
+- Grava `dentistName` (da sessão; fallback `'Dr(a).'`).
+- Cancelamento de consulta e finalização de atendimento geram registros automaticamente.
+- Referência: `screens/patients/tabs/clinical_record_screen.dart:34-165`.
+
+---
+
+## 5. Odontograma
+
+### RN-24 - Estrutura
+- Dentição padrão adulta de **32 dentes** em 4 quadrantes.
+- Persistido em `patients/{id}/clinical_data/odontogram`.
+- Referência: `screens/patients/tabs/odontogram_screen.dart:26-83`.
+
+### RN-25 - Estados e regras de conflito de faces
+- Estados: Saudável, Cárie/Lesão, Restaurado, A Realizar, Extrair, Coroa (planejada/realizada), Implante (planejado/realizado), Endodontia (planejada/realizada).
+- Regras:
+  - **Implante realizado** limpa as demais faces e **bloqueia ações** nas faces.
+  - **Coroa realizada** limpa faces que não sejam raiz/oclusal e bloqueia ações padrão na oclusal.
+  - **Extração** marca todas as faces como `missing`.
+  - **Saudável** remove o status.
+- Referência: `odontogram_screen.dart:85-153`.
+
+---
+
+## 6. Orçamentos e Tratamentos
+
+### RN-26 - Orçamento (budget)
+- Status: `Pendente` → `Aprovado` (via wizard).
+- Composto de itens (id de procedimento, categoria, nome, preço) + total.
+- Não é possível salvar sem itens.
+- Referência: `screens/patients/tabs/budgets_tab.dart:28-279`, `models/budget_model.dart`.
+
+### RN-27 - Aprovação de orçamento (geração de financeiro)
+- Se algum item tem `generatesMonthlyFee == true` → ativa fluxo de **mensalidades** (padrão 12x, primeiro vencimento escolhido) e captura **custo automático** do procedimento.
+- Gera recebíveis: N mensalidades (`i/N`) + 1 receita por item do orçamento.
+- Gera despesa "Custo Inicial" quando há custo.
+- Sem procedimento ortodôntico → pula etapa de mensalidade.
+- Referência: `screens/patients/wizards/budget_approval_wizard.dart:45-318`.
+
+### RN-28 - Plano de tratamento
+- Criado na aprovação com: itens do orçamento (status `pendente`), `totalValue`, `status='active'`, `budgetId`, `type` da clínica.
+- `closePlan` → `status='completed'`.
+- Financeiro do plano vinculado por `planId`; despesas por `relatedPlanId` ou `relatedFinancialId`.
+- Referência: `services/treatment_service.dart:33-96,25-27`.
+
+### RN-29 - Raio-X financeiro do tratamento
+- Margem = recebido − custos lab − repasses; progresso = recebido/total.
+- Parcelas pagas/total calculadas por `installmentNumber`.
+- Referência: `screens/patients/tabs/treatments_tab.dart:159-175`.
+
+---
+
+## 7. Financeiro
+
+### RN-30 - Tipos e status
+- `type`: `income` (receita) / `expense` (despesa).
+- `status` de receita: `pendente`/`pending`, `pago`/`paid`, `cobrado`, `anticipated`, `Cancelado`, `Pago (Renegociado/Parcelado)`.
+- `status` de despesa: `pendente` / `pago`.
+- `isPaid` (derivado) = `status=='paid'` **ou** `'anticipated'` **ou** `paidAmount >= amount > 0`.
+- Referência: `models/financial_model.dart:65`, `screens/financial/collections_screen.dart:172-196`.
+
+### RN-31 - Pagamento à vista
+- Condição: `payValue >= (amount - paidAmount)` **e** `installments == 1`.
+- Atualiza o título original: `isPaid`, `status`, `paymentDate`, `paymentMethod`, `paidAmount`, `payerName/Cpf`, `dentistId/Name`, `feePercentage`, `taxVal`, `valorLiquido`/`netAmount`.
+- Referência: `services/financial_service.dart:59-78`.
+
+### RN-32 - Pagamento parcelado (renegociação)
+- Atualiza original com `status = '<status> (Renegociado/Parcelado)'`.
+- Cria N lançamentos filhos: `dueDate = now + 30*i`, `installmentNumber = 'i/N'`, `description '<título> (i/N) - método'`.
+- **Ajuste de centavos**: diferença entre `payValue` e soma das parcelas vai para a **1ª parcela** (bruto e líquido).
+- Cartão parcelado → **deleta o título original** e grava `machineProfileId`.
+- Referência: `financial_service.dart:79-142`, `screens/patients/tabs/patient_financial_tab.dart:861-875`.
+
+### RN-33 - Pagamento parcial
+- Se `amountReceived < valor` e 1 parcela → atualiza original como pago e **cria lançamento "(Restante)"** pendente com a data original.
+- Referência: `services/payment_service.dart:24-49`.
+
+### RN-34 - Parcelamento "explosão" (D+30)
+- Transforma original na parcela `1/N` (valor dividido) e cria N−1 parcelas com `dueDate`/`date` D+30, todas `status='pago'`, mesmo `paymentMethod`.
+- Referência: `payment_service.dart:51-87`.
+
+### RN-35 - Estorno (receita/despesa)
+- Receita: `isPaid=false`, `paidAmount=0`, remove `paymentDate`/`paymentMethod`, `status='pendente'` → valor volta ao saldo devedor.
+- Despesa: `status='pendente'`, remove `paidDate`.
+- Antes do estorno, deleta despesas/lab_orders vinculados (`relatedFinancialId`).
+- Referência: `services/financial_service.dart:21-34`, `payment_service.dart:104-122`, `patient_financial_tab.dart:110-201`.
+
+### RN-36 - Livro-caixa (regime de caixa)
+- **Receita**: cartão → considera `dueDate` (entra no mês do vencimento); se antecipada → `paidDate` + `isPaid=true`; outros métodos → `paidDate` se paga, senão `dueDate`.
+- **Despesa**: `paidDate` se paga, senão `dueDate`.
+- Saldo acumulado considera **todos** os itens (pagos ou não): `+receita / −despesa`.
+- Referência: `services/oracle_report_service.dart:79-199`.
+
+### RN-37 - Despesas (contas a pagar)
+- Categorias: Custos Fixos, Manutenção, Impostos, Marketing, Outros.
+- Classificação visual do card: VENCIDO (<0 dias), VENCE EM BREVE (≤2 dias), EM ABERTO, PAGO.
+- Baixar pagamento → `status='pago'` + `paidDate`.
+- Referência: `screens/financial/expenses_screen.dart:234-254`, `services/expense_service.dart:69-74`.
+
+### RN-38 - Despesa recorrente/parcelada
+- Batch cria N docs: `dueDate` avançando 1 mês, `description '(i/N)'`, `installmentNumber`, `recurrenceId` (timestamp ms), `status='pendente'`.
+- Exige clínica selecionada (senão exceção).
+- Referência: `expense_service.dart:23-66`.
+
+### RN-39 - Antecipação de recebíveis
+- Elegíveis: receitas `income` de cartão, não canceladas, não antecipadas, com `dueDate` não expirado.
+- Taxa mensal: `clinics/{clinicId}/settings/fees.anticipation_rate` (default **2,29%**).
+- Cálculo: meses = `ceil(days/30)` (mínimo 1); taxa = `valor * (rate/100) * meses`.
+- Gravação (batch): despesa "Taxa de Antecipação de Recebíveis" (paga) + parcelas totais `status='anticipated'` ou parciais (`isPartialAnticipation=true`, `originalDocId`, reduz `amount` do original).
+- Referência: `screens/reports/reports_screen.dart:416-651`.
+
+### RN-40 - Cobranças (WhatsApp manual)
+- Consulta: `status whereIn ['pendente','pending']`, `type='income'`.
+- Modo pacotes (só psico): `monthlyPeriod` do mês. Modo Por Sessão: `dueDate` no mês **excluindo** pacotes (`billingKind`/`monthlyPeriod`).
+- Pacote mensal: pacote completo (baixa tudo) ou parcial (só registra contato); valor = `PackageBilling` ao vivo com `BillingSkeleton` (timeout 5s); congela no `paid`.
+- Marcar cobrada: `status='cobrado'`, `lastContactDate=serverTimestamp`, `contactHistory += {date, method:'whatsapp_manual'}`.
+- Badge "Já contatado hoje" se `lastContactDate == hoje`.
+- Referência: `screens/financial/collections_screen.dart`, `services/package_billing.dart`.
+
+### RN-40b - Ficha do paciente: cabeçalho e aba Pagamentos
+- Cabeçalho com 4 cards: assiduidade, A Receber (valor−pago), Recebido, Custo Operacional (`expenses` por `relatedPatientId`).
+- Aba Pagamentos sem cards: filtros em bottom sheet (valor mín/máx, procedimento) + toggle de ordenação (padrão: vencimentos próximos).
+- Referência: `patient_details_screen.dart` (`_HeaderSummaryRow`), `patient_financial_tab.dart`.
+
+---
+
+## 8. Psicologia
+
+### RN-41 - Tipos de agenda psicologia
+- `package` (Pacote) vs `session` (Sessão Avulsa).
+- Referência: `models/psychology_schedule_model.dart:40-60`.
+
+### RN-42 - Geração de sessões
+- **Pacote**: semanal da data de início até **31/12 do ano de início**.
+- **Avulsa**: **1 sessão só**, na data/hora selecionada (sem recorrência).
+- Dia da semana mapeado de pt-BR (default Segunda).
+- Cada sessão vira: item do `treatment_plans` (status `pendente`), `appointment` (50min, "Aguardando Confirmação") com `scheduleId/planId/monthlyPeriod`.
+- Referência: `models/psychology_schedule_model.dart`, `psychology_schedule_form_screen.dart` (`_generateAppointments`).
+
+### RN-43 - Financeiro do agendamento
+- **Pacote**: 1 registro por mês (`monthlyPeriod: "YYYY-MM"`, `billingKind: package_monthly`); valor cheio do pacote; `dueDate` = dia 10 do mês seguinte; `installmentNumber='Jan/2025 1/5'`.
+- **Avulsa**: 1 registro por sessão (`billingKind: session`); `dueDate = data da sessão + 7 dias`; `installmentNumber='i/N'`.
+- **Valor efetivo** = valor do pacote (ou sessão) − `thirdPartyDiscount` (desconto entra **antes** do rateio).
+- **Billing por presença** (decisões travadas: parcial, divisor = previstas, atestado abate, desconto antes): `PackageBilling.compute` — cobrável = Realizado + falta sem atestado; congela no `paid`. Ver `PSYCHOLOGY_PACKAGES.md`.
+- Referência: `services/package_billing.dart`, `psychology_schedule_form_screen.dart`.
+
+### RN-44 - Edição e cancelamento de agenda
+- **Edição não regenera sessões** (só atualiza o schedule).
+- **Gap conhecido:** sem tela de lista, não há UI para cancelar o contrato; cancelar na agenda não toca o financeiro.
+
+### RN-45 - Fluxo terapêutico (Kanban)
+- Estágios: `lead` (Triagem/Leads) → `active` (Em Acompanhamento) → `discharged` (Alta/Manutenção).
+- **Lead → Active** exige checklist: Contrato Terapêutico, Anamnese Inicial, Dados de Faturamento (LGPD/HIPAA); grava `treatment_start_date`.
+- **Active → Discharged** exige **motivo obrigatório**; grava `discharge_reason` + `discharge_date`.
+- `lead → active` e `active → discharged` sempre passam por dialog; outros movimentos são diretos.
+- Referência: `screens/patients/psychology/psychology_kanban_board.dart:275-392`.
+
+---
+
+## 9. Laboratório
+
+### RN-46 - Ciclo de status da ordem
+```
+Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_return, returnDate) → Entregue (delivered, deliveredDate)
+```
+- Interações (Problema/Atraso) adicionadas via `arrayUnion` (somente pedidos enviados).
+- Referência: `widgets/lab_kanban_board.dart:54-148`, `services/lab_service.dart:37-47`.
+
+### RN-47 - Pedido manual
+- Exige descrição; vincula tratamento (opcional) e solicitante; `status='pending_send'`.
+- Referência: `screens/patients/tabs/patient_lab_tab.dart:26-143`.
+
+---
+
+## 10. Gestão
+
+### RN-48 - Clínicas
+- Tipos: Odontológica, Psicológica, Fisioterapêutica, Estúdio de Ioga.
+- Criação adiciona a clínica ao `allowedClinics` do owner (`arrayUnion`).
+- Referência: `screens/clinics/clinic_management_screen.dart:15-134`.
+
+### RN-49 - Funcionários
+- Cadastro usa **FirebaseApp temporário** para criar auth do funcionário (risco: pode deslogar o admin atual).
+- Grava `users/{uid}` com role, `allowedClinics:[clinicId]`, `status='Ativo'`.
+- Owner escolhe a clínica; staff usa a clínica atual.
+- Referência: `screens/employees/employee_manager_screen.dart:33-209`.
+
+### RN-50 - Busca de profissionais por tipo de clínica
+- Psicologia → `psicologo` | `owner`; Odontologia → `dentista` | `owner`.
+- Filtra por `allowedClinics` contendo a clínica; owner sempre incluso.
+- Referência: `services/user_service.dart:13-53`.
+
+### RN-51 - Estoque
+- `isLowStock`: `currentQty <= minQty` → alerta "REPOR ESTOQUE".
+- Ajuste rápido ±1 via `FieldValue.increment` (atômico).
+- Referência: `screens/operations/tabs/inventory_tab.dart:15-168`, `services/inventory_service.dart:10-32`.
+
+### RN-52 - Procedimentos
+- Repasse: tipo `percent` ou fixo (`commissionType`, `commissionRate`).
+- Switches: "Gera Custos/Despesas?" (ex.: laboratório) e "Gera Mensalidade?" (ex.: manutenção orto 12x).
+- Referência: `screens/operations/tabs/procedures_tab.dart:16-175`, `models/procedure_model.dart:17-28`.
+
+### RN-53 - Fornecedores
+- Categorias: Laboratório de Prótese, Dentista Parceiro, Materiais de Consumo, Manutenção, Serviços Gerais, Impostos/Taxas.
+- `isProfessional` = "É Dentista da Equipe?" → recebe comissão/repasse.
+- Referência: `screens/operations/tabs/suppliers_tab.dart:27-98`.
+
+### RN-54 - Tarifas de cartão (perfis de máquina)
+- Perfis em `clinics/{id}/settings/fees/profiles`.
+- Config: taxa débito, crédito à vista, **faixas de parcelamento** (De/Até/Taxa, ordenadas por `from`) e **taxa de antecipação** mensal.
+- `activeProfileId` define o padrão; primeiro perfil criado vira padrão; excluir o padrão o redefine para null.
+- Referência: `screens/operations/tabs/card_fees_tab.dart:60-529`.
+
+---
+
+## 11. Fluxos Públicos
+
+### RN-55 - Avaliação digital (rota /avaliacao)
+- `cid` (clinicId) vem da URL (`?cid=`); sem `cid` → fallback de teste fixo.
+- 4 perguntas com score por resposta; lead com `score`, `answers`, `status='new_lead'`, `origin='web_form'`.
+- Grava em `clinics/{cid}/leads` e redireciona ao WhatsApp da clínica com o score.
+- Referência: `screens/public/public_evaluation_screen.dart:69-171`.
+
+### RN-56 - Lead "QUENTE" (tela removida)
+- A heurística vivia no dashboard `Novos Leads` (removido do menu com `mock_data_service`). Captação via `/avaliacao` (RN-55) continua gravando em `clinics/{cid}/leads`.
+
+### RN-57 - Anamnese/confirmação pública
+- `anamnesis/{patientId}` e update de status para `'Confirmado'` em `appointments` são permitidos sem auth de staff (regras Firestore).
+- Referência: `firestore.rules`.
+
+---
+
+## 12. Regras de Segurança Firestore
+
+### RN-58 - Regras principais (`firestore.rules`)
+- `isOwner()`: `users/{uid}.role == 'owner'`.
+- `hasClinicAccess(clinicId)`: `clinicId in users/{uid}.allowedClinics`.
+- Coleções operacionais (patients, appointments, financial, treatments, treatment_plans, budgets, clinical_records, psychology_schedules) exigem **auth** + (owner **ou** acesso à clínica).
+- Exceções públicas: `/anamnesis` (write público), `/appointments` update de status para `'Confirmado'` (WhatsApp).
+- Referência: `firestore.rules`, `AGENTS.md`.
+
+---
+
+## 13. Integração WhatsApp
+
+### RN-59 - Normalização de telefone
+- Remove não-dígitos; exige **≥10 dígitos**; prefixa DDI `55` se ausente.
+- Referência: `services/whatsapp_helper.dart:22-39`.
+
+### RN-60 - Mensagens rotativas
+- 3 templates de lembrete de cobrança, escolhidos aleatoriamente (anti-spam).
+- Referência: `whatsapp_helper.dart:7-20`.
+
+### RN-61 - Confirmação humana de envio
+- Ao voltar do WhatsApp (`AppLifecycleState.resumed`), pergunta "Você enviou?" → SIM marca como cobrado.
+- Referência: `screens/financial/collections_screen.dart:37-121`.
+
+---
+
+## 14. Documentação de Arquivos
+
+### RN-62 - Upload de documentos
+- Upload para **Cloudinary** (`https://api.cloudinary.com/v1_1/dbbh601ay/auto/upload`, `resource_type: auto`).
+- Metadados em `patients/{id}/docs`: `fileType` derivado da extensão (image/document), categoria, título, uploader.
+- Exclusão apaga **só os metadados** (binário permanece na nuvem).
+- Referência: `services/document_service.dart:20-109`.
+
+---
+
+## Apêndice A - Índice de referências rápidas
+
+| Regra | Arquivo principal |
+|-------|-------------------|
+| RN-01..06 | `services/session_manager.dart`, `main_web_dashboard.dart` |
+| RN-07..17 | `agenda_manager_screen.dart`, `agenda_form_screen.dart`, `appointment_service.dart` |
+| RN-18..21 | `create_patient_screen.dart`, `patient_service.dart`, `patient_model.dart` |
+| RN-22..23 | `anamnesis_tab.dart`, `clinical_record_screen.dart` |
+| RN-24..25 | `odontogram_screen.dart` |
+| RN-26..29 | `budgets_tab.dart`, `budget_approval_wizard.dart`, `treatment_service.dart`, `treatments_tab.dart` |
+| RN-30..40 | `financial_service.dart`, `payment_service.dart`, `oracle_report_service.dart`, `collections_screen.dart`, `expenses_screen.dart`, `reports_screen.dart` |
+| RN-41..45 | `psychology_schedule_form_screen.dart`, `psychology_schedule_model.dart`, `psychology_kanban_board.dart` |
+| RN-46..47 | `lab_kanban_board.dart`, `lab_service.dart` |
+| RN-48..54 | `clinic_management_screen.dart`, `employee_manager_screen.dart`, `operations/*` |
+| RN-55..57 | `public_evaluation_screen.dart`, `leads_dashboard_screen.dart`, `firestore.rules` |
+| RN-58 | `firestore.rules` |
+| RN-59..61 | `whatsapp_helper.dart`, `collections_screen.dart` |
+| RN-62 | `document_service.dart` |
+
+---
+
+## Apêndice B - Divergências e dívidas conhecidas
+
+| # | Situação | Regra afetada |
+|---|----------|---------------|
+| 1 | `patient_service.getAllStream`, `getPatientRiskProfile`, `financial_service.getByPatientId`, `treatment_service.getPlansStream` **não aplicam** `applyFilter` | RN-04 |
+| 2 | Comparação de status `Cancelado` case-sensitive vs lowercase (inconsistente entre service e formulários) | RN-09 |
+| 3 | `login_screen` usa `allowedClinics` hardcoded `['matriz_santa_isabel']` | RN-02 |
+| 4 | `public_evaluation_screen` usa clinicId de teste fixo quando não há `cid` | RN-55 |
+| 5 | `product_service` legado diverge de `inventory` (`currentQuantity` vs `currentQty`) e não filtra por clínica | RN-04/RN-51 |
+| 6 | `treatment_model.dart` documentado no AGENTS.md mas **inexistente** no código (planos são `Map` crus) | RN-28 |
+| 7 | CPF duplicado: query existe mas bloqueio está comentado | RN-18 |
+| 8 | Código morto: `_showMonthlyValueDialog` (budgets_tab) e `_checkForGroupPayment` (patient_financial_tab) | — |
+| 9 | Registro de funcionário pode deslogar o admin (FirebaseApp temporário) | RN-49 |

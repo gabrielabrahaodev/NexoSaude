@@ -30,13 +30,213 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
   
   // Lista de perfis de máquina para o Dropdown
   List<Map<String, dynamic>> _machineProfiles = [];
-  
+
   bool _isLoadingData = false;
+
+  // Filtros e ordenação da timeline
+  final TextEditingController _minValueCtrl = TextEditingController();
+  final TextEditingController _maxValueCtrl = TextEditingController();
+  String? _procedureFilter;
+  String _sortMode = 'dueAsc'; // 'record' | 'dueAsc' | 'dueDesc'
 
   @override
   void initState() {
     super.initState();
-    _loadData(); 
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _minValueCtrl.dispose();
+    _maxValueCtrl.dispose();
+    super.dispose();
+  }
+
+  double? _parseFilterValue(String text) {
+    final value = double.tryParse(text.replaceAll(',', '.'));
+    if (value == null || value < 0) return null;
+    return value;
+  }
+
+  String _itemProcedure(dynamic item) {
+    if (item is FinancialModel) return item.title;
+    return (item as ExpenseModel).category;
+  }
+
+  double _itemAmount(dynamic item) {
+    if (item is FinancialModel) return item.amount;
+    return (item as ExpenseModel).amount;
+  }
+
+  DateTime? _itemDueDate(dynamic item) {
+    if (item is FinancialModel) return item.dueDate;
+    return (item as ExpenseModel).dueDate;
+  }
+
+  void _clearTimelineFilters() {
+    setState(() {
+      _minValueCtrl.clear();
+      _maxValueCtrl.clear();
+      _procedureFilter = null;
+      _sortMode = 'dueAsc';
+    });
+  }
+
+  int get _activeFilterCount {
+    var count = 0;
+    if (_parseFilterValue(_minValueCtrl.text) != null) count++;
+    if (_parseFilterValue(_maxValueCtrl.text) != null) count++;
+    if (_procedureFilter != null) count++;
+    return count;
+  }
+
+  void _toggleDueSort() {
+    setState(() {
+      _sortMode = _sortMode == 'dueAsc' ? 'dueDesc' : 'dueAsc';
+    });
+  }
+
+  void _openFilterSheet(List<String> procedures) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            void update(void Function() change) {
+              setSheetState(change);
+              setState(() {});
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 12,
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text("Filtros",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _minValueCtrl,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                                    decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: "Valor mín",
+                              prefixText: "R\$ ",
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => update(() {}),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _maxValueCtrl,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                                    decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: "Valor máx",
+                              prefixText: "R\$ ",
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => update(() {}),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _procedureFilter,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: "Procedimento",
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text("Todos"),
+                        ),
+                        ...procedures.map((p) => DropdownMenuItem<String>(
+                              value: p,
+                              child: Text(p,
+                                  overflow: TextOverflow.ellipsis),
+                            )),
+                      ],
+                      onChanged: (val) =>
+                          update(() => _procedureFilter = val),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _sortMode,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: "Ordenar por",
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'record',
+                          child: Text("Registro (atual)"),
+                        ),
+                        DropdownMenuItem(
+                          value: 'dueAsc',
+                          child: Text("Vencimento (próximos)"),
+                        ),
+                        DropdownMenuItem(
+                          value: 'dueDesc',
+                          child: Text("Vencimento (distantes)"),
+                        ),
+                      ],
+                      onChanged: (val) =>
+                          update(() => _sortMode = val ?? 'record'),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          _clearTimelineFilters();
+                          Navigator.pop(ctx);
+                        },
+                        child: const Text("Limpar filtros"),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _loadData() async {
@@ -1012,26 +1212,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     }
   }
 
-  Widget _buildSummaryCard(String title, double value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
-        ),
-        child: Column(
-          children: [
-            Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -1056,22 +1236,10 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 if (snapshotFin.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
                 List<dynamic> timeline = [];
-                double totalContracted = 0;
-                double totalPending = 0;
-                double totalCost = 0;
 
                 if (snapshotFin.hasData) {
                   for (var item in snapshotFin.data!) {
                     timeline.add(item);
-                    
-                    // --- TOTALIZADORES ---
-                    // Como agora estamos DELETANDO o título original na função _showReceiveDialog quando parcelamos,
-                    // podemos somar tudo normalmente sem filtros complexos. A matemática se resolve sozinha.
-                    totalContracted += item.amount;
-
-                    bool isPaid = item.status == 'paid' || item.status == 'anticipated' || (item.paidAmount >= item.amount && item.amount > 0);
-                    
-                    if (!isPaid) totalPending += (item.amount - item.paidAmount);
                   }
                 }
 
@@ -1079,7 +1247,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                   for (var doc in snapshotExp.data!.docs) {
                     final exp = ExpenseModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
                     timeline.add(exp);
-                    totalCost += exp.amount;
                   }
                 }
 
@@ -1089,29 +1256,105 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                   return dateB.compareTo(dateA);
                 });
 
+                // Procedimentos distintos para o filtro (títulos + categorias)
+                final procedures = timeline
+                    .map(_itemProcedure)
+                    .where((p) => p.isNotEmpty)
+                    .toSet()
+                    .toList()
+                  ..sort();
+
+                // Aplica filtros de valor e procedimento (totais acima usam a lista cheia)
+                final minValue = _parseFilterValue(_minValueCtrl.text);
+                final maxValue = _parseFilterValue(_maxValueCtrl.text);
+                final visible = timeline.where((item) {
+                  final amount = _itemAmount(item);
+                  if (minValue != null && amount < minValue) return false;
+                  if (maxValue != null && amount > maxValue) return false;
+                  if (_procedureFilter != null &&
+                      _itemProcedure(item) != _procedureFilter) {
+                    return false;
+                  }
+                  return true;
+                }).toList();
+
+                // Ordenação da lista visível
+                if (_sortMode != 'record') {
+                  final ascending = _sortMode == 'dueAsc';
+                  visible.sort((a, b) {
+                    final dueA = _itemDueDate(a);
+                    final dueB = _itemDueDate(b);
+                    if (dueA == null && dueB == null) return 0;
+                    if (dueA == null) return 1;
+                    if (dueB == null) return -1;
+                    return ascending
+                        ? dueA.compareTo(dueB)
+                        : dueB.compareTo(dueA);
+                  });
+                }
+
+                final bool isFiltered = minValue != null ||
+                    maxValue != null ||
+                    _procedureFilter != null;
+
                 return Column(
                   children: [
+                    const SizedBox(height: 12),
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         children: [
-                          _buildSummaryCard("TOTAL CONTRATADO", totalContracted, Colors.black87),
+                          FilledButton.tonalIcon(
+                            onPressed: () =>
+                                _openFilterSheet(procedures),
+                            icon: const Icon(Icons.filter_list, size: 18),
+                            label: Text(
+                              _activeFilterCount > 0
+                                  ? "Filtros ($_activeFilterCount)"
+                                  : "Filtros",
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          _buildSummaryCard("A RECEBER", totalPending, totalPending > 0 ? Colors.red : Colors.green),
-                          const SizedBox(width: 8),
-                          _buildSummaryCard("CUSTO OPERACIONAL", totalCost, Colors.orange),
+                          OutlinedButton.icon(
+                            onPressed: _toggleDueSort,
+                            icon: Icon(
+                              _sortMode == 'dueDesc'
+                                  ? Icons.arrow_downward
+                                  : _sortMode == 'dueAsc'
+                                      ? Icons.arrow_upward
+                                      : Icons.swap_vert,
+                              size: 18,
+                            ),
+                            label: Text(
+                              _sortMode == 'dueDesc'
+                                  ? "Distantes"
+                                  : _sortMode == 'dueAsc'
+                                      ? "Próximos"
+                                      : "Ordenar",
+                            ),
+                          ),
+                          const Spacer(),
+                          if (isFiltered)
+                            Text(
+                              "${visible.length} de ${timeline.length}",
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 12),
+                            ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 8),
                     const Divider(height: 1),
                     Expanded(
-                      child: timeline.isEmpty 
+                      child: timeline.isEmpty
                         ? const Center(child: Text("Nenhuma movimentação financeira.", style: TextStyle(color: Colors.grey)))
-                        : ListView.builder(
+                        : visible.isEmpty
+                          ? const Center(child: Text("Nenhum item corresponde aos filtros.", style: TextStyle(color: Colors.grey)))
+                          : ListView.builder(
                             padding: const EdgeInsets.all(16),
-                            itemCount: timeline.length,
+                            itemCount: visible.length,
                             itemBuilder: (context, index) {
-                              final item = timeline[index];
+                              final item = visible[index];
                               final bool isIncome = item is FinancialModel;
 
                               return IntrinsicHeight(

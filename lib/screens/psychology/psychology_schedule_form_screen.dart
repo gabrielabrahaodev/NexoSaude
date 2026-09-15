@@ -160,8 +160,20 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
 
   Future<void> _generateAppointments(String scheduleId, PsychologyScheduleModel schedule) async {
     final clinicId = SessionManager().currentClinicId!;
-    final endOfYear = DateTime(_startDate.year, 12, 31, 23, 59);
-    final sessionDates = schedule.generateSessionDates(endDate: endOfYear);
+    // Avulsa: somente a data selecionada. Pacote: recorrência semanal até 31/12.
+    final List<DateTime> sessionDates;
+    if (_scheduleType == PsychologyScheduleType.session) {
+      final timeParts = schedule.time.split(':');
+      final hour = int.tryParse(timeParts[0]) ?? 8;
+      final minute =
+          timeParts.length > 1 ? int.tryParse(timeParts[1]) ?? 0 : 0;
+      sessionDates = [
+        DateTime(_startDate.year, _startDate.month, _startDate.day, hour, minute)
+      ];
+    } else {
+      final endOfYear = DateTime(_startDate.year, 12, 31, 23, 59);
+      sessionDates = schedule.generateSessionDates(endDate: endOfYear);
+    }
 
     if (sessionDates.isEmpty) return;
 

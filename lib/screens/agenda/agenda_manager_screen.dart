@@ -697,6 +697,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     List<dynamic> proceduresOfPlan = [];
     bool isAbsent = false;
     bool hasCertificate = false;
+    // Psicologia: sem escolha de procedimento — só descrição (usa o vínculo do pacote).
+    final bool isPsychology =
+        appt.procedure.contains('Psicologia') || appt.scheduleId != null;
 
     showDialog(
       context: context,
@@ -745,8 +748,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      
-                      if (!isAbsent) ...[
+
+                      if (!isAbsent && !isPsychology) ...[
                         StreamBuilder<QuerySnapshot>(
                           stream: _treatmentService.getPlansStream(appt.patientId),
                           builder: (context, snapshot) {
@@ -856,7 +859,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     final bool certificate = isAbsent && hasCertificate;
                     String finalProcedureName = isAbsent
                         ? 'Paciente Não Compareceu'
-                        : (selectedProcedureName ?? 'Atendimento Geral');
+                        : (isPsychology
+                            ? appt.procedure
+                            : (selectedProcedureName ?? 'Atendimento Geral'));
                     String finalDescription = isAbsent
                         ? "Paciente faltou ao agendamento."
                             "${certificate ? "\nApresentou atestado." : ""}"
@@ -864,7 +869,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                         : noteCtrl.text.trim();
                     await _clinicalRecordService.add({
                       'clinicId': clinicId,
-                      'treatmentId': isAbsent ? null : selectedTreatmentId,
+                      'treatmentId': isAbsent
+                          ? null
+                          : (isPsychology ? appt.planId : selectedTreatmentId),
                       'patientId': appt.patientId,
                       'patientName': appt.patientName,
                       'procedureName': finalProcedureName,

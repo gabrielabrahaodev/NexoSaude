@@ -596,11 +596,49 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                           monthlyPeriod: monthlyPeriod,
                           packageAmount: packageAmount,
                           clinicId: clinicId,
-                        ),
+                        ).timeout(const Duration(seconds: 5)),
                         builder: (context, billSnap) {
-                          final bill = billSnap.data;
-                          final totalAmount =
-                              bill?.amountDue ?? packageAmount;
+                          if (billSnap.connectionState ==
+                              ConnectionState.waiting) {
+                            return MonthlyPackageCard(
+                              patientName: patientName,
+                              periodLabel: periodLabel,
+                              installmentNumber: installmentNumber,
+                              sessionCount: items.length,
+                              dueDate: (data['dueDate'] as Timestamp)
+                                  .toDate(),
+                              totalAmount: packageAmount,
+                              contactedToday: contactedToday,
+                              billingLoading: true,
+                              onTap: () {},
+                            );
+                          }
+                          if (billSnap.hasError || !billSnap.hasData) {
+                            return MonthlyPackageCard(
+                              patientName: patientName,
+                              periodLabel: periodLabel,
+                              installmentNumber: installmentNumber,
+                              sessionCount: items.length,
+                              dueDate: (data['dueDate'] as Timestamp)
+                                  .toDate(),
+                              totalAmount: packageAmount,
+                              fullAmount: packageAmount,
+                              billingDetail:
+                                  "Cálculo indisponível no momento",
+                              contactedToday: contactedToday,
+                              onTap: () => _handleMonthlyPackageCharge({
+                                'patientId': patientId,
+                                'patientName': patientName,
+                                'monthlyPeriod': monthlyPeriod,
+                                'totalAmount': packageAmount,
+                                'fullAmount': packageAmount,
+                                'billingDetail': null,
+                                'items': items,
+                              }),
+                            );
+                          }
+                          final bill = billSnap.data!;
+                          final totalAmount = bill.amountDue;
                           final detail = bill == null
                               ? null
                               : "${bill.describe()} • R\$ ${bill.amountDue.toStringAsFixed(2)}"

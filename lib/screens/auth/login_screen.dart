@@ -47,6 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (_isLoading) return;
     setState(() => _isLoading = true);
     try {
       UserCredential userCred;
@@ -96,9 +97,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Text("Consultório Odontológico", style: AppTextStyles.subtitle),
               const SizedBox(height: 30),
-              TextField(controller: _emailController, decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: const Icon(Icons.email_outlined))),
+              TextField(controller: _emailController, textInputAction: TextInputAction.next, onSubmitted: (_) => FocusScope.of(context).nextFocus(), decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: const Icon(Icons.email_outlined))),
               const SizedBox(height: 12),
-              TextField(controller: _passwordController, decoration: InputDecoration(labelText: "Senha", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: const Icon(Icons.lock_outline)), obscureText: true),
+              TextField(controller: _passwordController, textInputAction: TextInputAction.done, onSubmitted: (_) => _submit(), decoration: InputDecoration(labelText: "Senha", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: const Icon(Icons.lock_outline)), obscureText: true),
               if (!_isLogin)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),

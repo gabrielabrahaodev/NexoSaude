@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:odonto_controle/models/financial_model.dart';
 import 'package:odonto_controle/screens/patients/tabs/patient_financial_tab.dart';
@@ -174,7 +175,9 @@ class _HeaderSummaryRow extends StatelessWidget {
                 double pendente = 0;
                 if (snapshot.hasData) {
                   for (var item in snapshot.data!) {
-                    if (!item.isPaid) pendente += item.amount;
+                    if (!item.isPaid) {
+                      pendente += item.amount - item.paidAmount;
+                    }
                   }
                 }
                 return _buildSummaryItem("A RECEBER", "R\$ ${pendente.toStringAsFixed(2)}", Colors.orange);
@@ -196,6 +199,32 @@ class _HeaderSummaryRow extends StatelessWidget {
                   }
                 }
                 return _buildSummaryItem("RECEBIDO", "R\$ ${recebido.toStringAsFixed(2)}", Colors.green);
+              },
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          Expanded(
+            flex: 1,
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('expenses')
+                  .where('relatedPatientId', isEqualTo: patientId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                double custo = 0;
+                if (snapshot.hasData) {
+                  for (var doc in snapshot.data!.docs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final raw = data['amount'];
+                    custo += raw is num
+                        ? raw.toDouble()
+                        : double.tryParse('$raw') ?? 0.0;
+                  }
+                }
+                return _buildSummaryItem("CUSTO OPERACIONAL",
+                    "R\$ ${custo.toStringAsFixed(2)}", Colors.orange);
               },
             ),
           ),

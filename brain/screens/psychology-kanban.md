@@ -1,0 +1,21 @@
+---
+name: screen-psychology-kanban
+description: Fluxo terapêutico (kanban) das agendas de psicologia.
+---
+
+# PsychologyKanbanBoard
+
+`lib/screens/patients/psychology/psychology_kanban_board.dart`
+
+## O que é
+
+Kanban por estágio do acompanhamento (`_CheckItem` por card), visível só na psico (menu 11).
+
+## Quando usar
+
+Mudar estágio, checklist de sessão.
+
+## Gotchas
+
+- Drag callbacks antigos (`onWillAccept/onAccept` → versões `WithDetails`).
+- `withOpacity` aqui (e não `withValues`) — migrar ao tocar.

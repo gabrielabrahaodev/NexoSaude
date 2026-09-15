@@ -14,12 +14,10 @@ import '../clinics/clinic_management_screen.dart';
 import '../employees/employee_manager_screen.dart';
 import '../operations/operations_manager_screen.dart';
 import '../lab/clinic_lab_screen.dart';
-import '../financial/collections_screen.dart'; 
-import '../leads/leads_dashboard_screen.dart'; 
+import '../financial/collections_screen.dart';
 
-// --- NOVO IMPORT: TELA DE PSICOLOGIA ---
-import '../patients/psychology/psychology_kanban_board.dart'; 
-import '../psychology/psychology_schedule_list_screen.dart';
+// --- TELA DE PSICOLOGIA ---
+import '../patients/psychology/psychology_kanban_board.dart';
 
 import '../../main.dart'; 
 
@@ -59,27 +57,23 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     }
   }
 
-  // Lista de telas atualizada com o Kanban no final
+  // Lista de telas (índices sincronizados com _buildMenuContent)
   List<Widget> get _screens => [
     AgendaManagerScreen(key: ValueKey(_currentClinicId)),      // 0
     PatientListScreen(key: ValueKey(_currentClinicId)),        // 1
-    LeadsDashboardScreen(key: ValueKey(_currentClinicId)),     // 2
-    ClinicLabScreen(key: ValueKey(_currentClinicId)),          // 3
-    FinancialReportScreen(key: ValueKey(_currentClinicId)),    // 4
-    ReportsScreen(key: ValueKey(_currentClinicId)),            // 5
-    OrthoNewsScreen(),                                         // 6
-    CollectionsScreen(key: ValueKey(_currentClinicId)),        // 7
-    
-    // ÁREA RESTRITA
-    ClinicManagementScreen(key: ValueKey(_currentClinicId)),   // 8
-    EmployeeManagerScreen(key: ValueKey(_currentClinicId)),    // 9
-    OperationsManagerScreen(key: ValueKey(_currentClinicId)),  // 10
-    
-    // --- TELA ESPECIALIZADA ---
-    PsychologyKanbanBoard(key: ValueKey('$_currentClinicId-psy-kanban')), // 11
+    ClinicLabScreen(key: ValueKey(_currentClinicId)),          // 2
+    FinancialReportScreen(key: ValueKey(_currentClinicId)),    // 3
+    ReportsScreen(key: ValueKey(_currentClinicId)),            // 4
+    OrthoNewsScreen(),                                         // 5
+    CollectionsScreen(key: ValueKey(_currentClinicId)),        // 6
 
-    // --- NOVA TELA: AGENDAS PSICOLOGIA ---
-    PsychologyScheduleListScreen(key: ValueKey('$_currentClinicId-psy-sched')), // 12
+    // ÁREA RESTRITA
+    ClinicManagementScreen(key: ValueKey(_currentClinicId)),   // 7
+    EmployeeManagerScreen(key: ValueKey(_currentClinicId)),    // 8
+    OperationsManagerScreen(key: ValueKey(_currentClinicId)),  // 9
+
+    // --- TELA ESPECIALIZADA (psicologia) ---
+    PsychologyKanbanBoard(key: ValueKey('$_currentClinicId-psy-kanban')), // 10
   ];
 
   void _onMenuSelect(int index) {
@@ -302,38 +296,30 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 _buildMenuItem(0, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
                 _buildMenuItem(1, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
                 
-                // LEADs
-                _buildMenuItem(2, "Novos Leads", Icons.filter_alt_outlined, highlightColor, Colors.orange[800]!, isCompact),
-
                 // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
                 if (ClinicCapabilities.ofType(_currentClinicType)
                     .canShowTherapeuticFlow)
-                  _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
+                  _buildMenuItem(10, "Fluxo Terapêutico", Icons.psychology,
                       highlightColor, Colors.purple, isCompact),
-                if (ClinicCapabilities.ofType(_currentClinicType)
-                    .canUseMonthlyPackages)
-                  _buildMenuItem(12, "Agendas Psicologia",
-                      Icons.calendar_month, highlightColor, Colors.purple,
-                      isCompact),
                 // ----------------------------------------
 
-                _buildMenuItem(3, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
+                _buildMenuItem(2, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(3, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(4, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(5, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(6, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
 
                 // DONO
                 if (_userRole == 'owner') ...[
-                  const Divider(height: 30, thickness: 1), 
-                  _buildMenuItem(8, "Clínicas", Icons.store_mall_directory, highlightColor, primaryColor, isCompact),
-                  _buildMenuItem(9, "Funcionários", Icons.badge_outlined, highlightColor, primaryColor, isCompact),
+                  const Divider(height: 30, thickness: 1),
+                  _buildMenuItem(7, "Clínicas", Icons.store_mall_directory, highlightColor, primaryColor, isCompact),
+                  _buildMenuItem(8, "Funcionários", Icons.badge_outlined, highlightColor, primaryColor, isCompact),
                 ],
 
                 // GESTÃO
                 if (_userRole == 'owner' || _userRole == 'recepcionista') ...[
                   if (_userRole != 'owner') const Divider(height: 30, thickness: 1),
-                  _buildMenuItem(10, "Gestão", Icons.settings_applications, highlightColor, primaryColor, isCompact),
+                  _buildMenuItem(9, "Gestão", Icons.settings_applications, highlightColor, primaryColor, isCompact),
                 ],
               ],
             ),

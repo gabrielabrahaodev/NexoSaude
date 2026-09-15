@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'billing_skeleton.dart';
+
 class MonthlyPackageCard extends StatelessWidget {
   final String patientName;
   final String periodLabel;
@@ -13,6 +15,7 @@ class MonthlyPackageCard extends StatelessWidget {
   final double? fullAmount;
   final String? billingDetail;
   final bool isPartial;
+  final bool billingLoading;
 
   const MonthlyPackageCard({
     super.key,
@@ -27,6 +30,7 @@ class MonthlyPackageCard extends StatelessWidget {
     this.fullAmount,
     this.billingDetail,
     this.isPartial = false,
+    this.billingLoading = false,
   });
 
   @override
@@ -74,7 +78,9 @@ class MonthlyPackageCard extends StatelessWidget {
           children: [
             Text(
                 "$installmentNumber • $sessionCount sessão(ões) • Vence: ${DateFormat('dd/MM').format(dueDate)}"),
-            if (billingDetail != null)
+            if (billingLoading)
+              const BillingDetailSkeleton()
+            else if (billingDetail != null)
               Text(billingDetail!,
                   style: const TextStyle(
                       color: Colors.purple,
@@ -91,21 +97,24 @@ class MonthlyPackageCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text("R\$ ${totalAmount.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.purple)),
-                if (fullAmount != null && fullAmount != totalAmount)
-                  Text("de R\$ ${fullAmount!.toStringAsFixed(2)}",
+            if (billingLoading)
+              const BillingSkeleton()
+            else
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text("R\$ ${totalAmount.toStringAsFixed(2)}",
                       style: const TextStyle(
-                          fontSize: 11, color: Colors.grey)),
-              ],
-            ),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.purple)),
+                  if (fullAmount != null && fullAmount != totalAmount)
+                    Text("de R\$ ${fullAmount!.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.grey)),
+                ],
+              ),
             const SizedBox(width: 10),
             const Icon(Icons.chevron_right, color: Colors.grey),
           ],

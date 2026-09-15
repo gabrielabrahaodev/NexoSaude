@@ -1,0 +1,36 @@
+---
+name: financial-module
+description: Contas a receber/pagar, cobrança via WhatsApp, despesas e processamento de pagamentos.
+---
+
+# Financeiro
+
+## O que é
+
+`financial` (receitas), `expenses` (despesas), cobrança manual com WhatsApp e baixa de pagamentos.
+
+## Quando usar
+
+Cobrança, pacotes mensais, relatório financeiro, despesa recorrente, recebimento/estorno.
+
+## Arquivos-chave
+
+- `lib/services/financial_service.dart` — `getByPatientId`, `processPayment`, `voidPayment`
+- `lib/services/expense_service.dart` — `addExpense`, `addRecurringExpense`, `markAsPaid`, `getByMonth`
+- `lib/services/payment_service.dart` — `receivePayment`, `reverseTransaction`
+- `lib/services/whatsapp_helper.dart` — mensagens rotativas + abertura do WhatsApp
+- `lib/models/financial_model.dart` (`_toDouble` defensivo, `monthlyPeriod`, `billingKind`), `lib/models/expense_model.dart`
+- `lib/services/package_billing.dart` — rateio do pacote por presença (puro, sem Firebase)
+
+## Fluxos
+
+- Cobrança: abre WhatsApp → ao voltar, dialog confirma envio → marca `cobrado` + `lastContactDate` + `contactHistory`.
+- Pacote mensal: valor ao vivo por `PackageBill` (`FutureBuilder` + `BillingSkeleton`, timeout 5s) → dialog `Pagar Completo` (baixa tudo) vs `Parcial` (só registra contato); congela no `paid`.
+- Por Sessão exclui pacotes (`billingKind`/`monthlyPeriod`).
+- Status de filtro: `whereIn: ['pendente', 'pending']` (legado tem os dois).
+
+## Regras / Gotchas
+
+- `FinancialModel.isPaid`: `paid`/`anticipated` ou `paidAmount >= amount`.
+- Índices compostos em `firestore.indexes.json` são obrigatórios para as queries (fazer deploy após mudar filtro).
+- `contactedToday` (`lastContactDate` == hoje) só muda a cor do card.
