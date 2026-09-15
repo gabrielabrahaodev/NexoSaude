@@ -16,7 +16,7 @@ import 'tabs/anamnesis_tab.dart';
 import 'tabs/patient_lab_tab.dart'; 
 // --- NOVO IMPORT ---
 import 'tabs/patient_docs_tab.dart'; 
-import '../../../services/session_manager.dart'; 
+import '../../../services/clinic_capabilities.dart';
 
 class PatientDetailsScreen extends StatefulWidget {
   final String patientName; 
@@ -41,23 +41,25 @@ class PatientDetailsScreen extends StatefulWidget {
 class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   
   Widget _buildVisualTab() {
-    final type = SessionManager().clinicType; 
-    switch (type) {
-      case 'dental':
-        return OdontogramScreen(patientId: widget.patientId);
-      default:
-        return const Center(child: Text("Módulo Visual não disponível para esta especialidade."));
+    final caps = ClinicCapabilities.current();
+    if (caps.canShowOdontogram) {
+      return OdontogramScreen(patientId: widget.patientId);
     }
+    return const Center(
+        child: Text("Módulo Visual não disponível para esta especialidade."));
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isDental = SessionManager().clinicType == 'dental';
+    final caps = ClinicCapabilities.current();
+
+    // Calcula número de tabs dinamicamente
+    // Dental: 9 tabs | Psychology: 7 tabs (sem Orçamentos, Odontograma, Laboratório)
+    // Outros: 8 tabs (sem Odontograma, Laboratório)
+    final int tabCount = caps.patientTabCount;
 
     return DefaultTabController(
-      // ATUALIZADO: Aumentamos 1 no length para caber a Documentação
-      // Dental: 8 -> 9 | Outros: 6 -> 7
-      length: isDental ? 9 : 7, 
+      length: tabCount,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -73,14 +75,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             tabs: [
               const Tab(text: "CADASTRO"),
               const Tab(text: "ANAMNESE"),
-              const Tab(text: "ORÇAMENTOS"),
-              const Tab(text: "TRATAMENTOS"), 
-              const Tab(text: "PRONTUÁRIO"),  
-              if (isDental) const Tab(text: "ODONTOGRAMA"),
-              if (isDental) const Tab(text: "LABORATÓRIO"),
-              // --- NOVA ABA ---
-              const Tab(text: "DOCUMENTAÇÃO"), 
-              // ----------------
+              if (caps.canShowBudgets) const Tab(text: "ORÇAMENTOS"),
+              const Tab(text: "TRATAMENTOS"),
+              const Tab(text: "PRONTUÁRIO"),
+              if (caps.canShowOdontogram) const Tab(text: "ODONTOGRAMA"),
+              if (caps.canShowLab) const Tab(text: "LABORATÓRIO"),
+              const Tab(text: "DOCUMENTAÇÃO"),
               const Tab(text: "PAGAMENTOS"),
             ],
           ),
@@ -99,14 +99,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                 children: [
                   PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
                   AnamnesisTab(patientId: widget.patientId),
-                  BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
+                  if (caps.canShowBudgets)
+                    BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
                   TreatmentsTab(patientName: widget.patientName, patientId: widget.patientId),
                   ClinicalRecordTab(patientName: widget.patientName, patientId: widget.patientId),
-                  if (isDental) _buildVisualTab(),
-                  if (isDental) PatientLabTab(patientId: widget.patientId),
-                  // --- NOVA TELA NA VISUALIZAÇÃO ---
+                  if (caps.canShowOdontogram) _buildVisualTab(),
+                  if (caps.canShowLab) PatientLabTab(patientId: widget.patientId),
                   PatientDocsTab(patientId: widget.patientId),
-                  // ---------------------------------
                   PatientFinancialTab(patientId: widget.patientId),
                 ],
               ),
@@ -220,9 +219,9 @@ class _HeaderSummaryRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -49,7 +49,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
         try {
            var stream = _supplierService.getAllStream();
            suppliersList = await stream.first; 
-        } catch (e) { print("Info: Sem fornecedores ou erro: $e"); }
+        } catch (e) { debugPrint("Info: Sem fornecedores ou erro: $e"); }
 
         // Carrega perfis para o dropdown
         List<Map<String, dynamic>> profiles = [];
@@ -64,7 +64,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             'id': d.id,
             ...d.data()
           }).toList();
-        } catch (e) { print("Erro perfis: $e"); }
+        } catch (e) { debugPrint("Erro perfis: $e"); }
 
         if (mounted) {
           setState(() {
@@ -75,7 +75,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
           });
         }
       } catch (e) { 
-        print("Erro loadData: $e");
+        debugPrint("Erro loadData: $e");
         if(mounted) setState(() => _isLoadingData = false);
       }
     }
@@ -103,7 +103,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
-    } catch (e) { print(e); }
+    } catch (e) { debugPrint("$e"); }
   }
 
   // --- LÓGICA DE ESTORNO ---
@@ -148,7 +148,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 decoration: BoxDecoration(
                   color: Colors.orange[50],
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.5))
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.5))
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,8 +236,8 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
         ? (isPending ? Colors.white : Colors.green[50]!) 
         : Colors.orange[50]!;
     Color borderColor = isIncome 
-        ? (isPending ? Colors.red.withOpacity(0.5) : Colors.green.withOpacity(0.2)) 
-        : Colors.orange.withOpacity(0.2);
+        ? (isPending ? Colors.red.withValues(alpha: 0.5) : Colors.green.withValues(alpha: 0.2)) 
+        : Colors.orange.withValues(alpha: 0.2);
 
     // Variáveis visuais
     double taxVal = 0.0;
@@ -292,7 +292,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.red.withOpacity(0.2))),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.red.withValues(alpha: 0.2))),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -443,7 +443,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
         }
       }
     } catch (e) { 
-      print("War Room Debug - Erro Crítico silencioso evitado: $e"); 
+      debugPrint("War Room Debug - Erro Crítico silencioso evitado: $e"); 
     }
 
     if (item.dentistId != null && _dentists.any((d) => d.id == item.dentistId)) selectedProfessionalId = item.dentistId;
@@ -651,7 +651,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                     // --- ÁREA DE REPASSE E DESPESAS ---
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withOpacity(0.3))),
+                      decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withValues(alpha: 0.3))),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -672,7 +672,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                Container(
                                  padding: const EdgeInsets.all(8),
                                  margin: const EdgeInsets.only(bottom: 10),
-                                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.6), borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.brown.shade200)),
+                                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.brown.shade200)),
                                  child: Column(
                                    children: [
                                      const Align(alignment: Alignment.centerLeft, child: Text("Custo Operacional", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.brown))),
@@ -753,7 +753,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                       decoration: BoxDecoration(
                         color: Colors.blue[50], 
                         borderRadius: BorderRadius.circular(8), 
-                        border: Border.all(color: Colors.blue.withOpacity(0.3))
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3))
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1019,7 +1019,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
         decoration: BoxDecoration(
           color: Colors.white, borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         child: Column(
           children: [

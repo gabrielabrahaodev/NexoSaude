@@ -148,7 +148,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
           else if (newStatus == null) { tooth.facesStatus.remove(face.name); if (tooth.isMissing) tooth.facesStatus.clear(); } 
           else { tooth.facesStatus[face.name] = newStatus; }
         }); Navigator.pop(context); },
-      child: Column(children: [CircleAvatar(backgroundColor: color.withOpacity(0.2), child: Icon(icon, color: color)), const SizedBox(height: 5), Text(label, style: const TextStyle(fontSize: 12), textAlign: TextAlign.center)]),
+      child: Column(children: [CircleAvatar(backgroundColor: color.withValues(alpha: 0.2), child: Icon(icon, color: color)), const SizedBox(height: 5), Text(label, style: const TextStyle(fontSize: 12), textAlign: TextAlign.center)]),
     );
   }
   String _getFaceName(ToothFace face) { switch (face) { case ToothFace.root: return "Raiz"; case ToothFace.occlusal: return "Oclusal/Centro"; case ToothFace.mesial: return "Mesial"; case ToothFace.distal: return "Distal"; case ToothFace.vestibular: return "Vestibular"; case ToothFace.lingual: return "Lingual"; } }

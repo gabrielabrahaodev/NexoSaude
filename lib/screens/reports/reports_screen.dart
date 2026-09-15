@@ -239,7 +239,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 decoration: BoxDecoration(
                                   color: isProfit ? Colors.green[50] : Colors.red[50],
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: isProfit ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3)),
+                                  border: Border.all(color: isProfit ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3)),
                                 ),
                                 child: Row(
                                   children: [
@@ -680,7 +680,7 @@ class _AnticipationCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber.withOpacity(0.3)), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))]),
+        decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber.withValues(alpha: 0.3)), boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
             const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(Icons.flash_on, color: Colors.amber, size: 20), Icon(Icons.chevron_right, color: Colors.amber, size: 16)]),
             const Spacer(),
@@ -713,7 +713,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
         color: Colors.white, 
         borderRadius: BorderRadius.circular(16), 
         border: Border.all(color: _isExpanded ? Colors.red : Colors.transparent), 
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))]
+        boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start, 
@@ -869,7 +869,7 @@ class _KpiCard extends StatelessWidget {
   const _KpiCard({required this.title, required this.value, required this.color, required this.icon, this.isHighlight = false});
   @override
   Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: const Text("RESULTADO", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)))]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
+    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: const Text("RESULTADO", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)))]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
   }
 }
 

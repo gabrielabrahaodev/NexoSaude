@@ -166,7 +166,7 @@ class _GeometricToothPainter extends CustomPainter {
 
     // Se extraído, faz X na raiz também
     if (isMissing) {
-      paint.color = Colors.grey.withOpacity(0.3);
+      paint.color = Colors.grey.withValues(alpha: 0.3);
       canvas.drawRect(Rect.fromLTWH(0, 0, w, h), paint);
       final xPaint = Paint()..color = Colors.red..strokeWidth = 2;
       canvas.drawLine(Offset(0, 0), Offset(w, h), xPaint);

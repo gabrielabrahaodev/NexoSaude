@@ -40,7 +40,11 @@ class PatientService {
 
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        bool isNoShow = data['attendanceStatus'] == 'Missed';
+        // Falta com atestado não conta como falta (docs antigos sem o campo caem em false).
+        final bool excused =
+            '${data['hasMedicalCertificate']}'.toLowerCase() == 'true';
+        bool isNoShow =
+            data['attendanceStatus'] == 'Missed' && !excused;
         bool cancelledByPatient = data['status'] == 'Cancelado' && data['cancellationSource'] == 'Paciente';
         if (isNoShow || cancelledByPatient) missed++;
       }
@@ -63,5 +67,54 @@ class PatientService {
     return _collection.snapshots().map((s) => 
       s.docs.map((d) => PatientModel.fromMap(d.id, d.data())).toList()
     );
+  }
+
+  static const _cascadeCollections = [
+    'appointments',
+    'budgets',
+    'treatments',
+    'treatment_plans',
+    'financial',
+    'clinical_records',
+    'lab_orders',
+    'psychology_schedules',
+  ];
+
+  static const _patientSubcollections = [
+    'odontogram',
+    'anamnesis',
+    'documents',
+    'photos',
+  ];
+
+  // --- EXCLUSÃO EM CASCATA DO PACIENTE ---
+  Future<void> deletePatientCascade(String patientId, String clinicId) async {
+    final db = FirebaseFirestore.instance;
+    final batch = db.batch();
+
+    for (final collection in _cascadeCollections) {
+      final snap = await db
+          .collection(collection)
+          .where('patientId', isEqualTo: patientId)
+          .where('clinicId', isEqualTo: clinicId)
+          .get();
+      for (final doc in snap.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    // Subcoleções do paciente (Odontograma, Anamnese, etc.)
+    final patientRef = _collection.doc(patientId);
+    for (final sub in _patientSubcollections) {
+      final subDocs = await patientRef.collection(sub).get();
+      for (final doc in subDocs.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    // Finalmente, deleta o próprio paciente
+    batch.delete(patientRef);
+
+    await batch.commit();
   }
 }

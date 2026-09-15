@@ -281,7 +281,7 @@ class _CardFeesTabState extends State<CardFeesTab> {
 
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Salvo com sucesso!")));
     } catch (e) {
-      print(e);
+      debugPrint("$e");
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao salvar: $e"), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _isLoading = false);

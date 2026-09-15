@@ -62,12 +62,12 @@ service cloud.firestore {
     match /{collection}/{docId} {
       allow read, update, delete: if 
           isAuthenticated() &&
-          (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records']) &&
+          (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
           (isOwner() || hasClinicAccess(resource.data.clinicId));
       
       allow create: if 
           isAuthenticated() &&
-          (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records']) &&
+          (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
           (isOwner() || hasClinicAccess(request.resource.data.clinicId));
     }
 

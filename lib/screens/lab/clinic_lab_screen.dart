@@ -41,12 +41,12 @@ class _ClinicLabScreenState extends State<ClinicLabScreen> {
         final allSuppliers = await _supplierService.getAllStream().first;
         // Filtra apenas laboratórios (opcional, dependendo de como você classifica)
         _suppliers = allSuppliers; 
-      } catch (e) { print(e); }
+      } catch (e) { debugPrint("$e"); }
 
       // Carrega dentistas
       try {
         _dentists = await _userService.getDentistsForClinic(clinicId);
-      } catch (e) { print(e); }
+      } catch (e) { debugPrint("$e"); }
 
       if (mounted) setState(() {});
     }

@@ -24,15 +24,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (userDoc.exists) {
       final data = userDoc.data()!;
       String? firstClinicId;
-      String? firstClinicName;
 
-      if (data['allowedClinics'] != null && (data['allowedClinics'] as List).isNotEmpty) {
-        firstClinicId = data['allowedClinics'][0];
-        final clinicDoc = await FirebaseFirestore.instance.collection('clinics').doc(firstClinicId).get();
-        if (clinicDoc.exists) {
-          firstClinicName = clinicDoc.data()?['name'];
-        }
+      if (data['allowedClinics'] != null &&
+          (data['allowedClinics'] as List).isNotEmpty) {
+        firstClinicId = (data['allowedClinics'] as List).first.toString();
       }
+
+      final clinic = await SessionManager().resolveClinic(firstClinicId);
+      final firstClinicName = clinic.name;
+      final firstClinicType = clinic.type;
 
       SessionManager().setUser(
         id: uid,
@@ -41,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: data['email'],
         clinicId: firstClinicId,
         clinicName: firstClinicName,
+        clinicType: firstClinicType,
       );
     }
   }

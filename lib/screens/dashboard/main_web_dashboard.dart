@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/clinic_capabilities.dart';
 import '../../services/session_manager.dart';
 
 // IMPORTS DAS TELAS
@@ -17,7 +18,8 @@ import '../financial/collections_screen.dart';
 import '../leads/leads_dashboard_screen.dart'; 
 
 // --- NOVO IMPORT: TELA DE PSICOLOGIA ---
-import '../patients/psychology/psychology_kanban_board.dart'; // Certifique-se que o arquivo existe nesta pasta
+import '../patients/psychology/psychology_kanban_board.dart'; 
+import '../psychology/psychology_schedule_list_screen.dart';
 
 import '../../main.dart'; 
 
@@ -39,6 +41,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     super.initState();
     _fetchUserData();
     _currentClinicId = SessionManager().currentClinicId;
+    _currentClinicType = SessionManager().clinicType;
     // Tenta carregar o tipo se já houver algo na sessão (opcional, pois o StreamBuilder atualiza depois)
   }
 
@@ -73,7 +76,10 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     OperationsManagerScreen(key: ValueKey(_currentClinicId)),  // 10
     
     // --- TELA ESPECIALIZADA ---
-    const PsychologyKanbanBoard(),                             // 11 (Fluxo Terapêutico)
+    PsychologyKanbanBoard(key: ValueKey('$_currentClinicId-psy-kanban')), // 11
+
+    // --- NOVA TELA: AGENDAS PSICOLOGIA ---
+    PsychologyScheduleListScreen(key: ValueKey('$_currentClinicId-psy-sched')), // 12
   ];
 
   void _onMenuSelect(int index) {
@@ -145,7 +151,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))
             ]
           ),
           child: DropdownButtonHideUnderline(
@@ -265,7 +271,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: isCompact ? 5 : 15, offset: const Offset(0, 5))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: isCompact ? 5 : 15, offset: const Offset(0, 5))],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(isCompact ? 10 : 20),
@@ -300,8 +306,15 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 _buildMenuItem(2, "Novos Leads", Icons.filter_alt_outlined, highlightColor, Colors.orange[800]!, isCompact),
 
                 // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
-                if (_currentClinicType == 'psychology') 
-                  _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology, highlightColor, Colors.purple, isCompact),
+                if (ClinicCapabilities.ofType(_currentClinicType)
+                    .canShowTherapeuticFlow)
+                  _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
+                      highlightColor, Colors.purple, isCompact),
+                if (ClinicCapabilities.ofType(_currentClinicType)
+                    .canUseMonthlyPackages)
+                  _buildMenuItem(12, "Agendas Psicologia",
+                      Icons.calendar_month, highlightColor, Colors.purple,
+                      isCompact),
                 // ----------------------------------------
 
                 _buildMenuItem(3, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
@@ -338,7 +351,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 label: const Text("Sair do Sistema"),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.red[400],
-                  side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                   side: BorderSide(color: Colors.red.withValues(alpha: 0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),

@@ -111,10 +111,10 @@ class PatientSmartContextCard extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.indigo.withOpacity(0.2)),
+            border: Border.all(color: Colors.indigo.withValues(alpha: 0.2)),
             boxShadow: [
               BoxShadow(
-                color: Colors.indigo.withOpacity(0.05),
+                color: Colors.indigo.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               )
@@ -129,7 +129,7 @@ class PatientSmartContextCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
                 ),
                 child: const Icon(Icons.auto_awesome, color: Colors.indigo, size: 20),
               ),

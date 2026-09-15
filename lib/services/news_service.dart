@@ -31,7 +31,7 @@ class NewsService {
   if (!forceRefresh && _cache.isNotEmpty && _lastFetch != null) {
     final age = now.difference(_lastFetch!);
     if (age < const Duration(minutes: 15)) {  // Aumentado para 15min
-      print('Cache válido: ${_cache.length} notícias (${age.inMinutes}m)');
+      debugPrint('Cache válido: ${_cache.length} notícias (${age.inMinutes}m)');
       return _sortedCache();
     }
   }
@@ -40,7 +40,7 @@ class NewsService {
   List<OrthoArticle> newArticles = await _fetchFeed(_primaryFeedUrl, isGoogleAlert: true);
   
   if (newArticles.isEmpty) {
-    print("Google Alerts vazio. Usando backup...");
+    debugPrint("Google Alerts vazio. Usando backup...");
     newArticles = await _fetchFeed(_backupFeedUrl, isGoogleAlert: false);
   }
 
@@ -67,7 +67,7 @@ class NewsService {
   }
 
   _lastFetch = now;
-  print('Adicionadas $addedCount novas. Total: ${_cache.length} (filtro: 7 dias)');
+  debugPrint('Adicionadas $addedCount novas. Total: ${_cache.length} (filtro: 7 dias)');
   
   return _sortedCache();
 }
@@ -153,8 +153,8 @@ List<OrthoArticle> _sortedCache() {
       return articles;
       
     } catch (e, stack) {
-      print('Erro no feed ($url): $e');
-      if (kDebugMode) print(stack);
+      debugPrint('Erro no feed ($url): $e');
+      if (kDebugMode) debugPrint("$stack");
       return [];
     }
   }
@@ -175,7 +175,7 @@ List<OrthoArticle> _sortedCache() {
       _translationCache[cacheKey] = result.text;
       return result.text;
     } catch (e) {
-      print('Falha tradução: $e');
+      debugPrint('Falha tradução: $e');
       return text; // Fallback para original
     }
   }

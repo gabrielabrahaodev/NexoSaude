@@ -80,7 +80,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                           decoration: BoxDecoration(
                             color: Colors.blue[50], 
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.withOpacity(0.2))
+                            border: Border.all(color: Colors.blue.withValues(alpha: 0.2))
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

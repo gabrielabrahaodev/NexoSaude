@@ -29,16 +29,32 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
             String role = data['role'];
             List<dynamic> allowedClinics = data['allowedClinics'] ?? [];
             String? clinicId;
-            
-            if (role == 'owner') {
-              clinicId = 'matriz_santa_isabel'; 
-            } else if (allowedClinics.isNotEmpty) {
-              clinicId = allowedClinics.first.toString(); 
-            } else {
-              clinicId = 'matriz_santa_isabel';
+
+            if (allowedClinics.isNotEmpty) {
+              clinicId = allowedClinics.first.toString();
+            } else if (role == 'owner') {
+              final ownerClinics = await FirebaseFirestore.instance
+                  .collection('clinics')
+                  .where('ownerId', isEqualTo: user.uid)
+                  .limit(1)
+                  .get();
+              if (ownerClinics.docs.isNotEmpty) {
+                clinicId = ownerClinics.docs.first.id;
+              }
             }
 
-            SessionManager().setUser(id: user.uid, role: role, clinicId: clinicId);
+            final clinic =
+                await SessionManager().resolveClinic(clinicId);
+            final clinicName = clinic.name;
+            final clinicType = clinic.type;
+
+            SessionManager().setUser(
+              id: user.uid,
+              role: role,
+              clinicId: clinicId,
+              clinicName: clinicName,
+              clinicType: clinicType,
+            );
 
             if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => MainWebDashboard()));
           } else {

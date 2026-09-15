@@ -34,6 +34,9 @@ class FinancialModel {
   final String? planId; 
   final String? installmentNumber; 
 
+  // --- CAMPOS PARA PACOTES MENSAIS PSICOLOGIA ---
+  final String? monthlyPeriod; // Formato "YYYY-MM"
+
   FinancialModel({
     required this.id,
     required this.clinicId,
@@ -59,6 +62,7 @@ class FinancialModel {
     this.anticipatedAmount,
     this.planId,
     this.installmentNumber,
+    this.monthlyPeriod,
   });
 
   // GETTER RESTAURADO: isPaid
@@ -89,7 +93,13 @@ class FinancialModel {
       'anticipatedAmount': anticipatedAmount,
       'planId': planId,
       'installmentNumber': installmentNumber,
+      'monthlyPeriod': monthlyPeriod,
     };
+  }
+
+  static double _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0.0;
   }
 
   factory FinancialModel.fromMap(String id, Map<String, dynamic> map) {
@@ -100,24 +110,25 @@ class FinancialModel {
       patientName: map['patientName'] ?? 'Paciente',
       title: map['title'] ?? '',
       description: map['description'] ?? '',
-      amount: (map['amount'] ?? 0.0).toDouble(),
-      paidAmount: (map['paidAmount'] ?? 0.0).toDouble(),
+      amount: _toDouble(map['amount']),
+      paidAmount: _toDouble(map['paidAmount']),
       date: map['date'] != null ? (map['date'] as Timestamp).toDate() : DateTime.now(),
       dueDate: map['dueDate'] != null ? (map['dueDate'] as Timestamp).toDate() : null,
       type: map['type'] ?? 'income',
       status: map['status'] ?? 'pending',
       paymentMethod: map['paymentMethod'] ?? 'Dinheiro',
-      feePercentage: (map['feePercentage'] ?? 0.0).toDouble(),
-      taxVal: (map['taxVal'] ?? 0.0).toDouble(),
-      valorLiquido: (map['valorLiquido'] ?? 0.0).toDouble(),
+      feePercentage: _toDouble(map['feePercentage']),
+      taxVal: _toDouble(map['taxVal']),
+      valorLiquido: _toDouble(map['valorLiquido']),
       dentistId: map['dentistId'],
       dentistName: map['dentistName'],
       relatedBudgetId: map['relatedBudgetId'],
       machineProfileId: map['machineProfileId'],
       machineProfileName: map['machineProfileName'],
-      anticipatedAmount: (map['anticipatedAmount'] ?? 0.0).toDouble(),
+      anticipatedAmount: _toDouble(map['anticipatedAmount']),
       planId: map['planId'],
       installmentNumber: map['installmentNumber'],
+      monthlyPeriod: map['monthlyPeriod'],
     );
   }
 }

@@ -229,7 +229,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(color: typeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                    decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                                     child: Icon(typeIcon, color: typeColor),
                                   ),
                                   const SizedBox(width: 10),

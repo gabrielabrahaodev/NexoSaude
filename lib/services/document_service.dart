@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import '../models/patient_document_model.dart';
@@ -56,11 +56,11 @@ class DocumentService {
         // Retorna a URL segura (https) gerada pelo Cloudinary
         return jsonMap['secure_url'];
       } else {
-        print("Erro Cloudinary: ${response.statusCode}");
+        debugPrint("Erro Cloudinary: ${response.statusCode}");
         return null;
       }
     } catch (e) {
-      print("Erro no upload: $e");
+      debugPrint("Erro no upload: $e");
       return null;
     }
   }

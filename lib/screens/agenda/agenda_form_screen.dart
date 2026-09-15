@@ -149,7 +149,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
       });
 
     } catch (e) {
-      print("Erro ao buscar slots: $e");
+      debugPrint("Erro ao buscar slots: $e");
     } finally {
       if (mounted) setState(() => _isLoadingSlots = false);
     }
@@ -344,7 +344,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     decoration: BoxDecoration(
                       color: Colors.red[50],
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withOpacity(0.3))
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3))
                     ),
                     child: Row(
                       children: [

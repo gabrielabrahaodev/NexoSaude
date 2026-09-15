@@ -73,7 +73,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
         border: Border.all(color: Colors.grey[300]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 4),
           )
@@ -94,7 +94,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 18),
@@ -187,12 +187,12 @@ class PsychologyKanbanBoard extends StatelessWidget {
     // Implementação do "Mood Card" (Borda colorida baseada em humor/status financeiro)
     // Aqui simulado: se tiver 'alert' no doc, fica vermelho. Senão, cor do status.
     final hasAlert = data['has_alert'] == true; 
-    final borderColor = hasAlert ? Colors.redAccent : statusColor.withOpacity(0.3);
+    final borderColor = hasAlert ? Colors.redAccent : statusColor.withValues(alpha: 0.3);
 
     // O Widget visual do Card (Privacy First: Sem dados clínicos)
     final cardWidget = Card(
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: borderColor, width: hasAlert ? 2 : 1),
@@ -208,7 +208,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: statusColor.withOpacity(0.1),
+                  backgroundColor: statusColor.withValues(alpha: 0.1),
                   child: Text(
                     name.substring(0, 1).toUpperCase(),
                     style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),

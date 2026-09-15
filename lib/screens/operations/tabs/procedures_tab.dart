@@ -201,7 +201,7 @@ class _ProceduresTabState extends State<ProceduresTab> {
               final item = list[index];
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   child: Text(item.name.isNotEmpty ? item.name.substring(0, 1).toUpperCase() : '?', style: const TextStyle(color: AppColors.primary)),
                 ),
                 title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),

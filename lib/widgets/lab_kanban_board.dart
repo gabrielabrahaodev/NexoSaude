@@ -299,7 +299,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: isInteractive ? () => _showOrderDetails(order) : null,
-          splashColor: color.withOpacity(0.1),
+          splashColor: color.withValues(alpha: 0.1),
           child: Container(
             decoration: BoxDecoration(border: Border(left: BorderSide(color: color, width: 4))),
             padding: const EdgeInsets.all(12.0),

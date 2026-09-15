@@ -307,7 +307,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
+          backgroundColor: color.withValues(alpha: 0.1),
           child: Icon(icon, color: color, size: 24),
         ),
         title: Text(

@@ -199,7 +199,7 @@ class _BudgetApprovalWizardState extends State<BudgetApprovalWizard> {
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withOpacity(0.3))),
+              decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withValues(alpha: 0.3))),
               child: Row(
                 children: [
                   const Icon(Icons.info_outline, color: Colors.orange, size: 20),

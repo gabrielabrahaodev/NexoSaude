@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class SessionManager extends ChangeNotifier { // <--- Adicionado ChangeNotifier
+class SessionManager extends ChangeNotifier {
   static final SessionManager _instance = SessionManager._internal();
   factory SessionManager() => _instance;
   SessionManager._internal();
@@ -23,6 +23,7 @@ class SessionManager extends ChangeNotifier { // <--- Adicionado ChangeNotifier
     String? email,
     String? clinicId,
     String? clinicName,
+    String? clinicType,
   }) {
     userId = id;
     userRole = role;
@@ -30,16 +31,36 @@ class SessionManager extends ChangeNotifier { // <--- Adicionado ChangeNotifier
     userEmail = email;
     currentClinicId = clinicId;
     currentClinicName = clinicName;
-    
-    debugPrint("Sessão Iniciada: $userName ($userRole) na clínica $currentClinicName");
-    notifyListeners(); // <--- Notifica o app que os dados chegaram
+    if (clinicType != null) {
+      this.clinicType = clinicType;
+    }
+
+    notifyListeners();
   }
 
   void setClinic(String clinicId, String clinicName, String type) {
     currentClinicId = clinicId;
     currentClinicName = clinicName;
     clinicType = type;
-    notifyListeners(); // <--- Notifica a troca de clínica
+    notifyListeners();
+  }
+
+  Future<({String? id, String? name, String? type})> resolveClinic(
+      String? clinicId) async {
+    if (clinicId == null) return (id: null, name: null, type: null);
+    final doc = await FirebaseFirestore.instance
+        .collection('clinics')
+        .doc(clinicId)
+        .get();
+    if (!doc.exists) {
+      return (id: clinicId, name: null, type: 'dental');
+    }
+    final data = doc.data();
+    return (
+      id: clinicId as String?,
+      name: data?['name']?.toString(),
+      type: (data?['type']?.toString() ?? 'dental'),
+    );
   }
 
   // MÉTODO DE FILTRO (SEGURANÇA)

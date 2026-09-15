@@ -256,12 +256,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: statusColor.withOpacity(0.3))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: statusColor.withValues(alpha: 0.3))),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 50, height: 50,
-          decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
           child: Icon(isPaid ? Icons.check_circle : Icons.attach_money, color: statusColor),
         ),
         title: Text(item.description, style: TextStyle(fontWeight: FontWeight.bold, decoration: isPaid ? TextDecoration.lineThrough : null, color: isPaid ? Colors.grey : Colors.black87)),

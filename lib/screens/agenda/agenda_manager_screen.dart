@@ -4,8 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 
+import 'agenda_cell_factory.dart';
 import 'agenda_form_screen.dart';
-import '../patients/patient_details_screen.dart'; 
+import '../patients/patient_details_screen.dart';
 
 import '../../ui/app_theme.dart';
 import '../../services/session_manager.dart';
@@ -469,8 +470,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        border: Border.all(color: color.withOpacity(0.5)),
+                        color: color.withValues(alpha: 0.1),
+                        border: Border.all(color: color.withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -653,7 +654,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.withOpacity(0.2))),
+                    decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.withValues(alpha: 0.2))),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -694,7 +695,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     String? selectedTreatmentId;
     String? selectedProcedureName;
     List<dynamic> proceduresOfPlan = [];
-    bool isAbsent = false; 
+    bool isAbsent = false;
+    bool hasCertificate = false;
 
     showDialog(
       context: context,
@@ -723,7 +725,10 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                               activeColor: Colors.green,
                               contentPadding: EdgeInsets.zero,
                               visualDensity: VisualDensity.compact,
-                              onChanged: (val) => setStateModal(() => isAbsent = val!),
+                              onChanged: (val) => setStateModal(() {
+                                isAbsent = val!;
+                                if (!isAbsent) hasCertificate = false;
+                              }),
                             ),
                           ),
                           Expanded(
@@ -797,6 +802,20 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                           const SizedBox(height: 15),
                         ],
                       ],
+                      if (isAbsent) ...[
+                        CheckboxListTile(
+                          title: const Text("Apresentou Atestado",
+                              style: TextStyle(fontSize: 13)),
+                          subtitle: const Text(
+                              "Falta com atestado abate do pacote",
+                              style: TextStyle(fontSize: 11)),
+                          value: hasCertificate,
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          onChanged: (val) => setStateModal(
+                              () => hasCertificate = val ?? false),
+                        ),
+                      ],
                       TextField(
                         controller: noteCtrl,
                         maxLines: 3,
@@ -834,25 +853,29 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                        } catch (e) { /* ignore */ }
                     }
                     final clinicId = SessionManager().currentClinicId;
-                    String finalProcedureName = isAbsent 
-                        ? 'Paciente Não Compareceu' 
+                    final bool certificate = isAbsent && hasCertificate;
+                    String finalProcedureName = isAbsent
+                        ? 'Paciente Não Compareceu'
                         : (selectedProcedureName ?? 'Atendimento Geral');
                     String finalDescription = isAbsent
-                        ? "Paciente faltou ao agendamento.\nObs: ${noteCtrl.text}"
+                        ? "Paciente faltou ao agendamento."
+                            "${certificate ? "\nApresentou atestado." : ""}"
+                            "\nObs: ${noteCtrl.text}"
                         : noteCtrl.text.trim();
                     await _clinicalRecordService.add({
                       'clinicId': clinicId,
-                      'treatmentId': isAbsent ? null : selectedTreatmentId, 
+                      'treatmentId': isAbsent ? null : selectedTreatmentId,
                       'patientId': appt.patientId,
                       'patientName': appt.patientName,
                       'procedureName': finalProcedureName,
                       'description': finalDescription,
-                      'dentistName': dentistName, 
+                      'dentistName': dentistName,
                       'date': DateTime.now(),
                     });
                     await FirebaseFirestore.instance.collection('appointments').doc(appt.id).update({
                       'status': 'Finalizado',
-                      'attendanceStatus': isAbsent ? 'Missed' : 'Attended' 
+                      'attendanceStatus': isAbsent ? 'Missed' : 'Attended',
+                      'hasMedicalCertificate': certificate,
                     });
                     if (mounted) Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -894,7 +917,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             Container(
               width: double.infinity, margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withOpacity(0.1))),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
               child: _isLoadingDentists 
                 ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
                 : DropdownButtonHideUnderline(
@@ -911,7 +934,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 6))]),
+              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 6))]),
               child: Row(children: [
                 IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeWeek(-7)), 
                 Expanded(child: Column(children: [
@@ -1036,7 +1059,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
               mainColor = AppColors.primary;
             }
 
-            final bgColor = isBlocked ? Colors.grey[300] : mainColor.withOpacity(0.10);
+            final bgColor = isBlocked ? Colors.grey[300] : mainColor.withValues(alpha: 0.10);
 
             // Verifica se é o bloco inicial do horário para exibir o nome
             String startKey = "${appt.date.year}-${appt.date.month}-${appt.date.day}-${appt.date.hour.toString().padLeft(2, '0')}:${appt.date.minute.toString().padLeft(2, '0')}";
@@ -1117,8 +1140,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           height: rowHeight,
           margin: const EdgeInsets.all(1),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.05),
-            border: Border.all(color: Colors.red.withOpacity(0.2), width: 0.5),
+            color: Colors.red.withValues(alpha: 0.05),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.2), width: 0.5),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 2),
           alignment: Alignment.centerLeft,
@@ -1134,16 +1157,31 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     else {
       return InkWell(
         onTap: () {
-          Map<String, dynamic> preFill = {
-            'date': Timestamp.fromDate(DateTime(date.year, date.month, date.day, int.parse(time.split(':')[0]), int.parse(time.split(':')[1]))),
-            'dentistId': _selectedDentistId 
-          };
-          Navigator.push(context, MaterialPageRoute(builder: (c) => AgendaFormScreen(initialData: preFill)));
+          AgendaCellFactory.openForm(
+            context: context,
+            date: date,
+            time: time,
+            selectedDentistId: _selectedDentistId,
+            fullWeekdayName: _getFullWeekDayName,
+          );
         },
         child: SizedBox(height: rowHeight),
       );
     }
   }
 
-  String _getWeekDayName(int weekday) => ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"][weekday - 1];
+  static const _shortWeekdays = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
+  static const _fullWeekdays = [
+    "Segunda",
+    "Terça",
+    "Quarta",
+    "Quinta",
+    "Sexta",
+    "Sábado",
+    "Domingo"
+  ];
+
+  String _getWeekDayName(int weekday) => _shortWeekdays[weekday - 1];
+
+  String _getFullWeekDayName(int weekday) => _fullWeekdays[weekday - 1];
 }

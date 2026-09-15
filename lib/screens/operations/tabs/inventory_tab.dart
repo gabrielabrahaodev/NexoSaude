@@ -132,7 +132,7 @@ class _InventoryTabState extends State<InventoryTab> {
                     children: [
                       Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: statusColor.withOpacity(0.1), shape: BoxShape.circle),
+                        decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), shape: BoxShape.circle),
                         child: Icon(Icons.inventory_2, color: statusColor),
                       ),
                       const SizedBox(width: 16),

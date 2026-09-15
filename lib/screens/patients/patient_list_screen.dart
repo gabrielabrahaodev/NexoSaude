@@ -4,6 +4,7 @@ import '../../ui/app_theme.dart';
 import 'patient_details_screen.dart'; 
 import 'create_patient_screen.dart'; 
 import '../../services/session_manager.dart'; 
+import '../../services/patient_service.dart'; // NOVO IMPORT 
 
 class PatientListScreen extends StatefulWidget {
   const PatientListScreen({super.key});
@@ -14,6 +15,7 @@ class PatientListScreen extends StatefulWidget {
 
 class _PatientListScreenState extends State<PatientListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final PatientService _patientService = PatientService();
   String _searchText = "";
 
   @override
@@ -143,7 +145,61 @@ class _PatientListScreenState extends State<PatientListScreen> {
     );
   }
 
-  Widget _buildPatientCard(BuildContext context, String docId, Map<String, dynamic> data) {
+  Future<void> _confirmDelete({required String docId, required String name}) async {
+    final clinicId = SessionManager().currentClinicId;
+    if (clinicId == null) return;
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text("Excluindo paciente e dados associados..."),
+          duration: Duration(seconds: 2)),
+    );
+
+    try {
+      await _patientService.deletePatientCascade(docId, clinicId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("Paciente '$name' excluído com sucesso"),
+              backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erro ao excluir: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmation(String docId, String name) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Excluir Paciente"),
+        content: Text(
+            "Tem certeza que deseja excluir '$name'?\n\nIsso removerá permanentemente:\n• Cadastro do paciente\n• Orçamentos\n• Tratamentos e Planos\n• Prontuário/Documentos\n• Pagamentos/Financeiro\n• Agendamentos\n• Laboratório\n• Odontograma/Anamnese\n\nEsta ação NÃO pode ser desfeita."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancelar")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _confirmDelete(docId: docId, name: name);
+            },
+            child: const Text("EXCLUIR"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPatientCard(
+      BuildContext context, String docId, Map<String, dynamic> data) {
     final String name = data['name'] ?? 'Sem Nome';
     final String phone = data['phone'] ?? 'Sem telefone';
     final String cpf = data['cpf'] ?? '';
@@ -163,7 +219,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
             MaterialPageRoute(
               builder: (context) => PatientDetailsScreen(
                 patientName: name,
-                patientId: docId, // CORREÇÃO: Usar docId (parâmetro) em vez de doc.id
+                patientId: docId,
                 phone: phone,
                 cpf: cpf,
                 birth: data['birthDate'],
@@ -171,15 +227,16 @@ class _PatientListScreenState extends State<PatientListScreen> {
             ),
           );
         },
+        onLongPress: () => _showDeleteConfirmation(docId, name),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Hero(
-                tag: 'avatar_$name',
+                tag: 'avatar_$docId',
                 child: CircleAvatar(
                   radius: 28,
-                  backgroundColor: avatarColor.withOpacity(0.2),
+                  backgroundColor: avatarColor.withValues(alpha: 0.2),
                   child: Text(firstLetter, style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 22)),
                 ),
               ),
@@ -195,7 +252,20 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                onSelected: (value) {
+                  if (value == 'delete') {
+                    _showDeleteConfirmation(docId, name);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 8), Text("Excluir Paciente", style: TextStyle(color: Colors.red))]),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

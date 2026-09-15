@@ -14,6 +14,13 @@ class AppointmentModel {
   final String? dentistId;
   final int durationMinutes;
 
+  // Vínculo com pacote de psicologia + presença
+  final String? scheduleId;
+  final String? planId;
+  final String? monthlyPeriod; // "YYYY-MM"
+  final String? attendanceStatus; // 'Attended' | 'Missed' | null
+  final bool hasMedicalCertificate;
+
   AppointmentModel({
     required this.id,
     required this.patientId,
@@ -25,11 +32,25 @@ class AppointmentModel {
     this.dentistId,
     this.durationMinutes = 30, // Valor padrão para evitar nulos
     this.notes,
+    this.scheduleId,
+    this.planId,
+    this.monthlyPeriod,
+    this.attendanceStatus,
+    this.hasMedicalCertificate = false,
   });
 
   bool get isPast => DateTime.now().isAfter(date);
   bool get isCancelled => status == 'Cancelado';
   bool get isDone => status == 'Finalizado';
+  bool get isMissed => attendanceStatus == 'Missed';
+  bool get isMissedWithCertificate =>
+      isMissed && hasMedicalCertificate;
+
+  static bool _toBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    return value?.toString().toLowerCase() == 'true';
+  }
 
   factory AppointmentModel.fromMap(String id, Map<String, dynamic> map) {
     return AppointmentModel(
@@ -43,6 +64,11 @@ class AppointmentModel {
       dentistId: map['dentistId'] ?? map['userId'], // Mantém compatibilidade com legado
       durationMinutes: map['durationMinutes'] ?? 30,
       notes: map['notes'],
+      scheduleId: map['scheduleId']?.toString(),
+      planId: map['planId']?.toString(),
+      monthlyPeriod: map['monthlyPeriod']?.toString(),
+      attendanceStatus: map['attendanceStatus']?.toString(),
+      hasMedicalCertificate: _toBool(map['hasMedicalCertificate']),
     );
   }
 
@@ -57,6 +83,11 @@ class AppointmentModel {
       'dentistId': dentistId,
       'durationMinutes': durationMinutes,
       'notes': notes,
+      'scheduleId': scheduleId,
+      'planId': planId,
+      'monthlyPeriod': monthlyPeriod,
+      'attendanceStatus': attendanceStatus,
+      'hasMedicalCertificate': hasMedicalCertificate,
     };
   }
 }

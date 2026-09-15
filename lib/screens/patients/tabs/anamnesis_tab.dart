@@ -103,7 +103,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
         if (mounted) setState(() => _isLoading = false);
       }
     }, onError: (error) {
-      print("Erro no listener: $error");
+      debugPrint("Erro no listener: $error");
       if (mounted) setState(() => _isLoading = false);
     });
   }
@@ -204,7 +204,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
             onPressed: _sendLinkToWhatsapp,
             icon: const Icon(Icons.share, color: Colors.green, size: 20),
             label: const Text("ENVIAR P/ PACIENTE", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
-            style: TextButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.1)),
+            style: TextButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1)),
           ),
           const SizedBox(width: 16),
         ],
