@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../ui/app_theme.dart';
+import '../services/session_manager.dart';
 
 class PatientSmartContextCard extends StatelessWidget {
   final String patientId;
@@ -16,9 +17,10 @@ class PatientSmartContextCard extends StatelessWidget {
       List<String> highlights = [];
 
       // 1. BUSCAR ÚLTIMA EVOLUÇÃO CLÍNICA (O que foi feito por último?)
-      final clinicalSnap = await firestore
-          .collection('clinical_records')
-          .where('patientId', isEqualTo: patientId)
+      final clinicalSnap = await SessionManager()
+          .applyFilter(firestore
+              .collection('clinical_records')
+              .where('patientId', isEqualTo: patientId))
           .orderBy('date', descending: true)
           .limit(1)
           .get();
@@ -54,10 +56,11 @@ class PatientSmartContextCard extends StatelessWidget {
       }
 
       // 3. BUSCAR SITUAÇÃO FINANCEIRA (Inadimplência)
-      final financialSnap = await firestore
-          .collection('financial')
-          .where('patientId', isEqualTo: patientId)
-          .where('isPaid', isEqualTo: false) // Apenas não pagos
+      final financialSnap = await SessionManager()
+          .applyFilter(firestore
+              .collection('financial')
+              .where('patientId', isEqualTo: patientId)
+              .where('isPaid', isEqualTo: false)) // Apenas não pagos
           .get();
 
       if (financialSnap.docs.isNotEmpty) {

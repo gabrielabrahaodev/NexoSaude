@@ -340,7 +340,7 @@ sequenceDiagram
     actor U as Usuário
     participant T as PatientDocsTab
     participant DS as DocumentService
-    participant C as Cloudinary (unsigned upload)
+    participant C as Cloudinary
     participant F as Firestore (patients/{id}/docs)
 
     U->>T: câmera/arquivo + categoria + título
@@ -351,12 +351,7 @@ sequenceDiagram
     F-->>T: stream getDocs atualiza a lista
 
     U->>T: Excluir documento
-    T->>DS: deleteDocument(patientId, docId,<br/>clinicId, publicId, resourceType)
-    alt credenciais em settings/integrations/cloudinary
-        DS->>C: POST .../destroy (assinado sha1)
-        C-->>DS: result ok
-    else sem credenciais
-        Note over DS: pula o remoto — apaga só o Firestore
-    end
+    T->>DS: deleteDocument(patientId, docId)
+    Note over DS: plano Spark, sem Functions:<br/>sem destroy remoto (órfãos no Cloudinary,<br/>limpeza manual pelo painel)
     DS->>F: docs/{docId}.delete()
 ```

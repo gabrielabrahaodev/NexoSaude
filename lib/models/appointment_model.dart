@@ -40,8 +40,8 @@ class AppointmentModel {
   });
 
   bool get isPast => DateTime.now().isAfter(date);
-  bool get isCancelled => status == 'Cancelado';
-  bool get isDone => status == 'Finalizado';
+  bool get isCancelled => status.toLowerCase() == 'cancelado';
+  bool get isDone => status.toLowerCase() == 'finalizado';
   bool get isMissed => attendanceStatus == 'Missed';
   bool get isMissedWithCertificate =>
       isMissed && hasMedicalCertificate;

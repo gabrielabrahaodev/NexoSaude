@@ -33,8 +33,8 @@ Documento de regras de negócio extraídas do código-fonte. Cada regra referenc
 
 ### RN-02 - Registro de novo usuário
 - Novo usuário escolhe role (dentista/recepção) no cadastro.
-- `allowedClinics` do novo usuário é inicializado com `['matriz_santa_isabel']` (hardcoded).
-- Referência: `login_screen.dart:61-73`.
+- Nasce com `allowedClinics: []` + `status: 'pending_approval'` — **sem acesso até o owner liberar** em Funcionários.
+- Referência: `login_screen.dart:60-71`.
 
 ### RN-03 - Visibilidade por role
 - **Owner**: vê todas as clínicas via seletor; acessa menus Clínicas e Funcionários.
@@ -50,7 +50,7 @@ Documento de regras de negócio extraídas do código-fonte. Cada regra referenc
   - Demais → `clinicId == currentClinicId`.
 - Referência: `services/session_manager.dart:48-59`.
 
-> ⚠️ **Regra violada em alguns pontos (dívida técnica):** `patient_service.getAllStream:62-66`, `patient_service.getPatientRiskProfile:30-33`, `financial_service.getByPatientId:9-18`, `treatment_service.getPlansStream:21-23`, `product_service` (legado), `lab_service` filtram parcialmente ou manualmente.
+> ✅ **Resolvido:** `getAllStream`, `getPatientRiskProfile`, `getByPatientId`, `getPlansStream`, `lab.getByPatient`, queries do smart-card e da aba Pagamentos agora aplicam `applyFilter`/filtro `clinicId`. Restam sem filtro: `product_service` (legado), leituras de gestão (`procedures` é global por desenho). Índices compostos em `firestore.indexes.json` (deploy pendente).
 
 ### RN-05 - Tipo de clínica controla a UI
 - Campo `clinicType` da clínica (`dental` | `psychology` | outros).
@@ -84,8 +84,8 @@ Bloqueado (agendamento sintético)
 
 ### RN-09 - Verificação de disponibilidade
 - Horários ocupados ignoram: o próprio agendamento em edição (`excludeId`) e status `Cancelado`.
-- Case-sensitivity divergente: service usa `'Cancelado'` exato; formulários usam lowercase (`'cancelado'`) — **inconsistência conhecida**.
-- Referência: `services/appointment_service.dart:20-45`, `agenda_form_screen.dart:106-156`.
+- Comparações de status são **case-insensitive** nos leitores críticos (billing, `getBusySlots`, risco, `isCancelled/isDone`, cancelamento de contrato); o form já normalizava com `toLowerCase()`.
+- Referência: `services/appointment_service.dart:33`, `package_billing.dart`, `models/appointment_model.dart:43-44`.
 
 ### RN-10 - Encaixe (2º paciente no mesmo horário)
 - Permitido apenas quando há **1 evento ativo** no slot (`concurrentCount == 1`).
@@ -231,12 +231,13 @@ Bloqueado (agendamento sintético)
 
 ### RN-31 - Pagamento à vista
 - Condição: `payValue >= (amount - paidAmount)` **e** `installments == 1`.
+- `paymentDate`/`date` padrão = `FieldValue.serverTimestamp()` (não relógio do aparelho).
 - Atualiza o título original: `isPaid`, `status`, `paymentDate`, `paymentMethod`, `paidAmount`, `payerName/Cpf`, `dentistId/Name`, `feePercentage`, `taxVal`, `valorLiquido`/`netAmount`.
 - Referência: `services/financial_service.dart:59-78`.
 
 ### RN-32 - Pagamento parcelado (renegociação)
 - Atualiza original com `status = '<status> (Renegociado/Parcelado)'`.
-- Cria N lançamentos filhos: `dueDate = now + 30*i`, `installmentNumber = 'i/N'`, `description '<título> (i/N) - método'`.
+- Cria N lançamentos filhos: `dueDate = now + 30*i` (**blocos de 30 dias corridos, não meses de calendário**), `installmentNumber = 'i/N'`, `description '<título> (i/N) - método'`.
 - **Ajuste de centavos**: diferença entre `payValue` e soma das parcelas vai para a **1ª parcela** (bruto e líquido).
 - Cartão parcelado → **deleta o título original** e grava `machineProfileId`.
 - Referência: `financial_service.dart:79-142`, `screens/patients/tabs/patient_financial_tab.dart:861-875`.
@@ -387,7 +388,7 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 ## 11. Fluxos Públicos
 
 ### RN-55 - Avaliação digital (rota /avaliacao)
-- `cid` (clinicId) vem da URL (`?cid=`); sem `cid` → fallback de teste fixo.
+- `cid` (clinicId) vem da URL (`?cid=`); **sem `cid` → tela "Clínica não encontrada"** (sem fallback; antes gravava lead de teste na clínica real).
 - 4 perguntas com score por resposta; lead com `score`, `answers`, `status='new_lead'`, `origin='web_form'`.
 - Grava em `clinics/{cid}/leads` e redireciona ao WhatsApp da clínica com o score.
 - Referência: `screens/public/public_evaluation_screen.dart:69-171`.
@@ -396,7 +397,7 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 - A heurística vivia no dashboard `Novos Leads` (removido do menu com `mock_data_service`). Captação via `/avaliacao` (RN-55) continua gravando em `clinics/{cid}/leads`.
 
 ### RN-57 - Anamnese/confirmação pública
-- `anamnesis/{patientId}` e update de status para `'Confirmado'` em `appointments` são permitidos sem auth de staff (regras Firestore).
+- `anamnesis/{patientId}`: `get` público (prefill do html) + escrita pública **restrita por allowlist de 14 campos** do formulário; staff auth tem acesso total. Update de status para `'Confirmado'` em `appointments` permitido sem auth (link WhatsApp; regra já mínima via `affectedKeys` — exigir login quebraria o fluxo, decisão mantida).
 - Referência: `firestore.rules`.
 
 ---
@@ -406,8 +407,11 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 ### RN-58 - Regras principais (`firestore.rules`)
 - `isOwner()`: `users/{uid}.role == 'owner'`.
 - `hasClinicAccess(clinicId)`: `clinicId in users/{uid}.allowedClinics`.
-- Coleções operacionais (patients, appointments, financial, treatments, treatment_plans, budgets, clinical_records, psychology_schedules) exigem **auth** + (owner **ou** acesso à clínica).
-- Exceções públicas: `/anamnesis` (write público), `/appointments` update de status para `'Confirmado'` (WhatsApp).
+- `patients/appointments/financial/treatments/treatment_plans/budgets/clinical_records/psychology_schedules`: auth + (owner **ou** acesso à clínica) — blocos amplos redundantes removidos.
+- `expenses`/`lab_orders`: blocos próprios escopados por `clinicId` (todas as leituras do app filtram; creates gravam `clinicId`).
+- `settings/*`: leitura auth, escrita owner; `settings/integrations/**`: SÓ owner.
+- Exceções públicas: `/anamnesis` (`get` público + escrita por allowlist), `/appointments` update de status para `'Confirmado'` (WhatsApp).
+- Mantidos amplos de propósito: `procedures` (global), `inventory`/`suppliers` (leitores legados), `plans`, `anticipations`, `news`.
 - Referência: `firestore.rules`, `AGENTS.md`.
 
 ---
@@ -433,7 +437,7 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 ### RN-62 - Upload/exclusão de documentos
 - Upload para **Cloudinary** (`https://api.cloudinary.com/v1_1/dbbh601ay/auto/upload`, `resource_type: auto`, preset unsigned `dbbh601ay`).
 - Metadados em `patients/{id}/docs`: `fileType` derivado da extensão (image/document), categoria, título, uploader, `publicId`/`resourceType`.
-- Exclusão (`deleteDocument` com `clinicId`+`publicId`) tenta **destroy remoto assinado** (creds em `clinics/{id}/settings/integrations/cloudinary`); **sem credenciais, apaga só o Firestore**; uploads antigos sem `publicId` não têm remoto removível. Cascata chama `purgePatientFiles` antes do batch.
+- Exclusão apaga **só os metadados** (plano Spark, sem Functions → sem destroy remoto; binários órfãos com limpeza manual pelo painel). Cascata: deletes em blocos de 450 + `purgePatientFiles` (só log) **após** o commit OK.
 - Referência: `services/document_service.dart`, `patient_docs_tab.dart:348-372`.
 
 ---
@@ -463,14 +467,16 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 
 | # | Situação | Regra afetada |
 |---|----------|---------------|
-| 1 | `patient_service.getAllStream`, `getPatientRiskProfile`, `financial_service.getByPatientId`, `treatment_service.getPlansStream` **não aplicam** `applyFilter` | RN-04 |
-| 2 | Comparação de status `Cancelado` case-sensitive vs lowercase (inconsistente entre service e formulários) | RN-09 |
-| 3 | `login_screen` usa `allowedClinics` hardcoded `['matriz_santa_isabel']` | RN-02 |
-| 4 | `public_evaluation_screen` usa clinicId de teste fixo quando não há `cid` | RN-55 |
+| 1 | ~~`getAllStream`, `getPatientRiskProfile`, `getByPatientId`, `getPlansStream` sem filtro~~ ✅ corrigido (applyFilter + índices; deploy pendente) | RN-04 |
+| 2 | ~~`Cancelado` case-sensitive~~ ✅ corrigido (comparação lowercase nos leitores + teste) | RN-09 |
+| 3 | ~~`allowedClinics` hardcoded no registro~~ ✅ corrigido (nasce `[]` + `pending_approval`) | RN-02 |
+| 4 | ~~`/avaliacao` com fallback de teste~~ ✅ corrigido (sem cid = erro) | RN-55 |
 | 5 | `product_service` legado diverge de `inventory` (`currentQuantity` vs `currentQty`) e não filtra por clínica | RN-04/RN-51 |
 | 6 | ~~`treatment_model.dart` documentado mas inexistente~~ ✅ corrigido (removido do AGENTS.md; planos são `Map` crus) | RN-28 |
 | 7 | CPF duplicado: query existe mas bloqueio está comentado | RN-18 |
 | 8 | Código morto: `_showMonthlyValueDialog` (budgets_tab) e `_checkForGroupPayment` (patient_financial_tab) | — |
 | 9 | Registro de funcionário pode deslogar o admin (FirebaseApp temporário) | RN-49 |
-| 10 | Rules amplas (`financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`, `procedures`, `inventory`, `suppliers`, `settings/**`) liberam qualquer autenticado — isolamento dessas coleções depende do filtro no código | RN-58 |
+| 10 | ~~Rules amplas (`financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`) liberavam qualquer autenticado~~ ✅ corrigido (redundância removida / blocos escopados; `procedures`/`inventory`/`suppliers` mantidos amplos de propósito) | RN-58 |
 | 11 | ~~`patientTabCount` divergia das abas renderizadas (psico 7 vs 6, default 8 vs 9)~~ ✅ corrigido (6/9 + comentário no código) | RN-05 |
+| 12 | ~~Segredo Cloudinary lido no client~~ ✅ mitigado no Spark (signing removido do app; sem destroy remoto — só metadados; `settings/integrations` só owner p/ futuro Blaze) | RN-62 |
+| 13 | ~~Cascata purgava remoto antes do commit~~ ✅ corrigido (blocos de 450 + purge após commit) | RN-20 |

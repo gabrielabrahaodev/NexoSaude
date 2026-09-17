@@ -315,16 +315,18 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     );
 
     // Verifica Despesas vinculadas
-    QuerySnapshot relatedExpenses = await FirebaseFirestore.instance
-          .collection('expenses')
-          .where('relatedFinancialId', isEqualTo: id)
-          .get();
+    QuerySnapshot relatedExpenses = await SessionManager()
+        .applyFilter(FirebaseFirestore.instance
+            .collection('expenses')
+            .where('relatedFinancialId', isEqualTo: id))
+        .get();
 
     // Verifica Pedidos de Laboratório vinculados
-    QuerySnapshot relatedLabOrders = await FirebaseFirestore.instance
-          .collection('lab_orders')
-          .where('relatedFinancialId', isEqualTo: id)
-          .get();
+    QuerySnapshot relatedLabOrders = await SessionManager()
+        .applyFilter(FirebaseFirestore.instance
+            .collection('lab_orders')
+            .where('relatedFinancialId', isEqualTo: id))
+        .get();
 
     if (!mounted) return;
     Navigator.pop(context); // Fecha loading
@@ -1041,21 +1043,22 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                             WriteBatch batch = FirebaseFirestore.instance.batch();
 
                             // 🎯 WAR ROOM: O repasse do Cartão de Crédito é mantido
+                            final recording = FinancialService.recordingFor(selectedMethod);
                             await _finService.processPayment(
-                              originalTransaction: item, 
-                              payValue: val, 
-                              method: selectedMethod, 
-                              installments: inst, 
+                              originalTransaction: item,
+                              payValue: val,
+                              method: selectedMethod,
+                              installments: inst,
                               payerName: item.patientName,
-                              payerCpf: '', 
+                              payerCpf: '',
                               dentistId: selectedProfessionalId,
                               dentistName: dentistName,
                               feePercentage: currentFeeRate,
                               taxValPerInstallment: taxValPerInstallment,
                               netValPerInstallment: netValPerInstallment,
-                              status: selectedMethod.contains('Cartão') ? 'paid' : 'pending',
-                              isPaid: selectedMethod.contains('Cartão') ? true : false,
-                              paymentDate: selectedMethod.contains('Cartão') ? DateTime.now() : null,
+                              status: recording.status,
+                              isPaid: recording.isPaid,
+                              paymentDate: DateTime.now(),
                             );
 
                             if (selectedMethod == "Cartão de Crédito" && inst > 1) {
@@ -1177,10 +1180,11 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
   }
 
   void _checkForGroupPayment(BuildContext context, String budgetId, String method, int installments, String? profileId, Map<String, dynamic>? profile) async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('financial')
-        .where('relatedBudgetId', isEqualTo: budgetId)
-        .where('status', isEqualTo: 'pending')
+    final snapshot = await SessionManager()
+        .applyFilter(FirebaseFirestore.instance
+            .collection('financial')
+            .where('relatedBudgetId', isEqualTo: budgetId)
+            .where('status', isEqualTo: 'pending'))
         .get();
     
     final otherItems = snapshot.docs.toList(); 
@@ -1228,8 +1232,10 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             }
 
             return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('expenses')
-                  .where('relatedPatientId', isEqualTo: widget.patientId)
+              stream: SessionManager()
+                  .applyFilter(FirebaseFirestore.instance
+                      .collection('expenses')
+                      .where('relatedPatientId', isEqualTo: widget.patientId))
                   .snapshots(),
               builder: (context, snapshotExp) {
                 

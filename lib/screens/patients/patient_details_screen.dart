@@ -18,6 +18,7 @@ import 'tabs/patient_lab_tab.dart';
 // --- NOVO IMPORT ---
 import 'tabs/patient_docs_tab.dart'; 
 import '../../../services/clinic_capabilities.dart';
+import '../../../services/session_manager.dart';
 
 class PatientDetailsScreen extends StatefulWidget {
   final String patientName; 
@@ -208,9 +209,10 @@ class _HeaderSummaryRow extends StatelessWidget {
           Expanded(
             flex: 1,
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('expenses')
-                  .where('relatedPatientId', isEqualTo: patientId)
+              stream: SessionManager()
+                  .applyFilter(FirebaseFirestore.instance
+                      .collection('expenses')
+                      .where('relatedPatientId', isEqualTo: patientId))
                   .snapshots(),
               builder: (context, snapshot) {
                 double custo = 0;

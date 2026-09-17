@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/lab_order.dart';
+import 'session_manager.dart';
 
 class LabService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -13,9 +14,9 @@ class LabService {
   }
 
   Stream<List<LabOrderModel>> getByPatient(String patientId) {
-    return _db
-        .collection('lab_orders')
-        .where('patientId', isEqualTo: patientId)
+    return SessionManager()
+        .applyFilter(
+            _db.collection('lab_orders').where('patientId', isEqualTo: patientId))
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs

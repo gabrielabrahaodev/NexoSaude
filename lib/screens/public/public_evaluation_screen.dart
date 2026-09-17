@@ -68,14 +68,15 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
   // 1. Carrega dados da clínica via URL
   Future<void> _loadClinicData() async {
     // Tenta pegar o ID da URL (ex: ?cid=123)
-    final uri = Uri.base; 
+    final uri = Uri.base;
     clinicId = uri.queryParameters['cid'];
 
-    // MODO DE TESTE AUTOMÁTICO:
-    // Se não tiver ID na URL, usa o ID da "Jabaquara" do seu print
-    if (clinicId == null) {
-      debugPrint("Nenhum CID na URL. Usando ID de Teste (Jabaquara).");
-      clinicId = "VlFVjTlNX8yqijeHyczt"; 
+    // Sem CID = link inválido: NÃO usar fallback (antes gravava leads de
+    // teste na clínica real). O build mostra "Clínica não encontrada."
+    if (clinicId == null || clinicId!.isEmpty) {
+      debugPrint("Avaliação sem CID na URL — link inválido.");
+      if (mounted) setState(() => isLoading = false);
+      return;
     }
 
     if (clinicId != null) {

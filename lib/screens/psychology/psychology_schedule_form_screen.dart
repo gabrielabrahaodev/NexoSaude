@@ -374,8 +374,8 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
       final futureAppts = <DocumentSnapshot>[];
       for (final doc in apptsSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        final status = '${data['status']}';
-        if (status == 'Finalizado' || status == 'Cancelado') continue;
+        final status = '${data['status']}'.toLowerCase();
+        if (status == 'finalizado' || status == 'cancelado') continue;
         final planId = data['planId']?.toString();
         if (planId != null && planId.isNotEmpty) planIds.add(planId);
         final date = (data['date'] as Timestamp?)?.toDate();

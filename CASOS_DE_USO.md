@@ -21,7 +21,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | # | Caso de Uso | Ator | Resumo | Ref. |
 |---|-------------|------|--------|------|
 | UC-01 | **Login de usuário** | Usuário | `signInWithEmailAndPassword`; após login chama `_initializeSession` que carrega o doc `users/{uid}` e inicializa o SessionManager (clínica, tipo, role). Enter no campo senha submete (`onSubmitted`); trava anti-duplo-submit. | `screens/auth/login_screen.dart:52-83` |
-| UC-02 | **Registrar novo usuário** | Usuário | `createUserWithEmailAndPassword` + grava `users/{uid}` com `role` selecionada (dentista/recepção) e `allowedClinics: ['matriz_santa_isabel']` (hardcoded). | `login_screen.dart:61-73` |
+| UC-02 | **Registrar novo usuário** | Usuário | `createUserWithEmailAndPassword` + grava `users/{uid}` com `role` selecionada (dentista/recepção), `allowedClinics: []` e `status='pending_approval'` (owner libera em Funcionários). | `login_screen.dart:60-71` |
 | UC-03 | **Verificar role e clínica no app start** | Sistema | `RoleCheckScreen` lê `users/{uid}`, resolve `allowedClinics` (ou clínica do owner), carrega dados da clínica e chama `SessionManager().setUser(...)`. Menos dados → logout com mensagem. | `screens/auth/role_check_screen.dart:20-76` |
 | UC-04 | **Trocar de clínica ativa (owner)** | Owner | Seletor de clínicas no menu busca `clinics where ownerId`; ao trocar, `SessionManager().setClinic(id, name, type)` e snapshots recomeçam filtrando pela nova clínica. Tipo da clínica altera menu (psicologia). | `screens/dashboard/main_web_dashboard.dart:102-199` |
 | UC-05 | **Logout** | Qualquer usuário | `SessionManager().clear()` + `signOut` + volta para `AuthWrapper`. | `main_web_dashboard.dart:91-100` |
@@ -57,7 +57,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | UC-21 | **Listar pacientes da clínica** | Todos | Stream por `clinicId` ordenado por `createdAt` desc; cards com avatar/nome/tel/CPF. | `screens/patients/patient_list_screen.dart:99-140` |
 | UC-22 | **Buscar paciente (nome/CPF/telefone)** | Todos | Filtro client-side local (lowercase). | `patient_list_screen.dart:62-119` |
 | UC-23 | **Cadastrar novo paciente** | Todos | Formulário com máscaras (telefone, CPF, data), validações, verificação de CPF duplicado, grava `searchKey`, `status='Ativo'`, `clinicId`. | `screens/patients/create_patient_screen.dart:67-127` |
-| UC-24 | **Excluir paciente em cascata** | Todos | Dialog lista tudo que será removido; `deletePatientCascade` em batch: coleções por `patientId` + subcoleções (odontogram, anamnesis, **docs**) + o próprio paciente. `docs` tem `purgePatientFiles` (destroy no Cloudinary via `publicId`; sem credenciais em `settings/integrations`, só Firestore). Uploads antigos sem `publicId` não têm remoto removível. | `patient_list_screen.dart`; `services/patient_service.dart`; `services/document_service.dart` |
+| UC-24 | **Excluir paciente em cascata** | Todos | Dialog lista tudo que será removido; `deletePatientCascade`: coleta deletes → commit em blocos de 450 → `purgePatientFiles` (só log no Spark). Exclusão de doc apaga só o Firestore (sem destroy remoto no plano Spark). | `patient_list_screen.dart`; `services/patient_service.dart`; `services/document_service.dart` |
 | UC-25 | **Navegar abas do paciente** | Todos | Abas dinâmicas por tipo de clínica (`ClinicCapabilities.patientTabCount`): **dental = 9 abas**, **psicologia = 6** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO em psicologia). Cabeçalho com 4 cards: risco, a receber (valor−pago), recebido e custo operacional. | `screens/patients/patient_details_screen.dart` |
 | UC-26 | **Editar dados cadastrais** | Todos | Aba CADASTRO: alterna modo edição, atualiza nome/tel/CPF/RG/nascimento/endereço + `searchKey`. | `screens/patients/tabs/patient_details_tab.dart:30-161` |
 | UC-27 | **Anamnese (visualizar/salvar)** | Todos | Stream do doc `anamnesis/{patientId}`; formulário com histórico patológico, hábitos, alergias, observações; `set()` completo ao salvar. | `screens/patients/tabs/anamnesis_tab.dart:64-321` |
@@ -155,7 +155,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 |---|-------------|------|--------|------|
 | UC-77 | **Confirmação de consulta via link público** | Paciente | Link `confirmar.html?id=<appt>` permite atualizar status para "Confirmado" (regra específica no Firestore). | `firestore.rules`; `agenda_manager_screen.dart:546-554` |
 | UC-78 | **Anamnese pública** | Paciente | Write público em `anamnesis/{patientId}` via WhatsApp link. | `firestore.rules`; `anamnesis_tab.dart:170-184` |
-| UC-79 | **Avaliação digital de leads (rota /avaliacao)** | Paciente | Questionário com score por resposta; grava em `clinics/{cid}/leads` e redireciona ao WhatsApp da clínica. `cid` vem da URL (fallback de teste fixo). | `screens/public/public_evaluation_screen.dart:69-171` |
+| UC-79 | **Avaliação digital de leads (rota /avaliacao)** | Paciente | Questionário com score por resposta; grava em `clinics/{cid}/leads` e redireciona ao WhatsApp da clínica. Sem `?cid=` → "Clínica não encontrada" (sem fallback). | `screens/public/public_evaluation_screen.dart:69-97` |
 
 ---
 
@@ -173,7 +173,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 
 ## Observações Transversais
 
-1. **Isolamento multitenant:** a maioria dos services usa `SessionManager().applyFilter()` (budget, clinical_record, oracle, inventory, supplier, procedure). **Riscos detectados** (sem filtro de clínica): `patient_service.getAllStream` (:62-66), `patient_service.getPatientRiskProfile` (:30-33), `appointment` queries em formas/agenda (filtram manualmente), `treatment_service.getPlansStream` (:21-23), `financial_service.getByPatientId` (:9-18), `lab_service` (filtra por clinicId manualmente), `product_service` (legado, sem filtro).
+1. **Isolamento multitenant:** services usam `SessionManager().applyFilter()` (budget, clinical_record, oracle, inventory, supplier, procedure, patient risk/list, financial por paciente, treatment plans, lab por paciente, smart-card, abas Pagamentos). **Restam sem filtro**: `product_service` (legado), `procedures` (global por desenho), leituras de gestão amplas nas rules (decisão documentada).
 2. **Soft delete vs exclusão física:** agenda psicologia e schedules usam `status='cancelled'`; inventário/fornecedores/procedimentos deletam o doc; paciente usa cascata de delete.
 3. **Duplicação de lógica:** verificação de disponibilidade existe duplicada no service (`getBusySlots`) e inline nos dois formulários de agenda (padrão duplicação em 3 lugares).
 4. **Código morto identificado:** `budgets_tab._showMonthlyValueDialog` (:299-322) e `patient_financial_tab._checkForGroupPayment` (:979-1013) nunca são chamados.

@@ -1,15 +1,27 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/financial_model.dart';
+import 'session_manager.dart';
 
 class FinancialService {
   // --- ESSA LINHA É CRÍTICA PARA FUNCIONAR ---
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // Busca lançamentos por paciente
+  /// Como um recebimento deve ser gravado conforme o método.
+  /// Métodos imediatos (Dinheiro/Pix/...) = pago na hora (`pago`).
+  /// Cartão mantém o fluxo próprio de recebível (`paid`).
+  /// (Antes, não-cartão gravava `pending`/`isPaid:false` e sumia dos
+  /// relatórios, que leem o campo cru — a aba parecia certa porque o
+  /// getter `isPaid` deriva de `paidAmount`.)
+  static ({String status, bool isPaid}) recordingFor(String method) {
+    if (method.contains('Cartão')) return (status: 'paid', isPaid: true);
+    return (status: 'pago', isPaid: true);
+  }
+
+  // Busca lançamentos por paciente (filtrado pela clínica da sessão)
   Stream<List<FinancialModel>> getByPatientId(String patientId) {
-    return _db
-        .collection('financial')
-        .where('patientId', isEqualTo: patientId)
+    return SessionManager()
+        .applyFilter(
+            _db.collection('financial').where('patientId', isEqualTo: patientId))
         .orderBy('date', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -63,7 +75,7 @@ class FinancialService {
        batch.update(financialRef.doc(originalTransaction.id), {
         'isPaid': isPaid ?? true,
         'status': status ?? 'Pago',
-        'paymentDate': paymentDate ?? DateTime.now(),
+        'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
         'paymentMethod': method,
         'paidAmount': payValue,
         'payerName': payerName,
@@ -116,9 +128,9 @@ class FinancialService {
           'patientName': originalTransaction.patientName,
           'title': originalTransaction.title,
           'description': "${originalTransaction.title} ($i/$installments) - $method",
-          'date': DateTime.now(),
+          'date': FieldValue.serverTimestamp(),
           'dueDate': DateTime.now().add(Duration(days: 30 * i)),
-          'paymentDate': paymentDate ?? DateTime.now(),
+        'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
           'value': finalValue, 
           'amount': finalValue,
           'isPaid': isPaid ?? true,

@@ -17,9 +17,11 @@ class TreatmentService {
   final CollectionReference<Map<String, dynamic>> _budgets = 
       FirebaseFirestore.instance.collection('budgets');
 
-  // --- LEITURA (MANTIDA) ---
+  // --- LEITURA (filtrada pela clínica da sessão) ---
   Stream<QuerySnapshot> getPlansStream(String patientId) {
-    return _plans.where('patientId', isEqualTo: patientId).snapshots();
+    return SessionManager()
+        .applyFilter(_plans.where('patientId', isEqualTo: patientId))
+        .snapshots();
   }
 
   Future<void> closePlan(String planId) async {

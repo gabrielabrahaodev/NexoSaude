@@ -53,6 +53,7 @@ class SessionManager extends ChangeNotifier {
         .doc(clinicId)
         .get();
     if (!doc.exists) {
+      debugPrint('SessionManager.resolveClinic: clínica $clinicId não existe.');
       return (id: clinicId, name: null, type: 'dental');
     }
     final data = doc.data();

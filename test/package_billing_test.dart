@@ -123,5 +123,17 @@ void main() {
       expect(bill.amountDue, 0);
       expect(bill.previstas, 0);
     });
+
+    test('cancelada em lowercase sai do cálculo', () {
+      final sessions = _five().take(4).toList()
+        ..add(_session(status: 'cancelado', attendance: 'Missed'));
+      final bill = PackageBilling.compute(
+        packageAmount: 500,
+        discount: 0,
+        sessions: sessions,
+      );
+      expect(bill.previstas, 4);
+      expect(bill.amountDue, 500);
+    });
   });
 }

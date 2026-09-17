@@ -1,13 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/patient_model.dart';
 import 'document_service.dart';
+import 'session_manager.dart';
 
 class PatientService {
   final CollectionReference<Map<String, dynamic>> _collection = 
       FirebaseFirestore.instance.collection('patients'); 
 
   // Referência para agendamentos (Necessária para o cálculo de risco)
-  final CollectionReference _appointments = 
+  final CollectionReference<Map<String, dynamic>> _appointments =
       FirebaseFirestore.instance.collection('appointments');
 
   Stream<PatientModel?> getByIdStream(String id) {
@@ -28,8 +29,8 @@ class PatientService {
   // --- CÁLCULO DE ASSIDUIDADE (RISCO) ---
   Future<Map<String, dynamic>> getPatientRiskProfile(String patientId) async {
     try {
-      final snapshot = await _appointments
-          .where('patientId', isEqualTo: patientId)
+      final snapshot = await SessionManager()
+          .applyFilter(_appointments.where('patientId', isEqualTo: patientId))
           .orderBy('date', descending: true)
           .limit(20)
           .get();
@@ -46,7 +47,9 @@ class PatientService {
             '${data['hasMedicalCertificate']}'.toLowerCase() == 'true';
         bool isNoShow =
             data['attendanceStatus'] == 'Missed' && !excused;
-        bool cancelledByPatient = data['status'] == 'Cancelado' && data['cancellationSource'] == 'Paciente';
+        bool cancelledByPatient =
+            '${data['status']}'.toLowerCase() == 'cancelado' &&
+                data['cancellationSource'] == 'Paciente';
         if (isNoShow || cancelledByPatient) missed++;
       }
 
@@ -65,9 +68,12 @@ class PatientService {
   }
   
   Stream<List<PatientModel>> getAllStream() {
-    return _collection.snapshots().map((s) => 
-      s.docs.map((d) => PatientModel.fromMap(d.id, d.data())).toList()
-    );
+    return SessionManager()
+        .applyFilter(_collection)
+        .snapshots()
+        .map((s) => s.docs
+            .map((d) => PatientModel.fromMap(d.id, d.data()))
+            .toList());
   }
 
   static const _cascadeCollections = [
@@ -90,9 +96,13 @@ class PatientService {
   ];
 
   // --- EXCLUSÃO EM CASCATA DO PACIENTE ---
+  // Ordem: coleta deletes → commit em blocos de 450 → SÓ ENTÃO purge remoto.
+  // (Purge antes do commit apagava arquivos irreversíveis mesmo se o commit
+  // estourasse o limite de 500 writes do batch.)
   Future<void> deletePatientCascade(String patientId, String clinicId) async {
     final db = FirebaseFirestore.instance;
-    final batch = db.batch();
+    final deletes = <DocumentReference>[];
+    List<Map<String, dynamic>> docsMeta = [];
 
     for (final collection in _cascadeCollections) {
       final snap = await db
@@ -101,31 +111,43 @@ class PatientService {
           .where('clinicId', isEqualTo: clinicId)
           .get();
       for (final doc in snap.docs) {
-        batch.delete(doc.reference);
+        deletes.add(doc.reference);
       }
     }
 
     // Subcoleções do paciente (Odontograma, Anamnese, uploads).
-    // 'docs' tem limpeza remota no Cloudinary antes do batch.
     final patientRef = _collection.doc(patientId);
     for (final sub in _patientSubcollections) {
       final subDocs = await patientRef.collection(sub).get();
       if (sub == 'docs') {
-        await DocumentService().purgePatientFiles(
-          clinicId: clinicId,
-          docs: subDocs.docs
-              .map((d) => d.data() as Map<String, dynamic>)
-              .toList(),
-        );
+        docsMeta = subDocs.docs.map((d) => d.data()).toList();
       }
       for (final doc in subDocs.docs) {
-        batch.delete(doc.reference);
+        deletes.add(doc.reference);
       }
     }
 
-    // Finalmente, deleta o próprio paciente
-    batch.delete(patientRef);
+    // Finalmente, o próprio paciente
+    deletes.add(patientRef);
 
-    await batch.commit();
+    // Commit em blocos de 450 (limite do batch = 500)
+    var batch = db.batch();
+    var count = 0;
+    for (final ref in deletes) {
+      batch.delete(ref);
+      count++;
+      if (count >= 450) {
+        await batch.commit();
+        batch = db.batch();
+        count = 0;
+      }
+    }
+    if (count > 0) await batch.commit();
+
+    // 'docs' tem limpeza remota no Cloudinary SÓ após o commit OK.
+    await DocumentService().purgePatientFiles(
+      clinicId: clinicId,
+      docs: docsMeta,
+    );
   }
 }

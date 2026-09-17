@@ -62,11 +62,15 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text.trim()
         );
         
+        // Novo cadastro nasce SEM clínica: o owner libera em Funcionários.
+        // (Antes caía hardcoded em ['matriz_santa_isabel'], dando acesso
+        // imediato a dados reais para qualquer conta auto-registrada.)
         await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).set({
-          'email': _emailController.text.trim(), 
-          'role': _selectedRole, 
+          'email': _emailController.text.trim(),
+          'role': _selectedRole,
           'created_at': DateTime.now(),
-          'allowedClinics': ['matriz_santa_isabel'], 
+          'allowedClinics': [],
+          'status': 'pending_approval',
         });
       }
       

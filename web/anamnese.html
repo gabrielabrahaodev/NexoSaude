@@ -161,7 +161,7 @@
                     });
                 }
             }
-        });
+        }).catch(() => { /* sem pré-preenchimento (ex.: ficha nova) */ });
     }
 
     function setCheck(chkId, val, divId, textId, textVal) {

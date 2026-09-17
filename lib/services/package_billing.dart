@@ -57,8 +57,9 @@ class PackageBilling {
     final double fullAmount =
         (packageAmount - discount) < 0 ? 0.0 : packageAmount - discount;
 
-    final valid =
-        sessions.where((s) => s.status != 'Cancelado').toList();
+    final valid = sessions
+        .where((s) => s.status.toLowerCase() != 'cancelado')
+        .toList();
     final int previstas = valid.length;
 
     int attended = 0;

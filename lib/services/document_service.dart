@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
@@ -106,84 +105,29 @@ class DocumentService {
     await _db.collection('patients').doc(patientId).collection('docs').add(doc.toMap());
   }
 
-  /// Credenciais de destroy em
-  /// `clinics/{clinicId}/settings/integrations/cloudinary`
-  /// (`{apiKey, apiSecret}`). Ausente = pula o remoto (só Firestore).
-  /// Nota: qualquer usuário autenticado lê `settings/**` (ver
-  /// firestore.rules) — para segredo forte, mover o destroy p/ Function.
-  Future<Map<String, String>?> _destroyCredentials(
-      String clinicId) async {
-    try {
-      final doc = await _db
-          .collection('clinics')
-          .doc(clinicId)
-          .collection('settings')
-          .doc('integrations')
-          .collection('cloudinary')
-          .doc('config')
-          .get();
-      final data = doc.data();
-      final key = data?['apiKey']?.toString() ?? '';
-      final secret = data?['apiSecret']?.toString() ?? '';
-      if (key.isEmpty || secret.isEmpty) return null;
-      return {'apiKey': key, 'apiSecret': secret};
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Destroy remoto no Cloudinary (assinado). Retorna true se removeu.
+  /// Destroy remoto DESABILITADO (plano Spark, sem Functions).
+  /// O binário permanece no Cloudinary como órfão (limpeza manual ocasional
+  /// pelo painel). A exclusão remove só os metadados do Firestore.
+  /// Retorna sempre false (= remoto não removido).
   Future<bool> deleteRemoteFile({
     required String clinicId,
     required String? publicId,
     String resourceType = 'image',
   }) async {
-    if (publicId == null || publicId.isEmpty) return false;
-    final creds = await _destroyCredentials(clinicId);
-    if (creds == null) {
-      debugPrint('Cloudinary: sem credenciais de destroy; pulando remoto.');
-      return false;
-    }
-    try {
-      final timestamp =
-          (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
-      final toSign =
-          'public_id=$publicId&timestamp=$timestamp${creds['apiSecret']}';
-      final signature = sha1.convert(utf8.encode(toSign)).toString();
-      final response = await http.post(
-        Uri.parse(
-            'https://api.cloudinary.com/v1_1/$cloudName/$resourceType/destroy'),
-        body: {
-          'public_id': publicId,
-          'api_key': creds['apiKey']!,
-          'timestamp': timestamp,
-          'signature': signature,
-        },
-      );
-      if (response.statusCode == 200 &&
-          jsonDecode(response.body)['result'] == 'ok') {
-        return true;
-      }
-      debugPrint('Cloudinary destroy falhou: ${response.statusCode}');
-      return false;
-    } catch (e) {
-      debugPrint('Cloudinary destroy erro: $e');
-      return false;
-    }
+    return false;
   }
 
-  /// Limpeza remota em lote (ex.: cascata de paciente). Ignora docs
-  /// sem `publicId` (uploads antigos) e segue mesmo se algum falhar.
+  /// Limpeza remota em lote (ex.: cascata de paciente). No plano Spark o
+  /// destroy é desabilitado: só registra quantos órfãos ficaram na nuvem.
   Future<void> purgePatientFiles({
     required String clinicId,
     required List<Map<String, dynamic>> docs,
   }) async {
-    for (final data in docs) {
-      await deleteRemoteFile(
-        clinicId: clinicId,
-        publicId: data['publicId']?.toString(),
-        resourceType: data['resourceType']?.toString() ?? 'image',
-      );
+    final withRemote =
+        docs.where((d) => '${d['publicId'] ?? ''}'.isNotEmpty).length;
+    if (withRemote > 0) {
+      debugPrint('Cloudinary: $withRemote arquivo(s) mantidos como órfãos '
+          '(destroy desabilitado no plano Spark).');
     }
   }
 

@@ -30,7 +30,7 @@ class AppointmentService {
     List<String> busy = [];
     for (var doc in snapshot.docs) {
       if (excludeId != null && doc.id == excludeId) continue;
-      if (doc['status'] == 'Cancelado') continue;
+      if ('${doc['status']}'.toLowerCase() == 'cancelado') continue;
 
       DateTime d = (doc['date'] as Timestamp).toDate();
       int duration = doc['durationMinutes'] ?? 30;

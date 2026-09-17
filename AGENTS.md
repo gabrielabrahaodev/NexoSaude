@@ -45,7 +45,7 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 | `lib/screens/auth/role_check_screen.dart` | Post-login role/clinic resolution |
 | `lib/ui/app_theme.dart` | Colors, text styles, ThemeData builder |
 | `firestore.rules` | Security rules (owner vs staff, clinic isolation) |
-| `lib/services/document_service.dart` | **Cloudinary** upload/destroy + metadados em `patients/{id}/docs` |
+| `lib/services/document_service.dart` | Upload Cloudinary + metadados; destroy via Function `destroyCloudinaryFile` |
 | `lib/services/package_billing.dart` | `PackageBilling.compute` puro (billing psico por presença) |
 | `lib/screens/psychology/psychology_schedule_form_screen.dart` | Geração de pacote/avulsa + cancelamento de contrato |
 
@@ -97,9 +97,10 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 2. **`hasClinicAccess(clinicId)`** — checks `clinicId in users/{uid}.allowedClinics`
 3. **Operational collections** (patients, appointments, financial, treatments, treatment_plans, budgets, clinical_records, psychology_schedules) require auth + (owner OR clinic access)
 4. **Public exceptions**: `/anamnesis` (public write, no auth), `/appointments` update limited to `status='Confirmado'` (+`confirmationDate`, no auth — WhatsApp link)
-5. ⚠️ **Regras amplas que sombreiam o escopo por clínica**: `financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`, `procedures`, `inventory`, `suppliers` permitem read/write a **qualquer autenticado** (blocos próprios no fim do rules). Isolamento real dessas coleções depende do filtro `clinicId` no código, não das rules.
-6. **`clinics/{id}/settings/**` (fees + integrations/cloudinary) = read/write p/ qualquer autenticado — segredo de destroy do Cloudinary fica legível; p/ segredo forte, mover destroy p/ Function.
+5. ⚠️ **Regras amplas restantes** (de propósito, p/ não quebrar telas legadas): `procedures` (catálogo global sem `clinicId`), `inventory`/`suppliers` (leitores legados sem filtro), `plans`, `anticipations`, `news`. `financial`/`treatments`/`treatment_plans` valem pela regra F; `expenses`/`lab_orders` têm blocos próprios escopados. Toda query nova DEVE filtrar por `clinicId`.
+6. **`clinics/{id}/settings/**`: leitura auth (telas leem taxas); escrita owner. **`settings/integrations/**` (segredos): SÓ owner** — o destroy Cloudinary roda na Function via Admin SDK; o app nunca lê o segredo.
 7. Subcoleções `patients/{id}/{docs,odontogram,...}`: auth + (owner OR acesso à clínica do paciente pai).
+8. **Anamnese**: `get` público (prefill do html), escrita pública restrita por allowlist de 14 campos; staff auth tem acesso total.
 
 ---
 
@@ -154,7 +155,11 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 
 ### Documentos (Cloudinary)
 - Upload unsigned p/ `https://api.cloudinary.com/v1_1/dbbh601ay/auto/upload` (`upload_preset=dbbh601ay`, `resource_type=auto`); metadados em `patients/{id}/docs`
-- Exclusão tenta **destroy remoto assinado** (creds em `settings/integrations/cloudinary`); sem creds, apaga só Firestore; `purgePatientFiles` limpa na cascata (uploads antigos sem `publicId` não têm remoto removível)
+- Exclusão apaga **só o Firestore** (plano Spark, sem destroy remoto — binários viram órfãos; limpeza manual ocasional pelo painel Cloudinary); `purgePatientFiles` só loga a contagem, após o commit OK em blocos de 450
+
+### Registro e avaliação pública
+- Novo cadastro nasce com `allowedClinics: []` + `status: 'pending_approval'` — owner libera em Funcionários (antes caía hardcoded com acesso imediato)
+- `/avaliacao` sem `?cid=` mostra "Clínica não encontrada" (antes gravava lead de teste na clínica real)
 
 ### Cancelamento de contrato psico
 - Botão no modo edição do form: futuras não finalizadas → `Cancelado`, financeiros `pendente/pending` do plano → `Cancelado`; finalizados/pagos intactos; batch em blocos de 450. Edição **não regenera** agenda/financeiro.
@@ -221,8 +226,8 @@ flutterfire configure
 - UI shows SnackBar for auth/network errors
 
 ### Firebase Functions
-- `firebase.json` reserva o slot `functions`, mas o diretório **`functions/` não existe** — não há backend próprio; destroy do Cloudinary roda no client (ver item 6 das rules)
-- `package.json` na raiz é resíduo (só `cors`); se criar functions, reestruturar
+- **Plano Spark: sem backend** — `functions/` removido (deploy de Functions exige Blaze); `firebase.json` sem o bloco `functions`
+- Se um dia migrar p/ Blaze: recriar `destroyCloudinaryFile` (callable auth + segredo via Admin SDK) e apontar `DocumentService.deleteRemoteFile` p/ ela
 
 ---
 

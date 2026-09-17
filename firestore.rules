@@ -19,11 +19,16 @@ service cloud.firestore {
     // 2. Verifica se a funcionária tem permissão para a clínica do documento
     function hasClinicAccess(clinicId) {
       let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      
-      return isAuthenticated() && 
+
+      return isAuthenticated() &&
              exists(userDocPath) &&
-             get(userDocPath).data.allowedClinics != null && 
+             get(userDocPath).data.allowedClinics != null &&
              (clinicId in get(userDocPath).data.allowedClinics);
+    }
+
+    // 3. Caminho de segredos dentro de settings (ex.: integrations/cloudinary)
+    function isSecretsPath(document) {
+      return document == 'integrations' || document.matches('integrations/.*');
     }
 
     // --- REGRAS DE COLEÇÕES ---
@@ -53,9 +58,29 @@ service cloud.firestore {
         request.resource.data.status == 'Confirmado';
     }
 
-    // E. EXCEÇÃO: ANAMNESE ONLINE (NOVA REGRA)
+    // E. ANAMNESE ONLINE
+    // get público: prefill do anamnese.html (sem login).
+    // Escrita pública RESTRITA aos 14 campos do formulário (allowlist);
+    // staff autenticado mantém acesso total (prontuário no app).
     match /anamnesis/{patientId} {
-      allow get, write: if true;
+      allow get: if true;
+      allow delete: if isAuthenticated();
+      allow create: if isAuthenticated() || request.resource.data.keys().hasOnly([
+        'patientId', 'updatedAt',
+        'underMedicalTreatment', 'medicalTreatmentDesc',
+        'takingMedication', 'medicationDesc',
+        'hasAllergies', 'allergiesDesc',
+        'conditions', 'smoker', 'alcohol', 'bruxism', 'pregnant',
+        'observations'
+      ]);
+      allow update: if isAuthenticated() || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'patientId', 'updatedAt',
+        'underMedicalTreatment', 'medicalTreatmentDesc',
+        'takingMedication', 'medicationDesc',
+        'hasAllergies', 'allergiesDesc',
+        'conditions', 'smoker', 'alcohol', 'bruxism', 'pregnant',
+        'observations'
+      ]);
     }
 
     // F. DADOS OPERACIONAIS (CORREÇÃO DE ACESSO PARA FUNCIONÁRIOS)
@@ -71,11 +96,14 @@ service cloud.firestore {
           (isOwner() || hasClinicAccess(request.resource.data.clinicId));
     }
 
-    // --- NOVAS REGRAS PARA O MÓDULO DE GESTÃO ---
+    // --- MÓDULO DE GESTÃO (mantido amplo DE PROPÓSITO) ---
+    // procedures = catálogo global sem clinicId; inventory/suppliers têm
+    // leitores legados sem filtro (product_service). Escopar aqui quebraria
+    // telas de staff — ver Apêndice B dos Requisitos.
     match /procedures/{document=**} {
       allow read, write: if isAuthenticated();
     }
-    
+
     match /inventory/{document=**} {
       allow read, write: if isAuthenticated();
     }
@@ -83,37 +111,44 @@ service cloud.firestore {
     match /suppliers/{document=**} {
       allow read, write: if isAuthenticated();
     }
-    
-    // --- FINANCEIRO (Essenciais para essa tela) ---
-    match /financial/{document=**} {
-      allow read, write: if isAuthenticated();
-    }
-    match /expenses/{document=**} {
-      allow read, write: if isAuthenticated();
+
+    // --- DESPESAS E LAB (escopo por clínica, espelha regra F) ---
+    // Todas as leituras do app filtram por clinicId e todos os creates
+    // gravam clinicId (verificado em expense_service, reports, fin_tab,
+    // lab_service, patient_lab_tab). Queries sem clinicId serão negadas.
+    match /expenses/{docId} {
+      allow read, update, delete: if isAuthenticated() &&
+          (isOwner() || hasClinicAccess(resource.data.clinicId));
+      allow create: if isAuthenticated() &&
+          (isOwner() || hasClinicAccess(request.resource.data.clinicId));
     }
 
-    // --- ADICIONE ESTE BLOCO NOVO ---
     match /lab_orders/{orderId} {
-      // Permite ler e escrever se o usuário estiver logado
-      allow read, write: if request.auth != null;
+      allow read, update, delete: if isAuthenticated() &&
+          (isOwner() || hasClinicAccess(resource.data.clinicId));
+      allow create: if isAuthenticated() &&
+          (isOwner() || hasClinicAccess(request.resource.data.clinicId));
     }
-    
+
     match /plans/{document=**} {
       allow read, write: if request.auth != null;
     }
-    
-    match /treatments/{document=**} {
-      allow read, write: if request.auth != null;
-    }
 
-    match /treatment_plans/{document=**} {
-      allow read, write: if request.auth != null;
-    }
+    // REMOVIDOS os blocos amplos de financial/treatments/treatment_plans:
+    // redundantes com a regra F (já exige owner OU acesso à clínica) e
+    // apenas alargavam o acesso. Sem eles, vale a regra F.
     
-    // --- LIBERAÇÃO GERAL DE CONFIGURAÇÕES DA CLÍNICA ---
-    // Esta regra é a que corrige o seu erro atual
+    // --- CONFIGURAÇÕES DA CLÍNICA (fees + integrations) ---
+    // settings/*: leitura p/ qualquer autenticado (telas leem perfil de
+    // taxas), escrita SÓ owner.
+    // settings/integrations/**: SÓ owner (higiene p/ segredos futuros;
+    // plano Spark não tem backend — nada no app lê este caminho hoje).
     match /clinics/{clinicId}/settings/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && !isSecretsPath(document);
+      allow write: if isOwner() && !isSecretsPath(document);
+    }
+    match /clinics/{clinicId}/settings/integrations/{sub=**} {
+      allow read, write: if isOwner();
     }
     
     // Permite que utilizadores logados leiam e gravem o histórico de antecipações
