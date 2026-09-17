@@ -18,9 +18,9 @@ Adicionar nova tela ao menu, guard por papel/tipo, seletor de clínica.
 
 ## Mapa (índice → tela)
 
-0 Agenda · 1 Pacientes · 2 Laboratório · 3 Financeiro · 4 Relatórios ·
-5 Notícias · 6 Cobranças · 7 Clínicas (owner) · 8 Funcionários (owner) ·
-9 Gestão (owner/recep) · 10 Fluxo Terapêutico (psico).
+0 Dashboard · 1 Agenda · 2 Pacientes · 3 Laboratório · 4 Financeiro · 5 Relatórios ·
+6 Notícias · 7 Cobranças · 8 Clínicas (owner) · 9 Funcionários (owner) ·
+10 Gestão (owner/recep) · 11 Fluxo Terapêutico (psico). Abre no Dashboard (`_selectedIndex = 0`).
 
 ## Gotchas
 

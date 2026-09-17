@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/patient_model.dart';
+import 'document_service.dart';
 
 class PatientService {
   final CollectionReference<Map<String, dynamic>> _collection = 
@@ -80,11 +81,12 @@ class PatientService {
     'psychology_schedules',
   ];
 
+  // Subcoleções reais do paciente ('docs' = uploads via DocumentService).
+  // 'documents'/'photos' eram nomes legados que nunca tiveram docs.
   static const _patientSubcollections = [
     'odontogram',
     'anamnesis',
-    'documents',
-    'photos',
+    'docs',
   ];
 
   // --- EXCLUSÃO EM CASCATA DO PACIENTE ---
@@ -103,10 +105,19 @@ class PatientService {
       }
     }
 
-    // Subcoleções do paciente (Odontograma, Anamnese, etc.)
+    // Subcoleções do paciente (Odontograma, Anamnese, uploads).
+    // 'docs' tem limpeza remota no Cloudinary antes do batch.
     final patientRef = _collection.doc(patientId);
     for (final sub in _patientSubcollections) {
       final subDocs = await patientRef.collection(sub).get();
+      if (sub == 'docs') {
+        await DocumentService().purgePatientFiles(
+          clinicId: clinicId,
+          docs: subDocs.docs
+              .map((d) => d.data() as Map<String, dynamic>)
+              .toList(),
+        );
+      }
       for (final doc in subDocs.docs) {
         batch.delete(doc.reference);
       }

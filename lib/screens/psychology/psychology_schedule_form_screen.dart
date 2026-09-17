@@ -50,6 +50,10 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
   bool _fromThirdParty = false;
   final _thirdPartyDiscountCtrl = TextEditingController();
 
+  // Contrato ativo? (edição) — cancelado esconde o botão de cancelar
+  bool _isActive = true;
+  bool _isCancelling = false;
+
   final _daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   final _timeSlots = _generateDefaultTimeSlots();
   
@@ -89,6 +93,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
 
     _selectedDayOfWeek = data['dayOfWeek'] ?? 'Segunda';
     _selectedTime = data['time'] ?? '09:00';
+    _isActive = (data['status']?.toString() ?? 'active') == 'active';
     _packageValueCtrl.text = (data['packageValue'] ?? 0.0).toString();
     _sessionValueCtrl.text = (data['sessionValue'] ?? 0.0).toString();
     _fromThirdParty = data['fromThirdParty'] ?? false;
@@ -308,7 +313,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
             ? 'Pacote Psicologia - Sessão'
             : 'Sessão Avulsa Psicologia',
         clinicId: clinicId,
-        durationMinutes: 50,
+        durationMinutes: 60,
         scheduleId: scheduleId,
         planId: planRef.id,
         monthlyPeriod: monthKey,
@@ -317,6 +322,130 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
     }
 
     await batch.commit();
+  }
+
+  Future<void> _confirmCancelSchedule() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Cancelar contrato?"),
+        content: const Text(
+          "Sessões futuras (não finalizadas) serão canceladas e "
+          "cobranças pendentes do plano também.\n\n"
+          "Sessões já realizadas e valores pagos NÃO são alterados.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Voltar"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("SIM, CANCELAR"),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) await _cancelSchedule();
+  }
+
+  /// Cancela o contrato: futuras não finalizadas → Cancelado,
+  /// financeiros pendentes/pending do plano → Cancelado.
+  /// Finalizados e pagos ficam intactos.
+  Future<void> _cancelSchedule() async {
+    final scheduleId = widget.editScheduleId;
+    if (scheduleId == null) return;
+    setState(() => _isCancelling = true);
+
+    try {
+      final db = FirebaseFirestore.instance;
+      final today = DateTime.now();
+      final startOfToday =
+          DateTime(today.year, today.month, today.day);
+
+      // 1. Sessões futuras do contrato (não finalizadas)
+      final apptsSnap = await db
+          .collection('appointments')
+          .where('scheduleId', isEqualTo: scheduleId)
+          .get();
+
+      final planIds = <String>{};
+      final futureAppts = <DocumentSnapshot>[];
+      for (final doc in apptsSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final status = '${data['status']}';
+        if (status == 'Finalizado' || status == 'Cancelado') continue;
+        final planId = data['planId']?.toString();
+        if (planId != null && planId.isNotEmpty) planIds.add(planId);
+        final date = (data['date'] as Timestamp?)?.toDate();
+        if (date != null && date.isBefore(startOfToday)) continue;
+        futureAppts.add(doc);
+      }
+
+      // 2. Financeiros pendentes dos planos do contrato
+      final pendingFins = <DocumentSnapshot>[];
+      for (final planId in planIds) {
+        final finsSnap = await db
+            .collection('financial')
+            .where('planId', isEqualTo: planId)
+            .get();
+        for (final doc in finsSnap.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final status = '${data['status']}';
+          if (status == 'pendente' || status == 'pending') {
+            pendingFins.add(doc);
+          }
+        }
+      }
+
+      // 3. Batch (em blocos de 450 por segurança)
+      final writes = <void Function(WriteBatch)>[
+        (b) => b.update(
+            db.collection('psychology_schedules').doc(scheduleId),
+            {'status': 'cancelled'}),
+      ];
+      for (final doc in futureAppts) {
+        writes.add((b) => b.update(doc.reference, {
+              'status': 'Cancelado',
+              'cancellationSource': 'Clínica',
+              'cancellationReason': 'Contrato cancelado',
+            }));
+      }
+      for (final doc in pendingFins) {
+        writes.add((b) =>
+            b.update(doc.reference, {'status': 'Cancelado'}));
+      }
+
+      var batch = db.batch();
+      var count = 0;
+      for (final w in writes) {
+        w(batch);
+        count++;
+        if (count >= 450) {
+          await batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      }
+      if (count > 0) await batch.commit();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              "Contrato cancelado: ${futureAppts.length} sessão(ões) e ${pendingFins.length} cobrança(s) pendentes canceladas."),
+        ));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erro ao cancelar: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCancelling = false);
+    }
   }
 
   void _showPatientPicker() {
@@ -577,6 +706,32 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
                   child: const Text("SALVAR E GERAR SESSÕES", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
+              if (widget.editScheduleId != null && _isActive) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        _isCancelling ? null : _confirmCancelSchedule,
+                    icon: _isCancelling
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2),
+                          )
+                        : const Icon(Icons.cancel_outlined,
+                            color: Colors.red),
+                    label: const Text("CANCELAR CONTRATO",
+                        style: TextStyle(color: Colors.red)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

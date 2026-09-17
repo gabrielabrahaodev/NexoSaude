@@ -6,6 +6,8 @@ class PatientDocumentModel {
   final String category; // "Exames", "Radiografias", etc.
   final String url;
   final String path; // Caminho no Storage (para deletar depois)
+  final String? publicId; // Cloudinary public_id (para destroy remoto)
+  final String? resourceType; // image | video | raw (para destroy remoto)
   final String fileType; // 'image' ou 'document'
   final String extension; // .jpg, .pdf
   final int sizeBytes;
@@ -18,6 +20,8 @@ class PatientDocumentModel {
     required this.category,
     required this.url,
     required this.path,
+    this.publicId,
+    this.resourceType,
     required this.fileType,
     required this.extension,
     required this.sizeBytes,
@@ -31,6 +35,8 @@ class PatientDocumentModel {
       'category': category,
       'url': url,
       'path': path,
+      'publicId': publicId,
+      'resourceType': resourceType,
       'fileType': fileType,
       'extension': extension,
       'sizeBytes': sizeBytes,
@@ -46,6 +52,8 @@ class PatientDocumentModel {
       category: map['category'] ?? 'Geral',
       url: map['url'] ?? '',
       path: map['path'] ?? '',
+      publicId: map['publicId']?.toString(),
+      resourceType: map['resourceType']?.toString(),
       fileType: map['fileType'] ?? 'document',
       extension: map['extension'] ?? '',
       sizeBytes: map['sizeBytes'] ?? 0,

@@ -45,11 +45,14 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 | `lib/screens/auth/role_check_screen.dart` | Post-login role/clinic resolution |
 | `lib/ui/app_theme.dart` | Colors, text styles, ThemeData builder |
 | `firestore.rules` | Security rules (owner vs staff, clinic isolation) |
+| `lib/services/document_service.dart` | **Cloudinary** upload/destroy + metadados em `patients/{id}/docs` |
+| `lib/services/package_billing.dart` | `PackageBilling.compute` puro (billing psico por presença) |
+| `lib/screens/psychology/psychology_schedule_form_screen.dart` | Geração de pacote/avulsa + cancelamento de contrato |
 
 ### Models (lib/models/)
 - `patient_model.dart` - Robust parsing (handles Map/String/Timestamp for address, birthDate)
 - `appointment_model.dart` - Includes `clinicId`, `dentistId`, `durationMinutes`
-- `budget_model.dart`, `financial_model.dart`, `treatment_model.dart`, etc.
+- `budget_model.dart`, `financial_model.dart`, `patient_document_model.dart`, `psychology_schedule_model.dart`, etc. (não existe `treatment_model.dart` — planos são `Map` crus de `treatment_plans`)
 
 ### Services (lib/services/)
 - `patient_service.dart` - CRUD + risk profile (no-show rate calculation)
@@ -75,6 +78,13 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 /inventory/{docId}            # clinicId, productId, quantity
 /suppliers/{docId}            # clinicId
 /news/{docId}                 # Global ortho news
+/expenses/{docId}             # clinicId, description, amount, dueDate, status
+/anticipations/{docId}        # histórico de antecipações de recebíveis
+/patients/{patientId}/docs/{docId}        # metadados de arquivos (binário no Cloudinary)
+/patients/{patientId}/clinical_data/odontogram  # teeth + lastUpdate
+/clinics/{clinicId}/leads/{leadId}        # leads da avaliação pública (/avaliacao)
+/clinics/{clinicId}/settings/fees         # perfis de taxas de máquina + anticipation_rate
+/clinics/{clinicId}/settings/integrations/cloudinary/{config}  # {apiKey, apiSecret} p/ destroy remoto (ausente = só Firestore)
 /anamnesis/{patientId}        # Public write (WhatsApp link)
 /psychology_schedules/{docId} # Psychology recurring schedules
 ```
@@ -86,7 +96,10 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 1. **`isOwner()`** — checks `users/{uid}.role == 'owner'`
 2. **`hasClinicAccess(clinicId)`** — checks `clinicId in users/{uid}.allowedClinics`
 3. **Operational collections** (patients, appointments, financial, treatments, treatment_plans, budgets, clinical_records, psychology_schedules) require auth + (owner OR clinic access)
-4. **Public exceptions**: `/anamnesis` (public write), `/appointments` status update to 'Confirmado' (WhatsApp confirmation)
+4. **Public exceptions**: `/anamnesis` (public write, no auth), `/appointments` update limited to `status='Confirmado'` (+`confirmationDate`, no auth — WhatsApp link)
+5. ⚠️ **Regras amplas que sombreiam o escopo por clínica**: `financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`, `procedures`, `inventory`, `suppliers` permitem read/write a **qualquer autenticado** (blocos próprios no fim do rules). Isolamento real dessas coleções depende do filtro `clinicId` no código, não das rules.
+6. **`clinics/{id}/settings/**` (fees + integrations/cloudinary) = read/write p/ qualquer autenticado — segredo de destroy do Cloudinary fica legível; p/ segredo forte, mover destroy p/ Function.
+7. Subcoleções `patients/{id}/{docs,odontogram,...}`: auth + (owner OR acesso à clínica do paciente pai).
 
 ---
 
@@ -94,17 +107,18 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 
 ### MainWebDashboard Menu Structure (index-based)
 ```
-0  Agenda                    → AgendaManagerScreen
-1  Pacientes                 → PatientListScreen
-2  Laboratório               → ClinicLabScreen
-3  Financeiro                → FinancialReportScreen
-4  Relatórios                → ReportsScreen
-5  Notícias                  → OrthoNewsScreen
-6  Cobranças                 → CollectionsScreen
-7  Clínicas (owner)          → ClinicManagementScreen
-8  Funcionários (owner)      → EmployeeManagerScreen
-9  Gestão (owner/recep)      → OperationsManagerScreen
-10 Fluxo Terapêutico (psych) → PsychologyKanbanBoard
+0  Dashboard                 → KpiDashboardScreen
+1  Agenda                    → AgendaManagerScreen
+2  Pacientes                 → PatientListScreen
+3  Laboratório               → ClinicLabScreen
+4  Financeiro                → FinancialReportScreen
+5  Relatórios                → ReportsScreen
+6  Notícias                  → OrthoNewsScreen
+7  Cobranças                 → CollectionsScreen
+8  Clínicas (owner)          → ClinicManagementScreen
+9  Funcionários (owner)      → EmployeeManagerScreen
+10 Gestão (owner/recep)      → OperationsManagerScreen
+11 Fluxo Terapêutico (psych) → PsychologyKanbanBoard
 ```
 (Removidos: `Novos Leads` + `Agendas Psicologia` e seus arquivos/serviços exclusivos.)
 
@@ -136,6 +150,14 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 - Header da ficha com 4 cards (assiduidade, A Receber = valor−pago, Recebido, Custo Operacional); cards da aba Pagamentos removidos
 - Aba Pagamentos: filtros (valor mín/máx, procedimento) em bottom sheet + toggle de ordenação (padrão: vencimentos próximos)
 - `deletePatientCascade` via `_cascadeCollections`; risco isenta falta com atestado
+- Ficha: dental = **9 abas**, psicologia = **6 abas** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO)
+
+### Documentos (Cloudinary)
+- Upload unsigned p/ `https://api.cloudinary.com/v1_1/dbbh601ay/auto/upload` (`upload_preset=dbbh601ay`, `resource_type=auto`); metadados em `patients/{id}/docs`
+- Exclusão tenta **destroy remoto assinado** (creds em `settings/integrations/cloudinary`); sem creds, apaga só Firestore; `purgePatientFiles` limpa na cascata (uploads antigos sem `publicId` não têm remoto removível)
+
+### Cancelamento de contrato psico
+- Botão no modo edição do form: futuras não finalizadas → `Cancelado`, financeiros `pendente/pending` do plano → `Cancelado`; finalizados/pagos intactos; batch em blocos de 450. Edição **não regenera** agenda/financeiro.
 
 ### Limpeza
 - Deletados: `leads/`, `mock_data_service`, `psychology_schedule_list_screen`, `psychology_schedule_service`, `agenda_form_screen copy`, `patient_financial_tab copy*`
@@ -198,9 +220,9 @@ flutterfire configure
 - Services return safe defaults on error (e.g., `getPatientRiskProfile` returns `{'level': 'green', 'missed': 0}`)
 - UI shows SnackBar for auth/network errors
 
-### Firebase Functions (if exists)
-- Located in `functions/` directory
-- TypeScript, deployed via `firebase deploy --only functions`
+### Firebase Functions
+- `firebase.json` reserva o slot `functions`, mas o diretório **`functions/` não existe** — não há backend próprio; destroy do Cloudinary roda no client (ver item 6 das rules)
+- `package.json` na raiz é resíduo (só `cors`); se criar functions, reestruturar
 
 ---
 
@@ -212,6 +234,7 @@ flutterfire configure
 4. **RoleCheckScreen** runs on every app start (auth state change) — keep it fast
 5. **ValueKey(_currentClinicId)** forces screen rebuild when clinic switches
 6. **Owner clinic selector** auto-selects first clinic if none selected
+7. **`patientTabCount` deve espelhar as abas renderizadas** (dental 9 / psico 6 / default 9) — divergência quebra o `DefaultTabController` (bug corrigido em Sep 2026: era 7/8)
 
 ---
 

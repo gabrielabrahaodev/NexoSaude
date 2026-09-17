@@ -48,8 +48,6 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | UC-19 | **Criar/editar agendamento (formulário)** | Recep/Owner/Dentista | Autocomplete de paciente (query `searchKey`), cadastro rápido de paciente (máscaras RG/CPF/tel/nascimento), seleção múltipla de horários (define duração 30min × N), verificação de disponibilidade inline (ignora edição atual e Cancelado). | `screens/agenda/agenda_form_screen.dart:106-491` |
 | UC-20 | **Verificar slots ocupados (serviço)** | Sistema | `getBusySlots`: query do dia, ignora `excludeId` e `'Cancelado'`, marca slots por duração (ceil). | `services/appointment_service.dart:20-45` |
 
-> **Nota:** `agenda_form_screen copy.dart` é uma variante com feature extra de "Limpar Bloqueios forçado do dia" (batch delete de status bloqueado/fechado).
-
 ---
 
 ## Módulo 3 - Pacientes
@@ -59,8 +57,8 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | UC-21 | **Listar pacientes da clínica** | Todos | Stream por `clinicId` ordenado por `createdAt` desc; cards com avatar/nome/tel/CPF. | `screens/patients/patient_list_screen.dart:99-140` |
 | UC-22 | **Buscar paciente (nome/CPF/telefone)** | Todos | Filtro client-side local (lowercase). | `patient_list_screen.dart:62-119` |
 | UC-23 | **Cadastrar novo paciente** | Todos | Formulário com máscaras (telefone, CPF, data), validações, verificação de CPF duplicado, grava `searchKey`, `status='Ativo'`, `clinicId`. | `screens/patients/create_patient_screen.dart:67-127` |
-| UC-24 | **Excluir paciente em cascata** | Todos | Dialog lista tudo que será removido; `deletePatientCascade` em batch atômico: appointments, budgets, treatments, treatment_plans, financial, clinical_records, lab_orders, psychology_schedules, subcoleções (odontogram/anamnesis/documents/photos) e o próprio paciente. | `patient_list_screen.dart:155-194`; `services/patient_service.dart:69-119` |
-| UC-25 | **Navegar abas do paciente** | Todos | Abas dinâmicas por tipo de clínica (`ClinicCapabilities.patientTabCount`): **dental = 9 abas**, **psicologia = 7** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO em psicologia). Cabeçalho com 4 cards: risco, a receber (valor−pago), recebido e custo operacional. | `screens/patients/patient_details_screen.dart` |
+| UC-24 | **Excluir paciente em cascata** | Todos | Dialog lista tudo que será removido; `deletePatientCascade` em batch: coleções por `patientId` + subcoleções (odontogram, anamnesis, **docs**) + o próprio paciente. `docs` tem `purgePatientFiles` (destroy no Cloudinary via `publicId`; sem credenciais em `settings/integrations`, só Firestore). Uploads antigos sem `publicId` não têm remoto removível. | `patient_list_screen.dart`; `services/patient_service.dart`; `services/document_service.dart` |
+| UC-25 | **Navegar abas do paciente** | Todos | Abas dinâmicas por tipo de clínica (`ClinicCapabilities.patientTabCount`): **dental = 9 abas**, **psicologia = 6** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO em psicologia). Cabeçalho com 4 cards: risco, a receber (valor−pago), recebido e custo operacional. | `screens/patients/patient_details_screen.dart` |
 | UC-26 | **Editar dados cadastrais** | Todos | Aba CADASTRO: alterna modo edição, atualiza nome/tel/CPF/RG/nascimento/endereço + `searchKey`. | `screens/patients/tabs/patient_details_tab.dart:30-161` |
 | UC-27 | **Anamnese (visualizar/salvar)** | Todos | Stream do doc `anamnesis/{patientId}`; formulário com histórico patológico, hábitos, alergias, observações; `set()` completo ao salvar. | `screens/patients/tabs/anamnesis_tab.dart:64-321` |
 | UC-28 | **Enviar anamnese ao paciente via WhatsApp** | Todos | Link público `anamnesis.html?id=...` + `wa.me`. | `anamnesis_tab.dart:153-189` |
@@ -102,9 +100,9 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | # | Caso de Uso | Ator | Resumo | Ref. |
 |---|-------------|------|--------|------|
 | UC-52 | **Acompanhar contratos de psicologia** | Staff/Owner | Tela de lista removida do menu; contratos ativos se acompanham pela **agenda** (sessões geradas) e pelo **kanban**. Leitura direta de `psychology_schedules` por `clinicId` + `status=='active'` (sem service dedicado). |
-| UC-53 | **Criar agenda de psicologia (pacote/avulsa)** | Staff/Owner | Formulário: paciente, tipo, data início, dia da semana, horário, valores, convênio/desconto. Ao salvar, `_generateAppointments` cria: **tratamento** (`treatment_plans`), **financeiro** (pacote = 1/mês com `billingKind`/`monthlyPeriod`, vence dia 10 seguinte; **avulsa = 1 sessão só** na data selecionada, +7 dias) e **appointments** (50min, "Aguardando Confirmação", com `scheduleId/planId/monthlyPeriod`) — tudo em batch. | `screens/psychology/psychology_schedule_form_screen.dart` |
+| UC-53 | **Criar agenda de psicologia (pacote/avulsa)** | Staff/Owner | Formulário: paciente, tipo, data início, dia da semana, horário, valores, convênio/desconto. Ao salvar, `_generateAppointments` cria: **tratamento** (`treatment_plans`), **financeiro** (pacote = 1/mês com `billingKind`/`monthlyPeriod`, vence dia 10 seguinte; **avulsa = 1 sessão só** na data selecionada, +7 dias) e **appointments** (60min, "Aguardando Confirmação", com `scheduleId/planId/monthlyPeriod`) — tudo em batch. | `screens/psychology/psychology_schedule_form_screen.dart` |
 | UC-54 | **Gerar sessões recorrentes até fim do ano** | Sistema | Pacote: `generateSessionDates` itera semanalmente até 31/12. Avulsa: somente a data selecionada. | `models/psychology_schedule_model.dart` |
-| UC-55 | **Editar/cancelar agenda de psicologia** | Staff/Owner | Edição no form não regenera sessões. **Gap conhecido:** sem tela de lista, não há UI para cancelar o contrato (cancelar = `status='cancelled'` via banco); cancelar na agenda não toca financeiro. | — |
+| UC-55 | **Editar/cancelar agenda de psicologia** | Staff/Owner | Edição no form não regenera sessões. **Cancelar contrato** (botão no modo edição): confirma escopo → futuras não finalizadas viram `Cancelado`, financeiros `pendente/pending` do plano viram `Cancelado`; finalizados/pagos intactos; batch em blocos de 450. | `psychology_schedule_form_screen.dart` (`_confirmCancelSchedule`, `_cancelSchedule`) |
 | UC-56 | **Fluxo terapêutico (Kanban PsychoFlow)** | Psicólogo/Recep/Owner | Colunas Triagem/Leads → Em Acompanhamento → Alta/Manutenção. Drag & drop entre colunas com transições validadas. | `screens/patients/psychology/psychology_kanban_board.dart:29-301` |
 | UC-57 | **Iniciar tratamento (Lead → Ativo)** | Psicólogo/Recep | Dialog com checklist obrigatório (Contrato Terapêutico, Anamnese, Dados de Faturamento) → `status='active'`. | `psychology_kanban_board.dart:304-353` |
 | UC-58 | **Registrar alta (Ativo → Alta)** | Psicólogo | Dialog pede motivo obrigatório → `status='discharged'`, `discharge_reason/date`. | `psychology_kanban_board.dart:356-392` |
@@ -169,6 +167,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | UC-81 | **Falta com atestado** | Recep/Owner | Checkbox no finalizar; grava `hasMedicalCertificate`; abate do pacote e isenta o risco. Docs antigos (sem campo) contam como sem atestado. | `agenda_manager_screen.dart`; `patient_service.dart` |
 | UC-82 | **Skeleton do cálculo no card** | Todos | `BillingSkeleton` (shimmer, sem pulo de layout) enquanto calcula; timeout 5s → valor cheio + "Cálculo indisponível". | `screens/financial/widgets/billing_skeleton.dart` |
 | UC-83 | **Capabilities por tipo de clínica** | Sistema | `ClinicCapabilities` centraliza guards (tabs, menu, papéis, billing mensal). Proibido comparar `clinicType` solto. | `services/clinic_capabilities.dart` |
+| UC-84 | **Dashboard de KPIs (item 1)** | Todos | 4 cards (A Receber mês, Inadimplência, Agendamentos hoje, Aniversariantes) + próximos vencimentos + aniversariantes; `birthDate` String com parse defensivo. | `screens/dashboard/kpi_dashboard_screen.dart` |
 
 ---
 
@@ -180,7 +179,8 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 4. **Código morto identificado:** `budgets_tab._showMonthlyValueDialog` (:299-322) e `patient_financial_tab._checkForGroupPayment` (:979-1013) nunca são chamados.
 5. **Roles nos menus:** Financeiro/Relatórios/Cobranças/Notícias/Laboratório não têm guard de role no código; a efetiva separação é feita pelas regras do Firestore e pelo seletor de clínicas (owner).
 6. **Ciclo de status do agendamento:** `Aguardando Confirmação` → `Confirmado` → `Finalizado` (+`attendanceStatus`) ou `Cancelado` (com metadados) / `Bloqueado` (sintético, deletável).
-7. **`treatment_model.dart` não existe** — planos são `Map`s crus da coleção `treatment_plans` (AGENTS.md lista `treatment_model.dart` mas ele não está no código).
+7. ~~`treatment_model.dart` listado no AGENTS.md mas inexistente~~ ✅ corrigido (removido do AGENTS.md; planos são `Map`s crus de `treatment_plans`).
+8. ~~`patientTabCount` divergia das abas (psico 7 vs 6, default 8 vs 9)~~ ✅ corrigido em `clinic_capabilities.dart` (6/9).
 
 ---
 
@@ -196,6 +196,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | Gestão | 10 (UC-60..69) |
 | Laboratório | 3 (UC-70..72) |
 | Notícias | 1 (UC-73) |
-| Fluxos Públicos | 2 (UC-78..79) |
+| Fluxos Públicos | 3 (UC-77..79) |
 | Pacotes/presença (novo) | 4 (UC-80..83) |
-| **Total** | **80 casos de uso** |
+| Dashboard KPI | 1 (UC-84) |
+| **Total** | **81 casos de uso** |

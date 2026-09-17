@@ -21,7 +21,7 @@ Busca/cadastro de paciente, `Hero` de avatar, exclusão, assiduidade.
 ## Fluxos
 
 - Risco: últimos 20 `appointments`; `Missed` conta, **`Missed` com atestado não conta**; `Cancelado` pelo paciente conta. Níveis: red (≥30% ou ≥3), yellow (≥10%), green.
-- Cascata (`_cascadeCollections`): appointments, budgets, treatments, treatment_plans, financial, clinical_records, lab_orders, psychology_schedules + subcoleções (odontogram, anamnesis, documents, photos) + o próprio paciente, num batch só.
+- Cascata (`_cascadeCollections`): appointments, budgets, treatments, treatment_plans, financial, clinical_records, lab_orders, psychology_schedules + subcoleções (odontogram, anamnesis, **docs**) + o próprio paciente, num batch só. `docs` tem `purgePatientFiles` (destroy Cloudinary) antes do batch.
 
 ## Regras / Gotchas
 

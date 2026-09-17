@@ -31,7 +31,7 @@ Conhecimento do projeto em formato de skills: cada arquivo cobre **um módulo** 
 ## Telas
 
 `agenda-manager`, `agenda-form`, `auth-login-rolecheck`, `clinic-management`,
-`employee-manager`, `main-dashboard`, `public-evaluation`,
+`employee-manager`, `main-dashboard`, `kpi-dashboard`, `public-evaluation`,
 `collections`, `expenses`, `financial-report`, `clinic-lab`, `ortho-news`,
 `operations-manager`, `operations-tabs`, `patient-list`, `patient-details`,
 `create-patient`, `patient-tabs`, `psychology-kanban`, `budget-wizard`,

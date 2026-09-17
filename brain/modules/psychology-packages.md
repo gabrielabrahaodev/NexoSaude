@@ -12,13 +12,14 @@ gera `treatment_plans` + N `appointments` + `financial` (pacote: 1/mês; avulso:
 
 ## Quando usar
 
-Criar/editar pacote, cobrança mensal, atestado, cálculo de valor do mês.
+Criar/editar pacote, cobrança mensal, atestado, cálculo de valor do mês,
+cancelamento de contrato (`_cancelSchedule` no form, modo edição).
 
 ## Arquivos-chave
 
 - `lib/models/psychology_schedule_model.dart` — `generateSessionDates` (semanal até 31/12), `effectiveValue`
 - Leitura de contratos: direto no Firestore (`psychology_schedules` por `clinicId` + `status active`); sem service dedicado
-- `lib/services/package_billing.dart` — `PackageBilling.compute`: teto = pacote − desconto; divisor = previstas; cobrável = Realizado + falta sem atestado; parcial se incompleto
+- `lib/services/package_billing.dart` — `PackageBilling.compute`: teto = pacote − desconto; divisor = previstas; cobrável = Realizado + falta sem atestado; parcial se incompleto (travado por `test/package_billing_test.dart`: 7 casos)
 - `lib/models/financial_model.dart` — `monthlyPeriod: YYYY-MM`, `billingKind: package_monthly|session`, `installmentNumber: "Jan/2025 1/5"`
 
 ## Fluxos

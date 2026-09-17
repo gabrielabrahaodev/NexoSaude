@@ -16,7 +16,11 @@ se acompanham pela agenda + kanban.)
 
 ## Quando usar
 
-Novo pacote, recorrência, valores, terceiro pagador.
+Novo pacote, recorrência, valores, terceiro pagador, cancelamento de contrato.
+
+## Cancelamento
+
+Botão no modo edição (contrato ativo): dialog de escopo → futuras não finalizadas para `Cancelado` + financeiros pendentes do plano para `Cancelado`; finalizados/pagos intactos; batch em blocos de 450.
 
 ## Fluxos
 

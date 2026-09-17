@@ -56,7 +56,7 @@ Documento de regras de negócio extraídas do código-fonte. Cada regra referenc
 - Campo `clinicType` da clínica (`dental` | `psychology` | outros).
 - **Proibido comparar `clinicType` solto no código** — usar `ClinicCapabilities` (`isPsychology`, `canShowBudgets/Lab/Odontogram`, `canUseMonthlyPackages`, `professionalRole`, `patientTabCount`).
 - Menu "Fluxo Terapêutico" só aparece para `psychology` (telas "Novos Leads" e "Agendas Psicologia" foram removidas do menu).
-- Abas do paciente variam por tipo: **dental = 9 abas**, **psicologia = 7** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO).
+- Abas do paciente variam por tipo: **dental = 9 abas**, **psicologia = 6** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO).
 - Referência: `services/clinic_capabilities.dart`, `main_web_dashboard.dart`, `screens/patients/patient_details_screen.dart`.
 
 ### RN-06 - Troca de clínica (owner)
@@ -131,7 +131,7 @@ Bloqueado (agendamento sintético)
 
 ### RN-17 - Agendamento psicologia (na agenda)
 - Célula vazia em clínica `psychology` → `AgendaCellFactory.openForm` abre o formulário com data/dia/hora **travados** (vindos da agenda).
-- Duração de sessão de psicologia: **50 min**.
+- Duração de sessão de psicologia: **60 min** (2 slots de 30 na grade).
 - Referência: `screens/agenda/agenda_cell_factory.dart`, `psychology_schedule_form_screen.dart`.
 
 ---
@@ -304,7 +304,7 @@ Bloqueado (agendamento sintético)
 - **Pacote**: semanal da data de início até **31/12 do ano de início**.
 - **Avulsa**: **1 sessão só**, na data/hora selecionada (sem recorrência).
 - Dia da semana mapeado de pt-BR (default Segunda).
-- Cada sessão vira: item do `treatment_plans` (status `pendente`), `appointment` (50min, "Aguardando Confirmação") com `scheduleId/planId/monthlyPeriod`.
+- Cada sessão vira: item do `treatment_plans` (status `pendente`), `appointment` (60min, "Aguardando Confirmação") com `scheduleId/planId/monthlyPeriod`.
 - Referência: `models/psychology_schedule_model.dart`, `psychology_schedule_form_screen.dart` (`_generateAppointments`).
 
 ### RN-43 - Financeiro do agendamento
@@ -314,9 +314,10 @@ Bloqueado (agendamento sintético)
 - **Billing por presença** (decisões travadas: parcial, divisor = previstas, atestado abate, desconto antes): `PackageBilling.compute` — cobrável = Realizado + falta sem atestado; congela no `paid`. Ver `PSYCHOLOGY_PACKAGES.md`.
 - Referência: `services/package_billing.dart`, `psychology_schedule_form_screen.dart`.
 
-### RN-44 - Edição e cancelamento de agenda
-- **Edição não regenera sessões** (só atualiza o schedule).
-- **Gap conhecido:** sem tela de lista, não há UI para cancelar o contrato; cancelar na agenda não toca o financeiro.
+### RN-44 - Edição e cancelamento de contrato
+- **Edição não regenera sessões** (só atualiza o schedule; só o `add` gera).
+- **Cancelamento implementado** (botão no modo edição do form, `_confirmCancelSchedule`/`_cancelSchedule`): dialog de escopo → `psychology_schedules` vira `cancelled`; appointments futuros não finalizados → `Cancelado`; financeiros `pendente/pending` do plano → `Cancelado`; finalizados/pagos intactos; batch em blocos de 450.
+- Referência: `psychology_schedule_form_screen.dart:327-425`.
 
 ### RN-45 - Fluxo terapêutico (Kanban)
 - Estágios: `lead` (Triagem/Leads) → `active` (Em Acompanhamento) → `discharged` (Alta/Manutenção).
@@ -429,11 +430,11 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 
 ## 14. Documentação de Arquivos
 
-### RN-62 - Upload de documentos
-- Upload para **Cloudinary** (`https://api.cloudinary.com/v1_1/dbbh601ay/auto/upload`, `resource_type: auto`).
-- Metadados em `patients/{id}/docs`: `fileType` derivado da extensão (image/document), categoria, título, uploader.
-- Exclusão apaga **só os metadados** (binário permanece na nuvem).
-- Referência: `services/document_service.dart:20-109`.
+### RN-62 - Upload/exclusão de documentos
+- Upload para **Cloudinary** (`https://api.cloudinary.com/v1_1/dbbh601ay/auto/upload`, `resource_type: auto`, preset unsigned `dbbh601ay`).
+- Metadados em `patients/{id}/docs`: `fileType` derivado da extensão (image/document), categoria, título, uploader, `publicId`/`resourceType`.
+- Exclusão (`deleteDocument` com `clinicId`+`publicId`) tenta **destroy remoto assinado** (creds em `clinics/{id}/settings/integrations/cloudinary`); **sem credenciais, apaga só o Firestore**; uploads antigos sem `publicId` não têm remoto removível. Cascata chama `purgePatientFiles` antes do batch.
+- Referência: `services/document_service.dart`, `patient_docs_tab.dart:348-372`.
 
 ---
 
@@ -451,7 +452,7 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 | RN-41..45 | `psychology_schedule_form_screen.dart`, `psychology_schedule_model.dart`, `psychology_kanban_board.dart` |
 | RN-46..47 | `lab_kanban_board.dart`, `lab_service.dart` |
 | RN-48..54 | `clinic_management_screen.dart`, `employee_manager_screen.dart`, `operations/*` |
-| RN-55..57 | `public_evaluation_screen.dart`, `leads_dashboard_screen.dart`, `firestore.rules` |
+| RN-55..57 | `public_evaluation_screen.dart`, `firestore.rules` |
 | RN-58 | `firestore.rules` |
 | RN-59..61 | `whatsapp_helper.dart`, `collections_screen.dart` |
 | RN-62 | `document_service.dart` |
@@ -467,7 +468,9 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 | 3 | `login_screen` usa `allowedClinics` hardcoded `['matriz_santa_isabel']` | RN-02 |
 | 4 | `public_evaluation_screen` usa clinicId de teste fixo quando não há `cid` | RN-55 |
 | 5 | `product_service` legado diverge de `inventory` (`currentQuantity` vs `currentQty`) e não filtra por clínica | RN-04/RN-51 |
-| 6 | `treatment_model.dart` documentado no AGENTS.md mas **inexistente** no código (planos são `Map` crus) | RN-28 |
+| 6 | ~~`treatment_model.dart` documentado mas inexistente~~ ✅ corrigido (removido do AGENTS.md; planos são `Map` crus) | RN-28 |
 | 7 | CPF duplicado: query existe mas bloqueio está comentado | RN-18 |
 | 8 | Código morto: `_showMonthlyValueDialog` (budgets_tab) e `_checkForGroupPayment` (patient_financial_tab) | — |
 | 9 | Registro de funcionário pode deslogar o admin (FirebaseApp temporário) | RN-49 |
+| 10 | Rules amplas (`financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`, `procedures`, `inventory`, `suppliers`, `settings/**`) liberam qualquer autenticado — isolamento dessas coleções depende do filtro no código | RN-58 |
+| 11 | ~~`patientTabCount` divergia das abas renderizadas (psico 7 vs 6, default 8 vs 9)~~ ✅ corrigido (6/9 + comentário no código) | RN-05 |

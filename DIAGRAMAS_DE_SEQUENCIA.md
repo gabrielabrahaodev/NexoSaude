@@ -65,7 +65,7 @@ sequenceDiagram
     T->>F: query filtrada por clinicId
     F-->>T: dados da clínica atual
 
-    Note over S,T: applyFilter():<br/>owner com 'ALL'/null → sem filtro<br/>staff → clinicId in allowedClinics<br/>sem clinicId → 'waiting_session_init' (vazio)
+    Note over S,T: applyFilter():<br/>owner com 'ALL'/null → sem filtro<br/>staff → clinicId == clínica atual<br/>sem clinicId → 'waiting_session_init' (vazio)
 ```
 
 ---
@@ -164,6 +164,7 @@ sequenceDiagram
 
     U->>PL: confirma exclusão do paciente
     PL->>PS: deletePatientCascade(patientId, clinicId)
+    PS->>PS: purgePatientFiles (destroy no Cloudinary via publicId;<br/>sem credenciais em settings/integrations, só Firestore)
     PS->>F: query por coleção (clinicId + patientId)
     F-->>PS: docs encontrados
 
@@ -255,7 +256,7 @@ sequenceDiagram
     end
 
     loop Para cada sessão
-        P->>B: appointments.set(AppointmentModel,<br/>status 'Aguardando Confirmação', 50min,<br/>scheduleId/planId/monthlyPeriod)
+        P->>B: appointments.set(AppointmentModel,<br/>status 'Aguardando Confirmação', 60min,<br/>scheduleId/planId/monthlyPeriod)
     end
 
     P->>F: batch.commit()
@@ -264,28 +265,28 @@ sequenceDiagram
 
 ---
 
-## 10. Orçamento / Fluxo de Aprovação
+## 10. Orçamento / Fluxo de Aprovação (gera financeiro direto)
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor U as Usuário
-    actor P as Paciente
     participant D as PatientDetailsScreen (ORÇAMENTOS)
     participant BS as BudgetService
     participant W as BudgetApprovalWizard
-    participant F as Firestore (budgets)
+    participant TS as TreatmentService
+    participant F as Firestore (budgets/treatment_plans/financial)
 
-    U->>BS: cria orçamento (items, valores)
-    BS->>F: budgets.add(items[], status)
+    U->>D: cria orçamento (items, valores)
+    U->>BS: budgets.add(items[], status='Pendente')
+    BS->>F: budgets.add()
     F-->>U: orçamento criado
 
-    U->>W: envia aprovação ao paciente
-    W-->>P: link de aprovação / WhatsApp
-    P-->>W: aprova / rejeita
-    W->>BS: atualiza status
-    BS->>F: budgets/{id}.update(status)
-    F-->>D: tab ORÇAMENTOS atualiza
+    U->>D: clica aprovar no orçamento
+    D->>W: BudgetApprovalWizard (se item tem generatesMonthlyFee,<br/>passos de mensalidade: valor, parcelas, vencimento)
+    W->>TS: approveBudgetWithFinancials
+    TS->>F: batch: treatment_plans (plano active) +<br/>financial (N mensalidades i/N + 1 receita/item) +<br/>expenses (Custo Inicial, se houver custo)
+    F-->>D: tabs ORÇAMENTOS/TRATAMENTOS/PAGAMENTOS atualizam
 ```
 
 ---
@@ -319,12 +320,43 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     actor P as Paciente (sem login)
-    participant PE as PublicEvaluationScreen (rota /avaliacao)
+    participant H as anamnese.html (link público ?id=patientId)
     participant F as Firestore (anamnesis)
 
-    P->>PE: abre link público
-    PE->>F: anamnesis/{patientId}.set(...)
-    Note over F: Regra Firestore:<br/>write público permitido na coleção anamnesis
-    F-->>PE: sucesso
-    PE-->>P: formulário salvo
+    P->>H: abre link recebido no WhatsApp
+    H->>F: anamnesis/{patientId}.set(...) (form completo)
+    Note over F: Regra Firestore:<br/>allow get, write if true (sem auth)<br/>na coleção anamnesis
+    F-->>H: sucesso
+    H-->>P: confirmação de envio
+```
+
+---
+
+## 13. Documentação do Paciente (Upload Cloudinary)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuário
+    participant T as PatientDocsTab
+    participant DS as DocumentService
+    participant C as Cloudinary (unsigned upload)
+    participant F as Firestore (patients/{id}/docs)
+
+    U->>T: câmera/arquivo + categoria + título
+    T->>DS: uploadFile(bytes|file, fileName)
+    DS->>C: POST api.cloudinary.com/.../auto/upload<br/>(upload_preset, resource_type=auto)
+    C-->>DS: secure_url + public_id + resource_type
+    DS->>F: saveMetadata (fileType por extensão,<br/>uploader, publicId)
+    F-->>T: stream getDocs atualiza a lista
+
+    U->>T: Excluir documento
+    T->>DS: deleteDocument(patientId, docId,<br/>clinicId, publicId, resourceType)
+    alt credenciais em settings/integrations/cloudinary
+        DS->>C: POST .../destroy (assinado sha1)
+        C-->>DS: result ok
+    else sem credenciais
+        Note over DS: pula o remoto — apaga só o Firestore
+    end
+    DS->>F: docs/{docId}.delete()
 ```

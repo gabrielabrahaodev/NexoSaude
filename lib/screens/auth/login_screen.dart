@@ -88,14 +88,17 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(borderRadius: BorderRadius.circular(20.0), child: Image.asset('assets/dente.png', height: 120)),
-              const SizedBox(height: 20),
-              Text(_isLogin ? "Bem-vindo(a)" : "Criar acesso", style: AppTextStyles.h1),
-              const SizedBox(height: 8),
-              Text("Consultório Odontológico", style: AppTextStyles.subtitle),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(child: ClipRRect(borderRadius: BorderRadius.circular(20.0), child: Image.asset('assets/dente.png', height: 120))),
+                const SizedBox(height: 20),
+                Text(_isLogin ? "Bem-vindo(a)" : "Criar acesso", style: AppTextStyles.h1, textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                Text("Consultório Odontológico", style: AppTextStyles.subtitle, textAlign: TextAlign.center),
               const SizedBox(height: 30),
               TextField(controller: _emailController, textInputAction: TextInputAction.next, onSubmitted: (_) => FocusScope.of(context).nextFocus(), decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: const Icon(Icons.email_outlined))),
               const SizedBox(height: 12),
@@ -110,13 +113,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 )
               else const SizedBox(height: 16),
               _isLoading
-                  ? const CircularProgressIndicator()
+                  ? const Center(child: CircularProgressIndicator())
                   : SizedBox(width: double.infinity, height: 48, child: FilledButton(style: FilledButton.styleFrom(backgroundColor: AppColors.accent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: _submit, child: Text(_isLogin ? "ACESSAR" : "CADASTRAR", style: const TextStyle(fontWeight: FontWeight.bold)))),
-              TextButton(onPressed: () => setState(() => _isLogin = !_isLogin), child: Text(_isLogin ? "Criar conta nova" : "Já tenho conta")),
+              Center(child: TextButton(onPressed: () => setState(() => _isLogin = !_isLogin), child: Text(_isLogin ? "Criar conta nova" : "Já tenho conta"))),
             ],
           ),
         ),
       ),
+      ),
     );
   }
 }
+

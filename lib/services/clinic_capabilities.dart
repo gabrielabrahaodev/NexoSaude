@@ -36,9 +36,13 @@ class ClinicCapabilities {
     return role == professionalRole;
   }
 
+  /// Contagem exata das abas renderizadas em `patient_details_screen.dart`:
+  /// dental = 9; psychology = 6 (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO);
+  /// desconhecido cai em dental = 9. DEVE bater com o TabBar/TabBarView —
+  /// divergência quebra o DefaultTabController em runtime.
   int get patientTabCount => switch (clinicType) {
         'dental' => 9,
-        'psychology' => 7,
-        _ => 8,
+        'psychology' => 6,
+        _ => 9,
       };
 }

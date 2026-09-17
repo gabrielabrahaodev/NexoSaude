@@ -55,8 +55,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     final caps = ClinicCapabilities.current();
 
     // Calcula número de tabs dinamicamente
-    // Dental: 9 tabs | Psychology: 7 tabs (sem Orçamentos, Odontograma, Laboratório)
-    // Outros: 8 tabs (sem Odontograma, Laboratório)
+    // Dental: 9 tabs | Psychology: 6 tabs (sem Orçamentos, Odontograma, Laboratório)
+    // Outros: 9 tabs (desconhecido cai em dental)
     final int tabCount = caps.patientTabCount;
 
     return DefaultTabController(

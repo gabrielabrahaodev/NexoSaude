@@ -5,6 +5,7 @@ import '../../services/clinic_capabilities.dart';
 import '../../services/session_manager.dart';
 
 // IMPORTS DAS TELAS
+import 'kpi_dashboard_screen.dart';
 import '../agenda/agenda_manager_screen.dart'; 
 import '../financial/financial_report_screen.dart'; 
 import '../reports/reports_screen.dart'; 
@@ -59,21 +60,25 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   // Lista de telas (índices sincronizados com _buildMenuContent)
   List<Widget> get _screens => [
-    AgendaManagerScreen(key: ValueKey(_currentClinicId)),      // 0
-    PatientListScreen(key: ValueKey(_currentClinicId)),        // 1
-    ClinicLabScreen(key: ValueKey(_currentClinicId)),          // 2
-    FinancialReportScreen(key: ValueKey(_currentClinicId)),    // 3
-    ReportsScreen(key: ValueKey(_currentClinicId)),            // 4
-    OrthoNewsScreen(),                                         // 5
-    CollectionsScreen(key: ValueKey(_currentClinicId)),        // 6
+    KpiDashboardScreen(                                            // 0
+      key: ValueKey(_currentClinicId),
+      onNavigate: _onMenuSelect,
+    ),
+    AgendaManagerScreen(key: ValueKey(_currentClinicId)),      // 1
+    PatientListScreen(key: ValueKey(_currentClinicId)),        // 2
+    ClinicLabScreen(key: ValueKey(_currentClinicId)),          // 3
+    FinancialReportScreen(key: ValueKey(_currentClinicId)),    // 4
+    ReportsScreen(key: ValueKey(_currentClinicId)),            // 5
+    OrthoNewsScreen(),                                         // 6
+    CollectionsScreen(key: ValueKey(_currentClinicId)),        // 7
 
     // ÁREA RESTRITA
-    ClinicManagementScreen(key: ValueKey(_currentClinicId)),   // 7
-    EmployeeManagerScreen(key: ValueKey(_currentClinicId)),    // 8
-    OperationsManagerScreen(key: ValueKey(_currentClinicId)),  // 9
+    ClinicManagementScreen(key: ValueKey(_currentClinicId)),   // 8
+    EmployeeManagerScreen(key: ValueKey(_currentClinicId)),    // 9
+    OperationsManagerScreen(key: ValueKey(_currentClinicId)),  // 10
 
     // --- TELA ESPECIALIZADA (psicologia) ---
-    PsychologyKanbanBoard(key: ValueKey('$_currentClinicId-psy-kanban')), // 10
+    PsychologyKanbanBoard(key: ValueKey('$_currentClinicId-psy-kanban')), // 11
   ];
 
   void _onMenuSelect(int index) {
@@ -293,33 +298,34 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
             child: Column(
               children: [
                 const SizedBox(height: 10),
-                _buildMenuItem(0, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(1, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
-                
+                _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
+
                 // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
                 if (ClinicCapabilities.ofType(_currentClinicType)
                     .canShowTherapeuticFlow)
-                  _buildMenuItem(10, "Fluxo Terapêutico", Icons.psychology,
+                  _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
                       highlightColor, Colors.purple, isCompact),
                 // ----------------------------------------
 
-                _buildMenuItem(2, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(3, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(4, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(5, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(6, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
+                _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(3, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
+                _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
 
                 // DONO
                 if (_userRole == 'owner') ...[
                   const Divider(height: 30, thickness: 1),
-                  _buildMenuItem(7, "Clínicas", Icons.store_mall_directory, highlightColor, primaryColor, isCompact),
-                  _buildMenuItem(8, "Funcionários", Icons.badge_outlined, highlightColor, primaryColor, isCompact),
+                  _buildMenuItem(8, "Clínicas", Icons.store_mall_directory, highlightColor, primaryColor, isCompact),
+                  _buildMenuItem(9, "Funcionários", Icons.badge_outlined, highlightColor, primaryColor, isCompact),
                 ],
 
                 // GESTÃO
                 if (_userRole == 'owner' || _userRole == 'recepcionista') ...[
                   if (_userRole != 'owner') const Divider(height: 30, thickness: 1),
-                  _buildMenuItem(9, "Gestão", Icons.settings_applications, highlightColor, primaryColor, isCompact),
+                  _buildMenuItem(10, "Gestão", Icons.settings_applications, highlightColor, primaryColor, isCompact),
                 ],
               ],
             ),

@@ -16,7 +16,7 @@ Cobrança, documentação do paciente, feed de notícias.
 ## Arquivos-chave
 
 - `lib/services/whatsapp_helper.dart` — `getMessage` (rotativa), `openWhatsApp`
-- `lib/services/document_service.dart` — `uploadFile` (Cloudinary), `saveMetadata`, `getDocs`, `deleteDocument` (precisa `debugPrint` do foundation)
+- `lib/services/document_service.dart` — `uploadFile` (retorna url+`publicId`), `saveMetadata`, `getDocs`, `deleteDocument` (tenta destroy remoto), `purgePatientFiles` (lote da cascata). Destroy assinado via credenciais em `clinics/{id}/settings/integrations/cloudinary/{config}`; sem elas, só Firestore
 - `lib/services/news_service.dart` — `getLatestOrthoNews` (Google Alerts + backup, cache 15min, tradução)
 
 ## Fluxos
@@ -27,4 +27,5 @@ Cobrança, documentação do paciente, feed de notícias.
 ## Regras / Gotchas
 
 - `openWhatsApp` pode falhar (sem app) — sempre tratar `success == false` com SnackBar.
+- `cloudName`/`uploadPreset` hardcoded (`dbbh601ay`); preset precisa ser **unsigned** no painel Cloudinary.
 - Cache de notícias é em memória — restart limpa; `formats` não usado (limpeza pendente).

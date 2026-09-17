@@ -36,7 +36,7 @@ Rules (locked decisions): partial month charges partial · divisor = previstas �
 
 ### 3. New Fields
 `monthlyPeriod: "YYYY-MM"` + `billingKind: package_monthly|session` in FinancialModel;
-`schedulId`/`planId`/`monthlyPeriod`/`attendanceStatus`/`hasMedicalCertificate` in appointments.
+`scheduleId`/`planId`/`monthlyPeriod`/`attendanceStatus`/`hasMedicalCertificate` in appointments.
 
 ### 4. Installment Number Format
 `"MMM/yyyy N/T"` (ex: `"Jan/2025 1/5"`) — compatible with `treatments_tab.dart` grouping.
@@ -54,7 +54,13 @@ Rules (locked decisions): partial month charges partial · divisor = previstas �
 
 ---
 
-## Pseudocode for Monthly Grouping
+## Pseudocode for Monthly Grouping (esboço inicial — SUPERSEDED)
+
+> Histórico: rascunho da proposta original (valor = sessões × valor unitário,
+> vencimento no último dia do mês). **A implementação final difere**:
+> valor cheio do pacote por mês (`effectiveValue` = pacote − desconto) e
+> vencimento fixo **dia 10 do mês seguinte** — ver "Current Behavior" acima e
+> `psychology_schedule_form_screen.dart:_generateAppointments`.
 
 ```dart
 // Group sessions by month
@@ -103,8 +109,8 @@ for (final entry in sessionsByMonth.entries) {
 | Package spans year boundary (Dec → Jan) | Works naturally with YYYY-MM key |
 | Only 1 month of sessions | Single record, installmentNumber="Jan/2025 1/1" |
 | Month with 5 weeks (5 sessions) | Higher amount for that month |
-| Patient cancels mid-package | Mark future months' financial records as cancelled |
-| Package edited (add/remove sessions) | Regenerate financial records for affected months |
+| Patient cancels mid-package | `_cancelSchedule`: schedule → `cancelled`, futuras não finalizadas → `Cancelado`, financeiros `pendente/pending` do plano → `Cancelado` (finalizados/pagos intactos) |
+| Package edited (add/remove sessions) | **Não regenera** — edição atualiza só o schedule; só o `add` gera agenda/financeiro |
 
 ---
 
@@ -125,8 +131,9 @@ for (final entry in sessionsByMonth.entries) {
 1. **Pacote 12 sessões, 1x/semana, inicia 15/01** → 3 meses de parcelas
 2. **Pacote 24 sessões, 2x/semana, inicia 01/03** → 6 meses
 3. **Pacote curto (4 sessões no mesmo mês)** → 1 parcela
-4. **Editar pacote ativo** → Regenera financeiro
-5. **Cancelar paciente** → Cascade delete financial records
+4. **Editar pacote ativo** → NÃO regenera financeiro (só atualiza o schedule)
+5. **Cancelar contrato** → futuras → `Cancelado`, financeiros pendentes do plano → `Cancelado`
+6. **Cancelar paciente** → Cascade delete financial records
 
 ---
 
