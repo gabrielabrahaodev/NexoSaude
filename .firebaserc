@@ -1,5 +1,1 @@
-{
-  "projects": {
-    "default": "odontocontrole-1c701"
-  }
-}
+{"projects": {"default": "nexosaude", "odontocontrole": "odontocontrole-1c701"}}

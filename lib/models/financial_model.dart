@@ -37,6 +37,9 @@ class FinancialModel {
   // --- CAMPOS PARA PACOTES MENSAIS PSICOLOGIA ---
   final String? monthlyPeriod; // Formato "YYYY-MM"
 
+  // --- FAMÍLIA DE PARCELAMENTO (renegociação) ---
+  final String? parentId; // id do doc original que gerou as parcelas
+
   FinancialModel({
     required this.id,
     required this.clinicId,
@@ -63,10 +66,36 @@ class FinancialModel {
     this.planId,
     this.installmentNumber,
     this.monthlyPeriod,
+    this.parentId,
   });
 
-  // GETTER RESTAURADO: isPaid
-  bool get isPaid => status == 'paid' || status == 'anticipated' || (paidAmount >= amount && amount > 0);
+  // DEFINIÇÃO ÚNICA de "pago" (ver RN-30 + teste financial_ispaid_test).
+  // Une todas as variantes que os leitores aceitavam (paid/pago/quitado/
+  // anticipated/antecipado/recebido, qualquer caixa) + quitação por valor.
+  // Aceita dynamic (banco pode ter String) — nunca estoura.
+  static bool isPaidOf({
+    required String status,
+    required dynamic paidAmount,
+    required dynamic amount,
+  }) {
+    switch (status.toLowerCase().trim()) {
+      case 'paid':
+      case 'pago':
+      case 'quitado':
+      case 'anticipated':
+      case 'antecipado':
+      case 'recebido':
+        return true;
+      default:
+        final paid = _toDouble(paidAmount);
+        final total = _toDouble(amount);
+        return paid >= total && total > 0;
+    }
+  }
+
+  // GETTER RESTAURADO: isPaid (delega p/ definição única)
+  bool get isPaid =>
+      FinancialModel.isPaidOf(status: status, paidAmount: paidAmount, amount: amount);
 
   Map<String, dynamic> toMap() {
     return {
@@ -94,6 +123,7 @@ class FinancialModel {
       'planId': planId,
       'installmentNumber': installmentNumber,
       'monthlyPeriod': monthlyPeriod,
+      'parentId': parentId,
     };
   }
 
@@ -129,6 +159,7 @@ class FinancialModel {
       planId: map['planId'],
       installmentNumber: map['installmentNumber'],
       monthlyPeriod: map['monthlyPeriod'],
+      parentId: map['parentId'],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../../../ui/app_theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -172,7 +173,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton(
         onPressed: _isUploading ? null : () {
           showModalBottomSheet(context: context, builder: (ctx) => Column(
@@ -191,7 +192,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
         children: [
           // Filtros (Chips)
           Container(
-            color: Colors.white,
+            color: AppColors.surface,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: SingleChildScrollView(
@@ -206,9 +207,9 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                       label: Text(cat),
                       selected: isSel,
                       onSelected: (val) => setState(() => _selectedCategory = cat),
-                      backgroundColor: Colors.grey[100],
+                      backgroundColor: AppColors.surface,
                       selectedColor: Colors.blue[100],
-                      labelStyle: TextStyle(color: isSel ? Colors.blue[900] : Colors.black87),
+                      labelStyle: TextStyle(color: isSel ? Colors.blue[900] : AppColors.textPrimary),
                       checkmarkColor: Colors.blue[900],
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSel ? Colors.blue : Colors.transparent)),
                     ),
@@ -322,8 +323,8 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)),
-              child: Text(doc.category, style: TextStyle(fontSize: 10, color: Colors.grey[800])),
+              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(4)),
+              child: Text(doc.category, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
             ),
             const SizedBox(width: 8),
             Text(DateFormat('dd/MM/yyyy HH:mm').format(doc.uploadedAt), style: const TextStyle(fontSize: 11)),

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../ui/app_theme.dart';
+import '../../models/financial_model.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/session_manager.dart';
@@ -24,11 +26,12 @@ class KpiDashboardScreen extends StatelessWidget {
   }
 
   bool _isPaid(Map<String, dynamic> data) {
-    final status = '${data['status']}';
-    if (status == 'paid' || status == 'anticipated') return true;
-    final amount = _toDouble(data['amount']);
-    final paid = _toDouble(data['paidAmount']);
-    return paid >= amount && amount > 0;
+    return FinancialModel.isPaidOf(
+          status: '${data['status']}',
+          paidAmount: data['paidAmount'],
+          amount: data['amount'],
+        ) ||
+        data['isPaid'] == true;
   }
 
   double _toDouble(dynamic value) {
@@ -135,9 +138,9 @@ class KpiDashboardScreen extends StatelessWidget {
                   return da.compareTo(db);
                 });
 
-                // --- Agendamentos hoje ---
+                // --- Agendamentos hoje (só confirmados) ---
                 final todayCount = (apptSnap.data?.docs ?? [])
-                    .where((d) => d.data()['status'] != 'Cancelado')
+                    .where((d) => d.data()['status'] == 'Confirmado')
                     .length;
 
                 // --- Aniversariantes do mês ---
@@ -373,7 +376,7 @@ class _KpiCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -460,7 +463,7 @@ class _Panel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.grey.shade200),
       ),

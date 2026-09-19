@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Migracao Firebase (segredos - NUNCA commitar)
+migrate/*-key.json
+migrate/usuarios.json
+migrate/node_modules/

@@ -106,26 +106,14 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 
 ## UI/Navigation Patterns
 
-### MainWebDashboard Menu Structure (index-based)
-```
-0  Dashboard                 → KpiDashboardScreen
-1  Agenda                    → AgendaManagerScreen
-2  Pacientes                 → PatientListScreen
-3  Laboratório               → ClinicLabScreen
-4  Financeiro                → FinancialReportScreen
-5  Relatórios                → ReportsScreen
-6  Notícias                  → OrthoNewsScreen
-7  Cobranças                 → CollectionsScreen
-8  Clínicas (owner)          → ClinicManagementScreen
-9  Funcionários (owner)      → EmployeeManagerScreen
-10 Gestão (owner/recep)      → OperationsManagerScreen
-11 Fluxo Terapêutico (psych) → PsychologyKanbanBoard
-```
-(Removidos: `Novos Leads` + `Agendas Psicologia` e seus arquivos/serviços exclusivos.)
+### MainWebDashboard Menu Structure (índices de `_screens`; ordem varia por tipo)
+Dental: 0 Dashboard, 1 Agenda, 2 Pacientes, 3 Laboratório, 4 Financeiro, 5 Relatórios, 6 Notícias, 7 Cobranças, 8 Clínicas (owner), 9 Funcionários (owner), 10 Gestão (owner/recep).
+Psicologia: 0 Dashboard, 1 Agenda, 2 Pacientes, 7 Cobranças, 11 Fluxo Terapêutico, 4 Financeiro, 5 Relatórios, 6 Notícias (+ 8/9/10 por role); **Laboratório oculto**. Troca de clínica reseta p/ Dashboard se a tela atual sumiu do menu.
 
 ### Clinic Type Switching
 - `_currentClinicType` state in `MainWebDashboard`
-- Item 10 only renders when `ClinicCapabilities.canShowTherapeuticFlow`
+- Item 11 (Fluxo) renders when `ClinicCapabilities.canShowTherapeuticFlow`
+- Menu items additionally filtered by `MenuAccess.canShow` (per-user `menuAccess`); hidden selection falls back to Dashboard (`_effectiveIndex`)
 - Never compare `clinicType` strings directly — use `ClinicCapabilities`
 - `SessionManager().setClinic(id, name, type)` updates both
 
@@ -164,13 +152,21 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 ### Cancelamento de contrato psico
 - Botão no modo edição do form: futuras não finalizadas → `Cancelado`, financeiros `pendente/pending` do plano → `Cancelado`; finalizados/pagos intactos; batch em blocos de 450. Edição **não regenera** agenda/financeiro.
 
+### Gestão: aba Configurações + menu psico
+- 5ª aba (CONFIGURAÇÕES): tema claro/escuro por aparelho + controle de acesso (`menuAccess` por usuário, filtrado por tipo via `keysForClinicType`; owner edita/ignora)
+- Tema: `ThemeController` (preferência por usuário em `user_prefs/{uid}` + fallback do aparelho) + `AppColors` adaptativo + `buildAppTheme(dark:)`; telas com cor hardcoded não seguem o escuro (fase 2)
+- Menu psico: Dashboard, Agenda, Pacientes, Cobranças, Fluxo, Financeiro, Relatórios (+Notícias); Laboratório oculto; troca de clínica reseta seleção órfã
+
 ### Limpeza
 - Deletados: `leads/`, `mock_data_service`, `psychology_schedule_list_screen`, `psychology_schedule_service`, `agenda_form_screen copy`, `patient_financial_tab copy*`
+- Deletados (code-simplifier): `utils/app_constants.dart` (morto + valores errados), `payment_service.receivePayment`, `_checkForGroupPayment`, `_showMonthlyValueDialog`, `_createNewProfile`, `_buildMinimalistCard`, `_getInitials`, `_isLoadingData`, imports/campos mortos; rules `plans/anticipations` removidas
+- Helpers puros em `utils/display.dart` (`parseBRL`, `daysAgoLabel`, `slotCardColor`, `chargeBadgeColor`) + `relatedDocs()` na fin_tab; ternários aninhados eliminados
 - `firestore.indexes.json` reformatado (removida duplicata `appointments`)
 - `widget_test.dart` usa `ClinicApp`; `print` → `debugPrint`; `withOpacity` → `withValues`
 
 ### Pending Firestore Index Deploy
-- Run: `firebase deploy --only firestore:indexes`
+- `firestore.indexes.json` mesclado (console + novos filtros) — fonte da verdade; **nunca aceitar delete** no deploy (`No`)
+- Run: `firebase deploy --only firestore:rules,indexes` (rules liberam `user_prefs` p/ o tema por usuário)
 
 ---
 
@@ -247,7 +243,7 @@ flutterfire configure
 - `lib/firebase_options.dart` - Auto-generated, **do not edit manually**
 - `firebase.json` - Hosting redirects (root → external site, `/sistema-interno/**` → SPA)
 - `firestore.indexes.json` - Composite indexes for queries
-- `.firebaserc` - Project alias (`default = odontocontrole-1c701`)
+- `.firebaserc` - Project alias (`default = nexosaude`; `odontocontrole` = antigo, backup)
 
 ---
 

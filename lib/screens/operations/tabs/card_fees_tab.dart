@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../services/session_manager.dart';
+import '../../../ui/app_theme.dart';
 
 // Classe auxiliar para as linhas de regras
 class InstallmentRangeRow {
@@ -154,14 +155,6 @@ class _CardFeesTabState extends State<CardFeesTab> {
 
   // --- LÓGICA DE AÇÕES ---
 
-  void _createNewProfile() {
-    setState(() {
-      _selectedProfileId = null; // Null indica novo
-      _clearForm();
-      _addRange();
-    });
-  }
-
   void _addRange() {
     setState(() => _installmentRanges.add(InstallmentRangeRow()));
   }
@@ -311,7 +304,7 @@ class _CardFeesTabState extends State<CardFeesTab> {
     if (_isLoading && _profiles.isEmpty) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -325,7 +318,7 @@ class _CardFeesTabState extends State<CardFeesTab> {
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green)),
+                  decoration: BoxDecoration(color: AppColors.isDark ? const Color(0xFF1B3A24) : Colors.green[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green)),
                   child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.check_circle, color: Colors.green, size: 16), SizedBox(width: 8), Text("Esta é a máquina padrão utilizada nos cálculos.", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))]),
                 ),
 

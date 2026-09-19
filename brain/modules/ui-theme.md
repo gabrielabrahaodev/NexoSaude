@@ -15,7 +15,7 @@ Nova tela, card, lista kanban, atalho de ação.
 
 ## Arquivos-chave
 
-- `lib/ui/app_theme.dart` (`background` depreciado → usar `surface`), `lib/ui/odontogram/tooth_widget.dart`, `lib/utils/app_constants.dart`
+- `lib/ui/app_theme.dart` (`AppColors` adaptativo claro/escuro via `ThemeController`; `primary/accent/danger` seguem const), `lib/ui/odontogram/tooth_widget.dart`, `lib/utils/display.dart` (helpers puros: `parseBRL`, `daysAgoLabel`, `slotCardColor`, `chargeBadgeColor`)
 - `lib/widgets/appointment_cards.dart` (`AppointmentActionCard`, `SimpleAppointmentCard`), `lab_kanban_board.dart`, `patient_smart_context_card.dart`, `quick_action_button.dart`
 
 ## Fluxos

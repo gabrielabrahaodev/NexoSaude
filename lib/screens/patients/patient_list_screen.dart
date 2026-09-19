@@ -245,7 +245,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
                     Row(children: [const Icon(Icons.phone, size: 14, color: Colors.grey), const SizedBox(width: 4), Text(phone.isNotEmpty ? phone : "Não informado", style: AppTextStyles.caption)]),
                     if (cpf.isNotEmpty) ...[const SizedBox(height: 2), Row(children: [const Icon(Icons.badge_outlined, size: 14, color: Colors.grey), const SizedBox(width: 4), Text(cpf, style: AppTextStyles.caption)])],

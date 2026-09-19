@@ -26,3 +26,5 @@ Ver/editar/cancelar/finalizar atendimento; célula vazia cria; long-press exclui
 
 - `value` de `DropdownButtonFormField` depreciado → `initialValue`; `Radio groupValue/onChanged` → `RadioGroup`.
 - Slots derivam de `durationMinutes` (30min base); bloqueios e cancelados têm render próprio (cenários A/B/C em `_buildCell`).
+- Carregamento: `AgendaSkeleton` (shimmer, `screens/agenda/agenda_skeleton.dart`) enquanto `waiting`; erro explícito, sem loader infinito. Shimmer compartilhado em `widgets/shimmer_box.dart` (também usado pelo `BillingSkeleton`).
+- Filtro de dentista é assíncrono (`_checkRoleAndFetchDentists`): a grade segura no skeleton enquanto `_isLoadingDentists` p/ não exibir tudo sem filtro e trocar depois.

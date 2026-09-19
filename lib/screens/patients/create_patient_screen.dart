@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../ui/app_theme.dart';
 // ADICIONE ESTE IMPORT
-import '../../services/session_manager.dart'; 
+import '../../services/session_manager.dart';
+import '../../services/clinic_capabilities.dart';
+import '../../models/therapeutic_status.dart';
 
 class CreatePatientScreen extends StatefulWidget {
   const CreatePatientScreen({super.key});
@@ -21,6 +23,9 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
   final _rgController = TextEditingController();
   final _birthController = TextEditingController();
   final _addressController = TextEditingController();
+
+  // Status terapêutico (só psicologia; dental ignora e grava 'Ativo')
+  TherapeuticStatus _therapeuticStatus = TherapeuticStatus.lead;
 
   // --- MÁSCARAS ---
   final maskPhone = MaskTextInputFormatter(
@@ -95,7 +100,10 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
         return;
       }*/
 
-      // Salva com o carimbo da clínica
+      // Salva com o carimbo da clínica.
+      // Psicologia: grava o estágio terapêutico escolhido (kanban lê direto).
+      // Dental: 'Ativo' (campo invisível, lista não depende dele).
+      final isPsy = ClinicCapabilities.current().isPsychology;
       await FirebaseFirestore.instance.collection('patients').add({
         'clinicId': clinicId, // CAMPO OBRIGATÓRIO NOVO
         'name': _nameController.text.trim(),
@@ -105,7 +113,7 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
         'birthDate': _birthController.text.trim(),
         'address': _addressController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'Ativo',
+        'status': isPsy ? _therapeuticStatus.storage : 'Ativo',
         'searchKey': _nameController.text.trim().toLowerCase(),
       });
 
@@ -211,7 +219,33 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
               ),
 
               const SizedBox(height: 32),
-              
+
+              // Só psicologia escolhe o estágio (default: Prospecto).
+              // Dental não vê este campo e grava 'Ativo'.
+              if (ClinicCapabilities.current().isPsychology) ...[
+                const Text("Status Terapêutico",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<TherapeuticStatus>(
+                  value: _therapeuticStatus,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.psychology),
+                  ),
+                  items: TherapeuticStatus.values
+                      .map((s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(s.label),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _therapeuticStatus = v);
+                  },
+                ),
+                const SizedBox(height: 32),
+              ],
+
               SizedBox(
                 height: 50,
                 child: ElevatedButton(

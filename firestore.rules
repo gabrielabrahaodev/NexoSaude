@@ -36,7 +36,35 @@ service cloud.firestore {
     // A. USUÁRIOS
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(); 
+      allow write: if isOwner();
+      // Auto-cadastro (email/Google): o próprio usuário cria o doc,
+      // sem clínica e sem poder virar owner (owner libera depois).
+      allow create: if isAuthenticated() && request.auth.uid == userId
+          && request.resource.data.role in
+             ['dentist', 'dentista', 'receptionist', 'recepcionista', 'psicologo']
+          && request.resource.data.allowedClinics == []
+          && request.resource.data.status == 'pending_approval';
+    }
+
+    // A2. PREFERÊNCIAS DO USUÁRIO (ex.: tema) — o próprio usuário ou owner.
+    match /user_prefs/{uid} {
+      allow read, write: if isAuthenticated() &&
+          (isOwner() || request.auth.uid == uid);
+    }
+
+    // A3. PEDIDOS DE RESET DE SENHA (sem e-mail automatico: e-mails
+    // genericos nao tem caixa de entrada). Create PUBLICO (pedido feito
+    // deslogado na tela de login, allowlist rigida); leitura, update e
+    // delete SO owner. Staff nao le: o doc nao tem clinicId, entao o
+    // hasClinicAccess do catch-all F retorna false.
+    match /password_reset_requests/{docId} {
+      allow create: if request.resource.data.keys().hasOnly(
+            ['email', 'createdAt', 'status'])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.email is string
+          && request.resource.data.email.size() > 3
+          && request.resource.data.email.size() < 100;
+      allow read, update, delete: if isOwner();
     }
 
     // B. CLÍNICAS
@@ -130,13 +158,14 @@ service cloud.firestore {
           (isOwner() || hasClinicAccess(request.resource.data.clinicId));
     }
 
-    match /plans/{document=**} {
-      allow read, write: if request.auth != null;
-    }
+    // (blocos plans/anticipations removidos — ver nota abaixo)
 
     // REMOVIDOS os blocos amplos de financial/treatments/treatment_plans:
     // redundantes com a regra F (já exige owner OU acesso à clínica) e
     // apenas alargavam o acesso. Sem eles, vale a regra F.
+
+    // REMOVIDOS `plans/**` e `anticipations/**`: sem escritores/leitores
+    // no app (verificado) — sem regra, o acesso é negado por padrão.
     
     // --- CONFIGURAÇÕES DA CLÍNICA (fees + integrations) ---
     // settings/*: leitura p/ qualquer autenticado (telas leem perfil de
@@ -149,11 +178,6 @@ service cloud.firestore {
     }
     match /clinics/{clinicId}/settings/integrations/{sub=**} {
       allow read, write: if isOwner();
-    }
-    
-    // Permite que utilizadores logados leiam e gravem o histórico de antecipações
-    match /anticipations/{document} {
-      allow read, write: if request.auth != null;
     }
     
     // ---------------------------------------------------------

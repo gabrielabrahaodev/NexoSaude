@@ -1,0 +1,9 @@
+{
+  "name": "firestore-migrate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Migracao completa Firestore projeto antigo -> novo (mesmos IDs)",
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

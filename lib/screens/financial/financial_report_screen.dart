@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../ui/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -331,12 +332,12 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Fluxo de Caixa Real", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: Text("Fluxo de Caixa Real", style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
       body: StreamBuilder<OracleReportSnapshot>(
@@ -353,7 +354,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
               Column(
                 children: [
                   Container(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -395,7 +396,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                 top: 10,
                 right: 10,
                 child: FloatingActionButton.small(
-                  backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
                   child: const Icon(Icons.print, color: Colors.blueGrey),
                   onPressed: () => _exportReceitaSaude(transactions, data),
                 ),
@@ -432,7 +433,7 @@ class _TransactionRow extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white, 
+          color: AppColors.surface, 
           borderRadius: BorderRadius.circular(10), 
           border: Border(left: BorderSide(color: statusColor, width: 4)), 
           boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2))]

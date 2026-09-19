@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'session_manager.dart'; 
+import 'session_manager.dart';
+import '../models/financial_model.dart';
 
 // --- MODELOS AUXILIARES ---
 class TransactionItem {
@@ -86,7 +87,13 @@ class OracleReportService {
       String id = doc.id;
       String patientName = data['patientName'] ?? 'Receita Avulsa';
       double amount = (data['amount'] ?? 0).toDouble();
-      bool isPaid = data['isPaid'] ?? false;
+      // Definição única de "pago" (+ flag crua legada).
+      bool isPaid = FinancialModel.isPaidOf(
+            status: data['status']?.toString() ?? '',
+            paidAmount: data['paidAmount'],
+            amount: data['amount'],
+          ) ||
+          data['isPaid'] == true;
       String status = (data['status'] ?? '').toString().toLowerCase().trim();
       String method = data['paymentMethod'] ?? 'Dinheiro'; 
 
@@ -112,9 +119,8 @@ class OracleReportService {
           // Mantém isPaid como false para aparecer como "PENDENTE" até ao vencimento
         }
       } else {
-        if (isPaid || status == 'pago' || status == 'paid') {
+        if (isPaid) {
           effectiveDate = paidDate ?? date;
-          isPaid = true;
         } else {
           effectiveDate = dueDate;
         }
@@ -149,7 +155,12 @@ class OracleReportService {
       
       String category = data['category'] ?? 'Geral';
       String method = data['paymentMethod'] ?? 'Boleto/Outros';
-      bool expIsPaid = data['isPaid'] == true || status == 'pago' || status == 'paid';
+      bool expIsPaid = FinancialModel.isPaidOf(
+            status: data['status']?.toString() ?? '',
+            paidAmount: data['paidAmount'],
+            amount: data['amount'],
+          ) ||
+          data['isPaid'] == true;
 
       DateTime effectiveDate = expIsPaid ? (paidDate ?? dueDate) : dueDate;
 

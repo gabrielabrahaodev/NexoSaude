@@ -15,9 +15,9 @@ Cobrança, pacotes mensais, relatório financeiro, despesa recorrente, recebimen
 
 ## Arquivos-chave
 
-- `lib/services/financial_service.dart` — `getByPatientId`, `processPayment`, `voidPayment`
+- `lib/services/financial_service.dart` — `getByPatientId`, `processPayment` (+`computeInstallments` puro, `parentId` nas filhas), `voidPayment`, `cancelCharge` (soft `cancelado`, +família), `recordingFor`, `recreateCharge`/`recreatedData`, `editPendingCharge`
+- `lib/services/payment_service.dart` — SÓ `reverseTransaction` (livro-caixa); `receivePayment` removido (morto)
 - `lib/services/expense_service.dart` — `addExpense`, `addRecurringExpense`, `markAsPaid`, `getByMonth`
-- `lib/services/payment_service.dart` — `receivePayment`, `reverseTransaction`
 - `lib/services/whatsapp_helper.dart` — mensagens rotativas + abertura do WhatsApp
 - `lib/models/financial_model.dart` (`_toDouble` defensivo, `monthlyPeriod`, `billingKind`), `lib/models/expense_model.dart`
 - `lib/services/package_billing.dart` — rateio do pacote por presença (puro, sem Firebase)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../ui/app_theme.dart';
 import '../../services/session_manager.dart';
 import '../../services/lab_service.dart';
 import '../../widgets/lab_kanban_board.dart';
@@ -59,14 +60,14 @@ class _ClinicLabScreenState extends State<ClinicLabScreen> {
     if (clinicId == null) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: Column(
         children: [
           // --- CABEÇALHO E FILTROS ---
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               border: Border(bottom: BorderSide(color: Colors.grey.shade200))
             ),
             child: Column(

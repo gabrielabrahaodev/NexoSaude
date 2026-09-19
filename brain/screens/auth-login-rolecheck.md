@@ -9,7 +9,8 @@ description: Login/cadastro e resolução de papel e clínica pós-login.
 
 ## O que é
 
-Email/senha (Firebase Auth); registro cria `users` com role + `allowedClinics` padrão;
+Email/senha (Firebase Auth) + **Entrar com Google** (popup Web / conta mobile);
+registro cria `users` pendente (`allowedClinics: []`, auto-cadastro na rule);
 `RoleCheckScreen` (loading) resolve clínica via `SessionManager().resolveClinic`.
 
 ## Quando usar

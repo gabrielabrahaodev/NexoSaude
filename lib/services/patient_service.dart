@@ -87,11 +87,10 @@ class PatientService {
     'psychology_schedules',
   ];
 
-  // Subcoleções reais do paciente ('docs' = uploads via DocumentService).
-  // 'documents'/'photos' eram nomes legados que nunca tiveram docs.
+  // Subcoleções reais do paciente ('docs' = uploads via DocumentService;
+  // 'clinical_data' guarda o doc 'odontogram').
   static const _patientSubcollections = [
-    'odontogram',
-    'anamnesis',
+    'clinical_data',
     'docs',
   ];
 
@@ -115,7 +114,7 @@ class PatientService {
       }
     }
 
-    // Subcoleções do paciente (Odontograma, Anamnese, uploads).
+    // Subcoleções do paciente (clinical_data/odontogram, uploads).
     final patientRef = _collection.doc(patientId);
     for (final sub in _patientSubcollections) {
       final subDocs = await patientRef.collection(sub).get();
@@ -126,6 +125,9 @@ class PatientService {
         deletes.add(doc.reference);
       }
     }
+
+    // Anamnese pública (doc top-level `anamnesis/{patientId}`, fora do paciente)
+    deletes.add(db.collection('anamnesis').doc(patientId));
 
     // Finalmente, o próprio paciente
     deletes.add(patientRef);

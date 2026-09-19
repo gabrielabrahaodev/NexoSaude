@@ -10,6 +10,7 @@ description: Cadastro de paciente com clinicId da sessão.
 ## O que é
 
 Formulário que grava em `patients` já com o `clinicId` atual.
+Psico exibe dropdown de Status Terapêutico (default Prospecto); dental grava `status='Ativo'` sem campo.
 
 ## Quando usar
 

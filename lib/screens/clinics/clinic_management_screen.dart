@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 
@@ -138,7 +139,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

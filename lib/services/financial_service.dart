@@ -2,9 +2,64 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/financial_model.dart';
 import 'session_manager.dart';
 
+/// Parcela calculada: bruto, taxa e líquido (2 casas, ajustes na 1ª).
+class InstallmentSlice {
+  final double value;
+  final double tax;
+  final double net;
+
+  const InstallmentSlice({
+    required this.value,
+    required this.tax,
+    required this.net,
+  });
+}
+
 class FinancialService {
   // --- ESSA LINHA É CRÍTICA PARA FUNCIONAR ---
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  /// Parcela calculada (bruto, taxa e líquido já com ajustes de centavos).
+  /// Extraído puro a partir do loop do `processPayment` — mesma matemática.
+  static List<InstallmentSlice> computeInstallments({
+    required double payValue,
+    required int installments,
+    double? taxPerInstallment,
+    double? netPerInstallment,
+  }) {
+    final installmentValue = payValue / installments;
+
+    // Ajuste de centavos no Bruto (diferença vai para a 1ª)
+    final totalCalculated =
+        double.parse(installmentValue.toStringAsFixed(2)) * installments;
+    final difference = payValue - totalCalculated;
+
+    final out = <InstallmentSlice>[];
+    for (int i = 1; i <= installments; i++) {
+      double finalValue = double.parse(installmentValue.toStringAsFixed(2));
+      if (i == 1) finalValue += difference;
+
+      double finalTax = taxPerInstallment ?? 0.0;
+      double finalNet = netPerInstallment ?? finalValue;
+
+      // Ajuste de centavos no Líquido (diferença vai para a 1ª)
+      if (netPerInstallment != null && installments > 1) {
+        final totalNetCalc =
+            double.parse(netPerInstallment.toStringAsFixed(2)) * installments;
+        final totalNetReal =
+            payValue - ((taxPerInstallment ?? 0) * installments);
+        final diffNet = totalNetReal - totalNetCalc;
+        if (i == 1) finalNet += diffNet;
+      }
+
+      out.add(InstallmentSlice(
+        value: finalValue,
+        tax: finalTax,
+        net: finalNet,
+      ));
+    }
+    return out;
+  }
 
   /// Como um recebimento deve ser gravado conforme o método.
   /// Métodos imediatos (Dinheiro/Pix/...) = pago na hora (`pago`).
@@ -29,10 +84,10 @@ class FinancialService {
             .toList());
   }
 
-  // Estornar pagamento
-  Future<void> voidPayment(String id) async {
-    await _db.collection('financial').doc(id).update({
-      'status': 'Pendente',
+  // Estornar pagamento (volta a pendente, mantém histórico)
+  Future<void> voidPayment(String id) {
+    return _db.collection('financial').doc(id).update({
+      'status': 'pendente',
       'isPaid': false,
       'paidAmount': 0.0,
       'paymentDate': null,
@@ -43,6 +98,77 @@ class FinancialService {
       'valorLiquido': 0.0,
       'netAmount': 0.0,
     });
+  }
+
+  /// Cancela uma cobrança/lançamento (soft-delete com trilha).
+  /// Some dos relatórios/cobrança/risco (todos excluem `cancelado`)
+  /// sem apagar o histórico (fiscal). Para corrigir valor, usar
+  /// estorno + relançamento em vez disso.
+  Future<void> cancelCharge(String id) {
+    return _db.collection('financial').doc(id).update({
+      'status': 'cancelado',
+      'cancelledAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Monta os dados da cobrança recriada a partir de um doc cancelado.
+  /// Mantém termos e vínculos (plano, orçamento, parcela, vencimento
+  /// original); zera quitação e taxas (o recebimento recalcula tudo).
+  /// [amount]/[dueDate] opcionais corrigem o valor no mesmo passo.
+  /// Puro e testado — o `add` + `date` de lançamento ficam no caller.
+  static Map<String, dynamic> recreatedData(
+    Map<String, dynamic> original, {
+    double? amount,
+    DateTime? dueDate,
+  }) {
+    final data = Map<String, dynamic>.from(original);
+    data['status'] = 'pendente';
+    data['paidAmount'] = 0.0;
+    data['paymentDate'] = null;
+    data['paymentMethod'] = '';
+    data['feePercentage'] = 0.0;
+    data['feeAmount'] = 0.0;
+    data['taxVal'] = 0.0;
+    data['valorLiquido'] = 0.0;
+    data['netAmount'] = 0.0;
+    data['payerName'] = '';
+    data['payerCpf'] = '';
+    data.remove('cancelledAt');
+    if (amount != null) data['amount'] = amount;
+    if (dueDate != null) data['dueDate'] = Timestamp.fromDate(dueDate);
+    return data;
+  }
+
+  /// Recria uma cobrança cancelada como pendente nova (clone-zerado).
+  /// Retorna o id do novo doc. Vale p/ qualquer origem (pendente ou paga).
+  Future<String> recreateCharge(
+    String id, {
+    double? amount,
+    DateTime? dueDate,
+  }) async {
+    final doc = await _db.collection('financial').doc(id).get();
+    final original = doc.data();
+    if (original == null) throw Exception('Lançamento não encontrado.');
+    final data = recreatedData(original, amount: amount, dueDate: dueDate);
+    data['date'] = FieldValue.serverTimestamp();
+    data['createdAt'] = FieldValue.serverTimestamp();
+    final ref = await _db.collection('financial').add(data);
+    return ref.id;
+  }
+
+  /// Edição simples de pendente (valor/vencimento). Não mexe em quitação,
+  /// parcelas-irmãs nem vínculos — para correção profunda, usar
+  /// estorno + relançamento ou cancelar + recriar.
+  Future<void> editPendingCharge(
+    String id, {
+    double? amount,
+    DateTime? dueDate,
+  }) async {
+    final data = <String, dynamic>{};
+    if (amount != null) data['amount'] = amount;
+    if (dueDate != null) data['dueDate'] = Timestamp.fromDate(dueDate);
+    if (data.isEmpty) return;
+    await _db.collection('financial').doc(id).update(data);
   }
 
   // --- PROCESSA E SALVA TUDO DE UMA VEZ ---
@@ -74,7 +200,7 @@ class FinancialService {
        // Pagamento à vista: Atualiza o original
        batch.update(financialRef.doc(originalTransaction.id), {
         'isPaid': isPaid ?? true,
-        'status': status ?? 'Pago',
+        'status': status ?? 'pago',
         'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
         'paymentMethod': method,
         'paidAmount': payValue,
@@ -92,36 +218,27 @@ class FinancialService {
       // Parcelado: Atualiza original e cria novos
       batch.update(financialRef.doc(originalTransaction.id), {
         'isPaid': isPaid ?? true,
-        'status': status != null ? '$status (Renegociado/Parcelado)' : 'Pago (Renegociado/Parcelado)',
-        'paymentDate': paymentDate ?? DateTime.now(),
+        'status': status != null ? '$status (renegociado/parcelado)' : 'pago (renegociado/parcelado)',
+        'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
         'paymentMethod': method,
         'paidAmount': payValue,
       });
 
-      double installmentValue = payValue / installments;
-      
-      // Ajuste de centavos no Bruto
-      double totalCalculated = double.parse(installmentValue.toStringAsFixed(2)) * installments;
-      double difference = payValue - totalCalculated;
+      final slices = FinancialService.computeInstallments(
+        payValue: payValue,
+        installments: installments,
+        taxPerInstallment: taxValPerInstallment,
+        netPerInstallment: netValPerInstallment,
+      );
 
       for (int i = 1; i <= installments; i++) {
-        double finalValue = double.parse(installmentValue.toStringAsFixed(2));
-        if (i == 1) finalValue += difference;
-
-        // Recupera valores calculados
-        double finalTax = taxValPerInstallment ?? 0.0;
-        double finalNet = netValPerInstallment ?? finalValue;
-
-        // Ajuste de centavos no Líquido
-        if (netValPerInstallment != null && installments > 1) {
-             double totalNetCalc = double.parse(netValPerInstallment.toStringAsFixed(2)) * installments;
-             double totalNetReal = payValue - ((taxValPerInstallment ?? 0) * installments);
-             double diffNet = totalNetReal - totalNetCalc;
-             if (i == 1) finalNet += diffNet;
-        }
+        final slice = slices[i - 1];
+        final double finalValue = slice.value;
+        final double finalTax = slice.tax;
+        final double finalNet = slice.net;
 
         final newDocRef = financialRef.doc();
-        
+
         batch.set(newDocRef, {
           'clinicId': originalTransaction.clinicId,
           'patientId': originalTransaction.patientId,
@@ -130,18 +247,20 @@ class FinancialService {
           'description': "${originalTransaction.title} ($i/$installments) - $method",
           'date': FieldValue.serverTimestamp(),
           'dueDate': DateTime.now().add(Duration(days: 30 * i)),
-        'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
-          'value': finalValue, 
+          'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
+          'value': finalValue,
           'amount': finalValue,
+          'paidAmount': finalValue, // parcela nasce quitada (getter isPaid fecha)
           'isPaid': isPaid ?? true,
-          'status': status ?? 'Pago',
+          'status': status ?? 'pago',
           'type': 'income',
           'paymentMethod': method,
           'installmentNumber': "$i/$installments",
+          'parentId': originalTransaction.id, // família p/ cancelamento em lote
           'dentistId': dentistId,
           'dentistName': dentistName,
           'createdAt': FieldValue.serverTimestamp(),
-          
+
           // GRAVAÇÃO DOS CAMPOS
           'feePercentage': feePercentage ?? 0.0,
           'taxVal': double.parse(finalTax.toStringAsFixed(2)),

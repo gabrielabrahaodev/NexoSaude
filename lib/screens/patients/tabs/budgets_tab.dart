@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../ui/app_theme.dart';
 import '../../../services/budget_service.dart';
-import '../../../services/treatment_service.dart';
 import '../../../services/procedure_service.dart'; 
 import '../../../services/session_manager.dart'; 
 import '../../../models/budget_model.dart';
@@ -21,7 +20,6 @@ class BudgetsTab extends StatefulWidget {
 
 class _BudgetsTabState extends State<BudgetsTab> {
   final BudgetService _budgetService = BudgetService();
-  final TreatmentService _treatmentService = TreatmentService();
   final ProcedureService _procedureService = ProcedureService(); 
 
   // --- MODAL DE CRIAÇÃO DE ORÇAMENTO ---
@@ -78,7 +76,9 @@ class _BudgetsTabState extends State<BudgetsTab> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50], 
+                            color: AppColors.isDark
+                                ? AppColors.background
+                                : Colors.blue[50],
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.blue.withValues(alpha: 0.2))
                           ),
@@ -118,7 +118,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                                 const SizedBox(height: 5),
                                 TextField(
                                   controller: tempDescriptionCtrl,
-                                  decoration: const InputDecoration(labelText: "Descrição", isDense: true, border: OutlineInputBorder(), fillColor: Colors.white, filled: true),
+                                  decoration: InputDecoration(labelText: "Descrição", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
@@ -127,7 +127,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                                       child: TextField(
                                         controller: tempPriceCtrl,
                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        decoration: const InputDecoration(labelText: "Valor (R\$)", hintText: "0,00", isDense: true, border: OutlineInputBorder(), fillColor: Colors.white, filled: true),
+                                        decoration: InputDecoration(labelText: "Valor (R\$)", hintText: "0,00", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
@@ -185,7 +185,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                                               textAlign: TextAlign.right,
-                                              decoration: const InputDecoration(prefixText: "R\$ ", prefixStyle: TextStyle(fontSize: 11, color: Colors.grey), isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8), border: OutlineInputBorder()),
+                                              decoration: InputDecoration(prefixText: "R\$ ", prefixStyle: TextStyle(fontSize: 11, color: Colors.grey), isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8), border: OutlineInputBorder()),
                                               onChanged: (val) { setStateModal(() {}); },
                                             ),
                                           ),
@@ -205,7 +205,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                         const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8)),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -294,31 +294,6 @@ class _BudgetsTabState extends State<BudgetsTab> {
       // Opcional: Navegar para a aba de Tratamentos ou apenas mostrar mensagem
       // setState(() {}); 
     }
-  }
-
-  Future<double?> _showMonthlyValueDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    return showDialog<double>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Definir Mensalidade"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Detectamos um procedimento ortodôntico."),
-            const SizedBox(height: 10),
-            const Text("Deseja gerar parcelas de manutenção mensais?"),
-            const SizedBox(height: 5),
-            TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: "Valor Mensal (R\$)", hintText: "Deixe vazio para não gerar", border: OutlineInputBorder(), prefixText: "R\$ ")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text("Cancelar")),
-          ElevatedButton(onPressed: () { String text = controller.text.replaceAll(',', '.').trim(); double val = text.isEmpty ? 0.0 : (double.tryParse(text) ?? 0.0); Navigator.pop(ctx, val); }, child: const Text("Confirmar")),
-        ],
-      ),
-    );
   }
 
   @override

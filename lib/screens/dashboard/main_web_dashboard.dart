@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/clinic_capabilities.dart';
+import '../../services/menu_access.dart';
 import '../../services/session_manager.dart';
+import '../../services/theme_controller.dart';
+import '../../ui/app_theme.dart';
 
 // IMPORTS DAS TELAS
 import 'kpi_dashboard_screen.dart';
@@ -50,7 +53,11 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
       try {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists && mounted) {
-          setState(() => _userRole = doc.data()?['role']);
+          final data = doc.data();
+          setState(() {
+            _userRole = data?['role'];
+            _menuAccess = MenuAccess.parse(data?['menuAccess']);
+          });
         }
       } catch (e) {
         debugPrint("Erro ao buscar role: $e");
@@ -58,7 +65,24 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     }
   }
 
-  // Lista de telas (índices sincronizados com _buildMenuContent)
+  Map<String, bool>? _menuAccess;
+
+  /// Visibilidade do item de menu p/ o usuário atual (aba Configurações).
+  /// Owner ignora restrições (ver `MenuAccess`).
+  bool _canShow(String menuKey) => MenuAccess.canShow(
+        isOwner: _userRole == 'owner',
+        menuKey: menuKey,
+        access: _menuAccess,
+      );
+
+  /// Índice efetivo: se a tela atual foi escondida do usuário, cai no Dashboard.
+  int get _effectiveIndex {
+    final key = MenuAccess.indexKey[_selectedIndex];
+    if (key != null && !_canShow(key)) return 0;
+    return _selectedIndex;
+  }
+
+  // Lista de telas (índices fixos; o MENU ordena/filtra por tipo de clínica)
   List<Widget> get _screens => [
     KpiDashboardScreen(                                            // 0
       key: ValueKey(_currentClinicId),
@@ -90,6 +114,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   Future<void> _logout() async {
     SessionManager().clear();
+    ThemeController().clearUser(); // volta ao tema do aparelho
     await FirebaseAuth.instance.signOut();
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
@@ -146,7 +171,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
             boxShadow: [
@@ -165,7 +190,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   value: doc.id,
                   child: Text(
                     data['name'],
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
                   ),
                 );
@@ -180,6 +205,14 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                     _currentClinicId = newClinicId;
                     _currentClinicType = type; // <--- ATUALIZA TIPO PARA MUDAR O MENU
                     SessionManager().setClinic(newClinicId, data['name'], type);
+                    // Seleção atual pode ter sumido do menu do novo tipo
+                    // (ex.: Laboratório oculto na psico, Fluxo só na psico)
+                    final nowPsy =
+                        ClinicCapabilities.ofType(type).isPsychology;
+                    if ((nowPsy && _selectedIndex == 3) ||
+                        (!nowPsy && _selectedIndex == 11)) {
+                      _selectedIndex = 0;
+                    }
                   });
                   
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -201,8 +234,8 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   @override
   Widget build(BuildContext context) {
     // Layout responsivo mantido...
-    final bgMenuColor = Colors.white;
-    final bgContentColor = const Color(0xFFF5F7FA); 
+    final bgMenuColor = AppColors.surface;
+    final bgContentColor = AppColors.background; 
     final highlightColor = const Color(0xFFE3F2FD); 
     final primaryColor = const Color(0xFF1E88E5);
 
@@ -214,18 +247,18 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           return Scaffold(
             backgroundColor: bgContentColor,
             appBar: AppBar(
-              title: const Text("OdontoControle Mobile", style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+              title: const Text("NexoSaúde", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               centerTitle: true,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
               elevation: 1,
-              iconTheme: const IconThemeData(color: Colors.black),
+              iconTheme: const IconThemeData(),
             ),
             drawer: Drawer(
               width: 280,
               backgroundColor: bgMenuColor,
               child: _buildMenuContent(false, highlightColor, primaryColor),
             ),
-            body: _screens[_selectedIndex],
+            body: _screens[_effectiveIndex],
           );
         }
 
@@ -246,7 +279,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
               Expanded(
                 child: Container(
                   color: bgContentColor,
-                  child: _screens[_selectedIndex],
+                  child: _screens[_effectiveIndex],
                 ),
               ),
             ],
@@ -274,13 +307,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(isCompact ? 10 : 20),
-                  child: Image.asset('assets/dra.png', height: isCompact ? 40 : 80, width: isCompact ? 40 : 80, fit: BoxFit.cover),
+                  child: Image.asset('assets/avatar.png', height: isCompact ? 40 : 80, width: isCompact ? 40 : 80, fit: BoxFit.cover),
                 ),
               ),
-              const SizedBox(height: 15),
-              if (!isCompact) ...[
-                Text("ODONTOCONTROLE", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: primaryColor, letterSpacing: 1.5), textAlign: TextAlign.center),
-              ]
             ],
           ),
         ),
@@ -293,27 +322,44 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         ],
         
         // --- ITENS DO MENU ---
+        // Índices = posição em _screens (não muda por tipo).
+        // Psico: Dashboard, Agenda, Pacientes, Cobranças, Fluxo Terapêutico,
+        // Financeiro, Relatórios (+ Notícias); Laboratório oculto.
+        // Dental: ordem original (Fluxo aparece só na psico).
         Expanded(
           child: SingleChildScrollView(
             child: Column(
               children: [
                 const SizedBox(height: 10),
-                _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
-
-                // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
                 if (ClinicCapabilities.ofType(_currentClinicType)
-                    .canShowTherapeuticFlow)
-                  _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
+                    .isPsychology) ...[
+                  if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('pacientes')) _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
+                  if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
+                  if (_canShow('fluxo')) _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
                       highlightColor, Colors.purple, isCompact),
-                // ----------------------------------------
+                  if (_canShow('financeiro')) _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('relatorios')) _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('noticias')) _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
+                ] else ...[
+                  if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
 
-                _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(3, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
-                _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
+                  // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
+                  if (ClinicCapabilities.ofType(_currentClinicType)
+                      .canShowTherapeuticFlow && _canShow('fluxo'))
+                    _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
+                        highlightColor, Colors.purple, isCompact),
+                  // ----------------------------------------
+
+                  if (_canShow('pacientes')) _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
+                  if (_canShow('laboratorio')) _buildMenuItem(3, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
+                  if (_canShow('financeiro')) _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('relatorios')) _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('noticias')) _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
+                  if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
+                ],
 
                 // DONO
                 if (_userRole == 'owner') ...[
@@ -323,7 +369,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 ],
 
                 // GESTÃO
-                if (_userRole == 'owner' || _userRole == 'recepcionista') ...[
+                if ((_userRole == 'owner' || _userRole == 'recepcionista') && _canShow('gestao')) ...[
                   if (_userRole != 'owner') const Divider(height: 30, thickness: 1),
                   _buildMenuItem(10, "Gestão", Icons.settings_applications, highlightColor, primaryColor, isCompact),
                 ],
@@ -374,8 +420,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   children: [
                     Icon(icon, color: isSelected ? primaryColor : Colors.grey[600], size: 22),
                     const SizedBox(width: 15),
-                    Text(title, style: TextStyle(color: isSelected ? primaryColor : Colors.grey[700], fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, fontSize: 15)),
-                    if (isSelected) const Spacer(),
+                    Expanded(child: Text(title, overflow: TextOverflow.ellipsis, style: TextStyle(color: isSelected ? primaryColor : Colors.grey[700], fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, fontSize: 15))),
                     if (isSelected) Container(width: 6, height: 6, decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle))
                   ],
                 ),

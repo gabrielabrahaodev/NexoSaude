@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'ui/app_theme.dart';
+import 'services/theme_controller.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:odonto_controle/screens/public/public_evaluation_screen.dart';
 
@@ -28,27 +29,33 @@ class ClinicApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Consultório Odontológico',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+    final themeController = ThemeController(); // carrega preferência antes
+    return ListenableBuilder(
+      listenable: themeController,
+      builder: (context, _) => MaterialApp(
+        title: 'NexoSaúde',
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(),
+        darkTheme: buildAppTheme(dark: true),
+        themeMode:
+            themeController.isDark ? ThemeMode.dark : ThemeMode.light,
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const [
+          Locale('pt', 'BR'),
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
 
-      locale: const Locale('pt', 'BR'),
-      supportedLocales: const [
-        Locale('pt', 'BR'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-
-      // AQUI MUDOU: Em vez de colocar o StreamBuilder direto, chamamos o Wrapper
-      home: const AuthWrapper(), 
-      routes: {
-        // ... suas rotas existentes
-        '/avaliacao': (context) => PublicEvaluationScreen(),
-      },
+        // AQUI MUDOU: Em vez de colocar o StreamBuilder direto, chamamos o Wrapper
+        home: const AuthWrapper(),
+        routes: {
+          // ... suas rotas existentes
+          '/avaliacao': (context) => PublicEvaluationScreen(),
+        },
+      ),
     );
   }
 }

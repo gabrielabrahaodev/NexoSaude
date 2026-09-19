@@ -5,8 +5,6 @@ import '../../../models/budget_model.dart';
 import '../../../models/financial_model.dart';
 import '../../../models/expense_model.dart'; 
 import '../../../services/treatment_service.dart';
-import '../../../services/user_service.dart'; 
-import '../../../services/session_manager.dart';
 import '../../../ui/app_theme.dart';
 
 class BudgetApprovalWizard extends StatefulWidget {
@@ -19,7 +17,6 @@ class BudgetApprovalWizard extends StatefulWidget {
 
 class _BudgetApprovalWizardState extends State<BudgetApprovalWizard> {
   final TreatmentService _treatmentService = TreatmentService();
-  final UserService _userService = UserService(); 
 
   int _currentStep = 0;
   bool _isLoading = true;

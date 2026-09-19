@@ -174,8 +174,8 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
       border: const OutlineInputBorder(), 
       enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)), 
       disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade200)), 
-      filled: !_isEditing, 
-      fillColor: Colors.grey.shade50, 
+      filled: !_isEditing,
+      fillColor: AppColors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
     );
   }

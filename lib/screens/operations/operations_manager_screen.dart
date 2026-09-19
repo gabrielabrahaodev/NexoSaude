@@ -4,6 +4,7 @@ import 'tabs/procedures_tab.dart';
 import 'tabs/inventory_tab.dart';
 import 'tabs/suppliers_tab.dart'; // Importe a nova aba
 import 'tabs/card_fees_tab.dart';
+import 'tabs/settings_tab.dart';
 
 class OperationsManagerScreen extends StatefulWidget {
   const OperationsManagerScreen({super.key});
@@ -18,17 +19,17 @@ class _OperationsManagerScreenState extends State<OperationsManagerScreen> with 
   @override
   void initState() {
     super.initState();
-    // AUMENTADO PARA 3 ABAS
-    _tabController = TabController(length: 4, vsync: this);
+    // AUMENTADO PARA 5 ABAS
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Gestão Operacional", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: const Text("Gestão Operacional", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
         bottom: TabBar(
@@ -43,6 +44,7 @@ class _OperationsManagerScreenState extends State<OperationsManagerScreen> with 
             // NOVA ABA
             Tab(text: "FORNECEDORES", icon: Icon(Icons.people_alt_outlined)),
             Tab(text: "CARTÕES", icon: Icon(Icons.payment)), // Nova Aba
+            Tab(text: "CONFIGURAÇÕES", icon: Icon(Icons.settings_outlined)),
           ],
         ),
       ),
@@ -54,6 +56,7 @@ class _OperationsManagerScreenState extends State<OperationsManagerScreen> with 
           // NOVA ABA
           SuppliersTab(),
           CardFeesTab(), // Nova Tela
+          SettingsTab(),
         ],
       ),
     );

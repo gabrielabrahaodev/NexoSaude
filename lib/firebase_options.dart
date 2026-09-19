@@ -47,28 +47,28 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCRYUvuPM3-CHwGNmVJd5Ikk46PRCvdmZ8',
-    appId: '1:698345542344:web:48ffb4bc8865af973d8bfd',
-    messagingSenderId: '698345542344',
-    projectId: 'odontocontrole-1c701',
-    authDomain: 'odontocontrole-1c701.firebaseapp.com',
-    storageBucket: 'odontocontrole-1c701.firebasestorage.app',
+    apiKey: 'AIzaSyD-4NjgWl9qa9wkb1EN-nB9wgWmzK815No',
+    appId: '1:388133875376:web:ad058507ea0b0f86cd5575',
+    messagingSenderId: '388133875376',
+    projectId: 'nexosaude',
+    authDomain: 'nexosaude.firebaseapp.com',
+    storageBucket: 'nexosaude.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCZLqpd_cMBXSRqOIIHnlap_m0tESv-q6Y',
-    appId: '1:698345542344:android:26c162f16d8768a93d8bfd',
-    messagingSenderId: '698345542344',
-    projectId: 'odontocontrole-1c701',
-    storageBucket: 'odontocontrole-1c701.firebasestorage.app',
+    apiKey: 'AIzaSyBnbABukD4-bLZyFeW8zDsiRmoGwc6UtMw',
+    appId: '1:388133875376:android:13c45cf81561b5b8cd5575',
+    messagingSenderId: '388133875376',
+    projectId: 'nexosaude',
+    storageBucket: 'nexosaude.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyB1bsNtT8o5-UQ05cnNHOrCNO1o_KxV_Ig',
-    appId: '1:698345542344:ios:77c6a6228e2eac3e3d8bfd',
-    messagingSenderId: '698345542344',
-    projectId: 'odontocontrole-1c701',
-    storageBucket: 'odontocontrole-1c701.firebasestorage.app',
+    apiKey: 'AIzaSyBqrmbr6zJ7Q77d9huDIxk_jXr8Q1xHCUE',
+    appId: '1:388133875376:ios:c79f4a758e19e717cd5575',
+    messagingSenderId: '388133875376',
+    projectId: 'nexosaude',
+    storageBucket: 'nexosaude.firebasestorage.app',
     iosBundleId: 'com.example.odontoControle',
   );
 }

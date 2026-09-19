@@ -18,6 +18,7 @@ class ChargeConfirmDialog extends StatelessWidget {
     required String? processingId,
     required String monthlyPackagePrefix,
     required Future<void> Function(String id) onMarkCharged,
+    Future<void> Function(String firstDocId)? onMarkPackageCharged,
   }) {
     return showDialog(
       context: context,
@@ -27,8 +28,13 @@ class ChargeConfirmDialog extends StatelessWidget {
         onCancel: () => Navigator.pop(ctx),
         onConfirm: () async {
           Navigator.pop(ctx);
-          if (processingId != null &&
-              !processingId.startsWith(monthlyPackagePrefix)) {
+          if (processingId == null) return;
+          if (processingId.startsWith(monthlyPackagePrefix)) {
+            // Pacote mensal: SÓ marca no SIM (NÃO = no-op puro).
+            if (onMarkPackageCharged != null) {
+              await onMarkPackageCharged(processingId);
+            }
+          } else {
             await onMarkCharged(processingId);
           }
         },

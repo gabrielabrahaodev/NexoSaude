@@ -193,10 +193,9 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text("Ficha de Anamnese", style: TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.grey[50],
+        title: const Text("Ficha de Anamnese", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         elevation: 0,
         automaticallyImplyLeading: false, 
         actions: [
@@ -258,7 +257,9 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: AppColors.isDark
+                      ? AppColors.background
+                      : Colors.grey[50],
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey[200]!)
                 ),

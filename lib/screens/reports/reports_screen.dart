@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../ui/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../services/session_manager.dart';
+import '../../models/financial_model.dart';
 import '../financial/financial_report_screen.dart'; 
 import '../financial/expenses_screen.dart'; 
 
@@ -64,7 +66,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   DateTime get _startOfMonth => DateTime(_currentMonth.year, _currentMonth.month, 1);
-  DateTime get _endOfMonth => DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
 
   // --- STREAMS ---
 
@@ -79,11 +80,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                final data = doc.data();
                if (data['type'] != 'income') continue;
 
-               final status = (data['status'] ?? '').toString().toLowerCase().trim();
-               final method = (data['paymentMethod'] ?? '').toString().toLowerCase();
-               
-               final isPaidBool = data['isPaid'] == true;
-               final isStatusPaid = ['paid', 'pago', 'quitado', 'anticipated', 'antecipado', 'recebido'].contains(status);
+                final status = (data['status'] ?? '').toString().toLowerCase().trim();
+                final method = (data['paymentMethod'] ?? '').toString().toLowerCase();
+
+                // Definição única de "pago" (+ flag crua legada).
+                final isPaidDoc = FinancialModel.isPaidOf(
+                        status: data['status']?.toString() ?? '',
+                        paidAmount: data['paidAmount'],
+                        amount: data['amount'],
+                      ) ||
+                    data['isPaid'] == true;
                
                final isCreditCard = method.contains('cart') || method.contains('crédit') || method.contains('credit'); 
                final isNotCanceled = !status.contains('cancel');
@@ -97,8 +103,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                    } else {
                        ts = data['dueDate'] as Timestamp? ?? data['date'] as Timestamp?;
                    }
-               } else {
-                   if (isPaidBool || isStatusPaid) {
+                } else {
+                    if (isPaidDoc) {
                        ts = data['paidDate'] as Timestamp? ?? data['paymentDate'] as Timestamp? ?? data['date'] as Timestamp?;
                    } else {
                        ts = data['dueDate'] as Timestamp? ?? data['date'] as Timestamp?;
@@ -110,7 +116,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                DateTime docDate = ts.toDate();
                bool isWithinMonth = (docDate.year == start.year && docDate.month == start.month);
 
-               if ((isPaidBool || isStatusPaid || isCreditCard) && isNotCanceled && isWithinMonth) {
+                if ((isPaidDoc || isCreditCard) && isNotCanceled && isWithinMonth) {
                    total += double.tryParse(data['amount'].toString()) ?? 0.0;
                }
              }
@@ -125,11 +131,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
         .snapshots()
         .map((snap) {
              double total = 0.0;
-             for (var doc in snap.docs) {
-               final data = doc.data();
-               final status = (data['status'] ?? '').toString().toLowerCase();
-               final isPaidBool = data['isPaid'] == true;
-               final isValidStatus = ['paid', 'pago', 'quitado'].contains(status);
+              for (var doc in snap.docs) {
+                final data = doc.data();
+                // Definição única de "pago" (+ flag crua legada).
+                final isPaidExpense = FinancialModel.isPaidOf(
+                        status: data['status']?.toString() ?? '',
+                        paidAmount: data['paidAmount'],
+                        amount: data['amount'],
+                      ) ||
+                    data['isPaid'] == true;
                
                Timestamp? ts = data['paidDate'] as Timestamp? ?? 
                                data['paymentDate'] as Timestamp? ?? 
@@ -137,12 +147,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                data['date'] as Timestamp? ?? 
                                data['createdAt'] as Timestamp?;
                
-               if (ts == null) continue;
-               
-               DateTime docDate = ts.toDate();
-               bool isWithinMonth = (docDate.year == start.year && docDate.month == start.month);
+                if (ts == null) continue;
 
-               if ((isPaidBool || isValidStatus) && isWithinMonth) {
+                DateTime docDate = ts.toDate();
+                bool isWithinMonth = (docDate.year == start.year && docDate.month == start.month);
+
+                if (isPaidExpense && isWithinMonth) {
                    total += double.tryParse(data['amount'].toString()) ?? 0.0;
                }
              }
@@ -188,13 +198,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (_clinicId == null) return const Center(child: Text("Erro: Clínica não selecionada."));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Painel DRE Gerencial", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-        backgroundColor: Colors.white,
+        title: const Text("Painel DRE Gerencial", style: TextStyle(fontWeight: FontWeight.bold )),
+        backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: const IconThemeData(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -237,7 +247,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: isProfit ? Colors.green[50] : Colors.red[50],
+                                  color: isProfit
+                                      ? (AppColors.isDark ? const Color(0xFF1B3A24) : Colors.green[50])
+                                      : (AppColors.isDark ? const Color(0xFF3A1B1B) : Colors.red[50]),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: isProfit ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3)),
                                 ),
@@ -250,7 +262,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                         revenue == 0 && expenses == 0 
                                           ? "Sem dados apurados para o mês exibido." 
                                           : (isProfit ? "Resultado positivo! Margem: ${profitMargin.toStringAsFixed(1)}%." : "Atenção: Operação no prejuízo."),
-                                        style: TextStyle(color: isProfit ? Colors.green[800] : Colors.red[800], fontWeight: FontWeight.bold),
+                                        style: TextStyle(color: isProfit ? (AppColors.isDark ? Colors.green[300] : Colors.green[800]) : (AppColors.isDark ? Colors.red[300] : Colors.red[800]), fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ],
@@ -283,7 +295,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const FinancialReportScreen())),
                                       icon: const Icon(Icons.list_alt, size: 18),
                                       label: const Text("LIVRO CAIXA"),
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue[800], elevation: 0, side: BorderSide(color: Colors.blue.shade200), padding: const EdgeInsets.symmetric(vertical: 16)),
+                                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.surface, foregroundColor: Colors.blue[800], elevation: 0, side: BorderSide(color: Colors.blue.shade200), padding: const EdgeInsets.symmetric(vertical: 16)),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -292,7 +304,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ExpensesScreen())),
                                       icon: const Icon(Icons.money_off, size: 18),
                                       label: const Text("A PAGAR"),
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red[50], foregroundColor: Colors.red[800], elevation: 0, side: BorderSide(color: Colors.red.shade200), padding: const EdgeInsets.symmetric(vertical: 16)),
+                                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.isDark ? const Color(0xFF3A1B1B) : Colors.red[50], foregroundColor: AppColors.isDark ? Colors.red[300] : Colors.red[800], elevation: 0, side: BorderSide(color: Colors.red.shade200), padding: const EdgeInsets.symmetric(vertical: 16)),
                                     ),
                                   ),
                                 ],
@@ -304,10 +316,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               
                               Container(
                                 padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                                decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
                                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                                     const Text("Saldo Projetado (Final do Mês):"),
-                                    Text("R\$ ${netProfit.toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: netProfit >= 0 ? Colors.black87 : Colors.red))
+                                    Text("R\$ ${netProfit.toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: netProfit >= 0 ? AppColors.textPrimary : Colors.red))
                                 ]),
                               )
                             ],
@@ -379,7 +391,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     }
                     return Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: AppColors.isDark ? const Color(0xFF3A2E12) : Colors.amber[50], borderRadius: BorderRadius.circular(8)),
                       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                           const Text("Disponível:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
                           Text("R\$ ${availableTotal.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -680,13 +692,13 @@ class _AnticipationCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber.withValues(alpha: 0.3)), boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]),
+        decoration: BoxDecoration(color: AppColors.isDark ? const Color(0xFF3A2E12) : Colors.amber[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber.withValues(alpha: 0.3)), boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
             const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(Icons.flash_on, color: Colors.amber, size: 20), Icon(Icons.chevron_right, color: Colors.amber, size: 16)]),
             const Spacer(),
-            Text("Disponível p/ Antecipar", style: TextStyle(fontSize: 11, color: Colors.amber[800], fontWeight: FontWeight.bold)),
+            Text("Disponível p/ Antecipar", style: TextStyle(fontSize: 11, color: AppColors.isDark ? Colors.amber[200] : Colors.amber[800], fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber[900])),
+            Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.isDark ? Colors.amber[100] : Colors.amber[900])),
         ]),
       ),
     );
@@ -710,7 +722,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white, 
+        color: AppColors.surface, 
         borderRadius: BorderRadius.circular(16), 
         border: Border.all(color: _isExpanded ? Colors.red : Colors.transparent), 
         boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]
@@ -851,7 +863,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
           Expanded(
             child: Text(
               label, 
-              style: const TextStyle(fontSize: 10, color: Colors.black87),
+              style: const TextStyle(fontSize: 10 ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             )
@@ -869,7 +881,7 @@ class _KpiCard extends StatelessWidget {
   const _KpiCard({required this.title, required this.value, required this.color, required this.icon, this.isHighlight = false});
   @override
   Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: const Text("RESULTADO", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)))]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
+    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: const Text("RESULTADO", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)))]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
   }
 }
 
@@ -878,6 +890,6 @@ class _MonthSelector extends StatelessWidget {
   const _MonthSelector({required this.date, required this.onPrev, required this.onNext});
   @override
   Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(icon: const Icon(Icons.chevron_left), onPressed: onPrev), Text(DateFormat('MMMM yyyy', 'pt_BR').format(date).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), IconButton(icon: const Icon(Icons.chevron_right), onPressed: onNext)]));
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(30)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(icon: const Icon(Icons.chevron_left), onPressed: onPrev), Text(DateFormat('MMMM yyyy', 'pt_BR').format(date).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), IconButton(icon: const Icon(Icons.chevron_right), onPressed: onNext)]));
   }
 }

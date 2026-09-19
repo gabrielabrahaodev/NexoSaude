@@ -9,8 +9,9 @@ import 'agenda_form_screen.dart';
 import '../patients/patient_details_screen.dart';
 
 import '../../ui/app_theme.dart';
+import 'agenda_skeleton.dart';
 import '../../services/session_manager.dart';
-import '../../services/appointment_service.dart';
+import '../../services/month_agenda_cache.dart';
 import '../../services/user_service.dart';
 import '../../services/treatment_service.dart';
 import '../../services/clinical_record_service.dart'; 
@@ -27,7 +28,7 @@ class AgendaManagerScreen extends StatefulWidget {
 
 class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   // Services
-  final AppointmentService _appointmentService = AppointmentService();
+  final MonthAgendaCache _monthCache = MonthAgendaCache();
   final UserService _userService = UserService();
   final TreatmentService _treatmentService = TreatmentService();
   final ClinicalRecordService _clinicalRecordService = ClinicalRecordService();
@@ -92,6 +93,12 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
   void _changeWeek(int days) {
     setState(() => _currentWeekStart = _currentWeekStart.add(Duration(days: days)));
+  }
+
+  @override
+  void dispose() {
+    _monthCache.dispose();
+    super.dispose();
   }
 
   // --- NOVA FUNCIONALIDADE: SISTEMA DE BLOQUEIO DE HORÁRIOS ---
@@ -483,7 +490,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 12)),
-                                Text(msg, style: TextStyle(color: Colors.black87, fontSize: 12)),
+                                Text(msg, style: TextStyle(fontSize: 12)),
                                 if (isRed)
                                   const Text("Recomendado confirmar com antecedência.", style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
                               ],
@@ -660,7 +667,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       children: [
                         const Text("MOTIVO:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.red)),
                         const SizedBox(height: 4),
-                        Text(reason, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87)),
+                        Text(reason, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500 )),
                       ],
                     ),
                   ),
@@ -669,7 +676,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     children: [
                       const Icon(Icons.person, size: 16, color: Colors.grey),
                       const SizedBox(width: 6),
-                      Expanded(child: RichText(text: TextSpan(style: const TextStyle(color: Colors.black87, fontSize: 13), children: [const TextSpan(text: "Cancelado por: ", style: TextStyle(color: Colors.grey)), TextSpan(text: byUser, style: const TextStyle(fontWeight: FontWeight.bold))]))),
+                      Expanded(child: RichText(text: TextSpan(style: const TextStyle(fontSize: 13), children: [const TextSpan(text: "Cancelado por: ", style: TextStyle(color: Colors.grey)), TextSpan(text: byUser, style: const TextStyle(fontWeight: FontWeight.bold))]))),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -907,6 +914,10 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
     if (clinicId == null) return const Center(child: Text("Erro: Sessão inválida"));
 
+    // Janela mensal em cache (anterior/atual/proximo). Idempotente e
+    // cobre troca de semana E troca de clinica (limpa e recomeca).
+    _monthCache.ensureWindow(clinicId, _currentWeekStart);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text("Agenda Semanal")),
@@ -924,7 +935,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             Container(
               width: double.infinity, margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
+              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
               child: _isLoadingDentists 
                 ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
                 : DropdownButtonHideUnderline(
@@ -956,14 +967,34 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           const SizedBox(height: 10),
 
           Expanded(
-            child: StreamBuilder<List<AppointmentModel>>(
-              stream: _appointmentService.getByDateRange(clinicId, _currentWeekStart, weekEnd),
+            child: StreamBuilder<Map<String, List<AppointmentModel>>>(
+              stream: _monthCache.stream,
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                // Skeleton só se o mês visível ainda não chegou do cache;
+                // erro explícito em vez de loader infinito.
+                final monthKey =
+                    MonthAgendaCache.keyOf(_currentWeekStart);
+                if (!_monthCache.cachedMonths.contains(monthKey) &&
+                    !snapshot.hasData) {
+                  return const AgendaSkeleton();
+                }
+                // Filtro de profissional ainda resolvendo: segura a grade no
+                // skeleton em vez de exibir tudo sem filtro e trocar depois.
+                // (Lista vazia = sem o que filtrar: mostra a grade normal.)
+                if (_shouldShowFilter && _isLoadingDentists) {
+                  return const AgendaSkeleton();
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                      child: Text("Erro ao carregar agenda: ${snapshot.error}"));
+                }
 
+                // Semana visível filtrada do cache mensal (zero leitura
+                // quando o mês já está em memória).
                 Map<String, List<AppointmentModel>> appointmentsMap = {};
-                
-                for (var appt in snapshot.data!) {
+
+                for (var appt
+                    in _monthCache.forWeek(_currentWeekStart, weekEnd)) {
                   if (userRole == 'dentista' && appt.dentistId != currentUserUid) continue;
                   if (_shouldShowFilter && _selectedDentistId != null) {
                     if (appt.dentistId != null && appt.dentistId != _selectedDentistId) continue;

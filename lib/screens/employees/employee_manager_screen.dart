@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart'; // Necessário para criar App Secundário
@@ -116,6 +118,37 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
     _passwordController.clear();
   }
 
+  bool get _isOwner => SessionManager().userRole == 'owner';
+
+  String _fmtDate(dynamic ts) {
+    if (ts is! Timestamp) return '—';
+    final d = ts.toDate();
+    String p(int n) => n.toString().padLeft(2, '0');
+    return '${p(d.day)}/${p(d.month)} ${p(d.hour)}:${p(d.minute)}';
+  }
+
+  /// Dispensar pedido já atendido (apaga o doc, some da lista).
+  Future<void> _dismissRequest(String docId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('password_reset_requests')
+          .doc(docId)
+          .delete();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Falha ao dispensar: $e"),
+            backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  void _copyTemp(String temp) {
+    Clipboard.setData(ClipboardData(text: temp));
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Senha temporária copiada.")));
+  }
+
   void _showRegisterModal() {
     showDialog(
       context: context,
@@ -214,7 +247,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
     final currentClinic = SessionManager().currentClinicId;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -243,6 +276,98 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
               ],
             ),
             const SizedBox(height: 20),
+
+            // PEDIDOS DE SENHA (só owner). Sem e-mail automático: gere a
+            // nova senha com o reset-senha.bat e informe à pessoa.
+            if (_isOwner) ...[
+              const Text("Pedidos de senha",
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                  "Gere a nova senha com o reset-senha.bat e informe à pessoa. Depois dispense o pedido.",
+                  style: TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 190,
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('password_reset_requests')
+                      .orderBy('createdAt', descending: true)
+                      .limit(20)
+                      .snapshots(),
+                  builder: (context, snap) {
+                    if (snap.hasError) {
+                      return Text("Erro: ${snap.error}");
+                    }
+                    if (!snap.hasData) {
+                      return const Center(
+                          child: CircularProgressIndicator());
+                    }
+                    final docs = snap.data!.docs;
+                    if (docs.isEmpty) {
+                      return const Text("Nenhum pedido.",
+                          style: TextStyle(color: Colors.grey));
+                    }
+                    return ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, i) {
+                        final d =
+                            docs[i].data() as Map<String, dynamic>;
+                        final done = d['status'] == 'done';
+                        final temp =
+                            (d['tempPassword'] ?? '').toString();
+                        return Card(
+                          margin:
+                              const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            dense: true,
+                            leading: Icon(
+                              done
+                                  ? Icons.check_circle
+                                  : Icons.pending_outlined,
+                              color: done
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                            title: Text(
+                                (d['email'] ?? '?').toString(),
+                                style: const TextStyle(
+                                    fontWeight:
+                                        FontWeight.w600)),
+                            subtitle: Text(done
+                                ? 'Atendida em ${_fmtDate(d['handledAt'])} • Temporária: $temp'
+                                : 'Pendente desde ${_fmtDate(d['createdAt'])}'),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (done && temp.isNotEmpty)
+                                  IconButton(
+                                    tooltip: 'Copiar senha',
+                                    icon: const Icon(
+                                        Icons.copy, size: 20),
+                                    onPressed: () =>
+                                        _copyTemp(temp),
+                                  ),
+                                IconButton(
+                                  tooltip: 'Dispensar',
+                                  icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 20),
+                                  onPressed: () =>
+                                      _dismissRequest(
+                                          docs[i].id),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // LISTA DE FUNCIONÁRIOS
             Expanded(

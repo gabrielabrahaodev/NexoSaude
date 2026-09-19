@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:odonto_controle/services/session_manager.dart';
 import '../../models/expense_model.dart';
-import '../../models/supplier_model.dart';
 import '../../services/expense_service.dart';
-import '../../services/supplier_service.dart';
 import '../../ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -17,8 +15,7 @@ class ExpensesScreen extends StatefulWidget {
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
   final ExpenseService _expenseService = ExpenseService();
-  final SupplierService _supplierService = SupplierService();
-  
+
   DateTime _currentMonth = DateTime.now();
   String _filterStatus = 'Todos'; 
 
@@ -137,15 +134,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Contas a Pagar", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: const Text("Contas a Pagar", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list, color: Colors.black87),
+            icon: const Icon(Icons.filter_list ),
             onPressed: () {
               setState(() {
                 if (_filterStatus == 'Todos') _filterStatus = 'Pendente';
@@ -166,7 +163,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       body: Column(
         children: [
           Container(
-            color: Colors.white,
+            color: AppColors.surface,
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -264,7 +261,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
           child: Icon(isPaid ? Icons.check_circle : Icons.attach_money, color: statusColor),
         ),
-        title: Text(item.description, style: TextStyle(fontWeight: FontWeight.bold, decoration: isPaid ? TextDecoration.lineThrough : null, color: isPaid ? Colors.grey : Colors.black87)),
+          title: Text(item.description, style: TextStyle(fontWeight: FontWeight.bold, decoration: isPaid ? TextDecoration.lineThrough : null, color: isPaid ? Colors.grey : AppColors.textPrimary)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

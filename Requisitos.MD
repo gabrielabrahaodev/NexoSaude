@@ -34,7 +34,10 @@ Documento de regras de negócio extraídas do código-fonte. Cada regra referenc
 ### RN-02 - Registro de novo usuário
 - Novo usuário escolhe role (dentista/recepção) no cadastro.
 - Nasce com `allowedClinics: []` + `status: 'pending_approval'` — **sem acesso até o owner liberar** em Funcionários.
-- Referência: `login_screen.dart:60-71`.
+- **Entrar com Google** (popup Web / conta do aparelho mobile): estreante ganha o mesmo doc pendente (`authProvider: 'google'`); email já cadastrado com senha → orientado a usar senha.
+- Auto-cadastro liberado na rule (só o próprio doc, role não-owner, sem clínica, pendente).
+- Reset sem e-mail (e-mails genericos, sem caixa de entrada): "Esqueci a senha?" no login grava pedido em `password_reset_requests` (create publico, rule A3); responsavel gera a temporaria com `migrate/reset-senha.bat` (`reset-password.js` + Admin SDK) e informa a pessoa; pedidos visiveis em Funcionarios (só owner) com copiar/dispensar. Troca de senha no cartao "Minha conta" em Gestao > Configuracoes com re-autenticacao (`reauthenticateWithCredential` + `updatePassword`, min. 6).
+- Referência: `login_screen.dart`.
 
 ### RN-03 - Visibilidade por role
 - **Owner**: vê todas as clínicas via seletor; acessa menus Clínicas e Funcionários.
@@ -140,6 +143,7 @@ Bloqueado (agendamento sintético)
 
 ### RN-18 - Campos obrigatórios e validações (cadastro)
 - Nome obrigatório; telefone com máscara `(##) #####-####` e ≥14 dígitos; CPF obrigatório.
+- Psicologia: dropdown de Status Terapêutico (default Prospecto; grava `lead/active/discharged`). Dental: sem campo, grava `status='Ativo'` (lista não depende do campo).
 - Verificação de CPF duplicado por clínica (query existe; **bloqueio está comentado no código**).
 - Referência: `screens/patients/create_patient_screen.dart:82-127,148-191`.
 
@@ -149,8 +153,8 @@ Bloqueado (agendamento sintético)
 - Referência: `create_patient_screen.dart:99-110`.
 
 ### RN-20 - Exclusão em cascata (atômica)
-- Batch único deleta na ordem: appointments → budgets → treatments → treatment_plans → financial → clinical_records → lab_orders → psychology_schedules → subcoleções (`odontogram`, `anamnesis`, `documents`, `photos`) → o próprio paciente.
-- Referência: `services/patient_service.dart:69-119`.
+- Batch único (blocos de 450) deleta na ordem: appointments → budgets → treatments → treatment_plans → financial → clinical_records → lab_orders → psychology_schedules → subcoleções (`clinical_data`, `docs`) → `anamnesis/{patientId}` (top-level) → o próprio paciente. `purgePatientFiles` roda após o commit.
+- Referência: `services/patient_service.dart:79-153`.
 
 ### RN-21 - Parsing defensivo
 - `address` aceita String **ou** Map; `birthDate` aceita String **ou** Timestamp; `createdAt` aceita Timestamp/String/fallback `now`.
@@ -224,9 +228,11 @@ Bloqueado (agendamento sintético)
 
 ### RN-30 - Tipos e status
 - `type`: `income` (receita) / `expense` (despesa).
-- `status` de receita: `pendente`/`pending`, `pago`/`paid`, `cobrado`, `anticipated`, `Cancelado`, `Pago (Renegociado/Parcelado)`.
+- `status` de receita: `pendente`/`pending`, `pago`/`paid`, `cobrado`, `anticipated`, `cancelado`, `pago (renegociado/parcelado)` (legado pode ter maiúsculas — leitores comparam lowercase).
 - `status` de despesa: `pendente` / `pago`.
-- `isPaid` (derivado) = `status=='paid'` **ou** `'anticipated'` **ou** `paidAmount >= amount > 0`.
+- `isPaid` = **definição única** `FinancialModel.isPaidOf` (qualquer caixa: paid/pago/quitado/anticipated/antecipado/recebido, ou `paidAmount >= amount > 0`; + flag crua `isPaid==true` nos leitores de mapa). Timeline soma exceção de cartão-pendente (tesouraria). Teste: `financial_ispaid_test`.
+- Convenção p/ escrita nova: status financeiro **sempre minúsculo** (`pendente/pago/cancelado/...`); leitura de mapas crus compara lowercase. `isPaid` tem 4 implementações (getter do model, mágica da timeline p/ cartão, `_isPaid` do KPI, listas dos reports) — regra: model novo usa o getter; mapa cru usa lista lowercase.
+- Campos gêmeos (legado, não apagar por compat): `valorLiquido`/`netAmount` (sempre iguais), `paidDate`/`paymentDate`; docs novos podem gravar só um lado (`valorLiquido`, `paymentDate`).
 - Referência: `models/financial_model.dart:65`, `screens/financial/collections_screen.dart:172-196`.
 
 ### RN-31 - Pagamento à vista
@@ -236,25 +242,31 @@ Bloqueado (agendamento sintético)
 - Referência: `services/financial_service.dart:59-78`.
 
 ### RN-32 - Pagamento parcelado (renegociação)
-- Atualiza original com `status = '<status> (Renegociado/Parcelado)'`.
-- Cria N lançamentos filhos: `dueDate = now + 30*i` (**blocos de 30 dias corridos, não meses de calendário**), `installmentNumber = 'i/N'`, `description '<título> (i/N) - método'`.
-- **Ajuste de centavos**: diferença entre `payValue` e soma das parcelas vai para a **1ª parcela** (bruto e líquido).
+- Atualiza original com `status = '<status> (renegociado/parcelado)'` (minúsculo).
+- Cria N lançamentos filhos: `dueDate = now + 30*i` (**blocos de 30 dias corridos, não meses de calendário** — regra mantida), `installmentNumber = 'i/N'`, `parentId` = id da original, `paidAmount` cheio, `description '<título> (i/N) - método'`.
+- **Ajuste de centavos**: diferença entre `payValue` e soma das parcelas vai para a **1ª parcela** (bruto e líquido) — `computeInstallments` puro e testado.
+- Cancelar oferece **só este / família toda** (irmãs pelo `parentId` + original).
 - Cartão parcelado → **deleta o título original** e grava `machineProfileId`.
-- Referência: `financial_service.dart:79-142`, `screens/patients/tabs/patient_financial_tab.dart:861-875`.
+- Referência: `financial_service.dart:computeInstallments/processPayment`, `patient_financial_tab.dart:_confirmCancelCharge`.
 
-### RN-33 - Pagamento parcial
-- Se `amountReceived < valor` e 1 parcela → atualiza original como pago e **cria lançamento "(Restante)"** pendente com a data original.
-- Referência: `services/payment_service.dart:24-49`.
+### RN-33 - Pagamento parcial (REMOVIDO)
+- ~~`payment_service.receivePayment` ("(Restante)")~~ — método morto, sem chamadores; removido. Parcial se resolve via estorno + relançamento ou valores no wizard.
 
-### RN-34 - Parcelamento "explosão" (D+30)
-- Transforma original na parcela `1/N` (valor dividido) e cria N−1 parcelas com `dueDate`/`date` D+30, todas `status='pago'`, mesmo `paymentMethod`.
-- Referência: `payment_service.dart:51-87`.
+### RN-34 - Parcelamento "explosão" D+30 (REMOVIDO)
+- ~~`payment_service` transformava original em `1/N`~~ — morto junto com o método acima. Parcelamento vive em `processPayment` (RN-32).
 
 ### RN-35 - Estorno (receita/despesa)
 - Receita: `isPaid=false`, `paidAmount=0`, remove `paymentDate`/`paymentMethod`, `status='pendente'` → valor volta ao saldo devedor.
 - Despesa: `status='pendente'`, remove `paidDate`.
 - Antes do estorno, deleta despesas/lab_orders vinculados (`relatedFinancialId`).
+- No dialog de estorno há **CORRIGIR E RELANÇAR**: estorna e reabre o recebimento pré-preenchido (método + valor).
 - Referência: `services/financial_service.dart:21-34`, `payment_service.dart:104-122`, `patient_financial_tab.dart:110-201`.
+
+### RN-35b - Cancelar / editar / recriar lançamento
+- Toque no item abre **menu por estado** (sem long-press): pendente = Receber/Editar/Cancelar; pago = Estornar-Corrigir/Cancelar; cancelado = Recriar.
+- **Editar pendente**: valor/vencimento in place (sem mexer em quitação/vínculos).
+- **Recriar cobrança**: form pré-preenchido (valor/vencimento editáveis) → pendente nova clonada; vínculos travados como info; aviso se parcela tem irmãs.
+- Referência: `financial_service.dart:cancelCharge/recreateCharge/recreatedData/editPendingCharge`, `patient_financial_tab.dart:_showItemOptions/_confirmCancelCharge/_confirmRecreateCharge/_showEditPendingCharge`.
 
 ### RN-36 - Livro-caixa (regime de caixa)
 - **Receita**: cartão → considera `dueDate` (entra no mês do vencimento); se antecipada → `paidDate` + `isPaid=true`; outros métodos → `paidDate` se paga, senão `dueDate`.
@@ -285,6 +297,7 @@ Bloqueado (agendamento sintético)
 - Modo pacotes (só psico): `monthlyPeriod` do mês. Modo Por Sessão: `dueDate` no mês **excluindo** pacotes (`billingKind`/`monthlyPeriod`).
 - Pacote mensal: pacote completo (baixa tudo) ou parcial (só registra contato); valor = `PackageBilling` ao vivo com `BillingSkeleton` (timeout 5s); congela no `paid`.
 - Marcar cobrada: `status='cobrado'`, `lastContactDate=serverTimestamp`, `contactHistory += {date, method:'whatsapp_manual'}`.
+- Confirmação humana: SIM marca (individual ou pacote); **NÃO = no-op puro** (zero escrita, item segue pendente e visível p/ cobrar de novo).
 - Badge "Já contatado hoje" se `lastContactDate == hoje`.
 - Referência: `screens/financial/collections_screen.dart`, `services/package_billing.dart`.
 
@@ -321,7 +334,7 @@ Bloqueado (agendamento sintético)
 - Referência: `psychology_schedule_form_screen.dart:327-425`.
 
 ### RN-45 - Fluxo terapêutico (Kanban)
-- Estágios: `lead` (Triagem/Leads) → `active` (Em Acompanhamento) → `discharged` (Alta/Manutenção).
+- Estágios: `lead` (Prospecto) → `active` (Acompanhamento) → `discharged` (Alta-Manutenção), em `patients.status` (arrastar no kanban grava direto).
 - **Lead → Active** exige checklist: Contrato Terapêutico, Anamnese Inicial, Dados de Faturamento (LGPD/HIPAA); grava `treatment_start_date`.
 - **Active → Discharged** exige **motivo obrigatório**; grava `discharge_reason` + `discharge_date`.
 - `lead → active` e `active → discharged` sempre passam por dialog; outros movimentos são diretos.
@@ -382,6 +395,12 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 - Config: taxa débito, crédito à vista, **faixas de parcelamento** (De/Até/Taxa, ordenadas por `from`) e **taxa de antecipação** mensal.
 - `activeProfileId` define o padrão; primeiro perfil criado vira padrão; excluir o padrão o redefine para null.
 - Referência: `screens/operations/tabs/card_fees_tab.dart:60-529`.
+
+### RN-54b - Aba Configurações (tema + acesso)
+- 5ª aba da Gestão: **Aparência** (claro/escuro = preferência do usuário em `user_prefs/{uid}`, vale em qualquer aparelho; sem preferência = claro; logout mantém o último tema na tela de login) e **Controle de acesso** (só owner).
+- Acesso: `users/{uid}.menuAccess` (Map chave→bool; ausente = tudo visível); `MenuAccess.canShow` filtra o menu; `keysForClinicType` esconde do controle o que o tipo não mostra (psico: sem laboratório; dental: sem fluxo); owner ignora restrições; tela escondida com seleção ativa cai p/ Dashboard.
+- `AppColors` adaptativo (6 cores via getter); telas com cor hardcoded não seguem o escuro (fase 2).
+- Referência: `screens/operations/tabs/settings_tab.dart`, `services/theme_controller.dart`, `services/menu_access.dart`, `services/user_service.dart:watchClinicUsers/updateMenuAccess`.
 
 ---
 
@@ -474,7 +493,7 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 | 5 | `product_service` legado diverge de `inventory` (`currentQuantity` vs `currentQty`) e não filtra por clínica | RN-04/RN-51 |
 | 6 | ~~`treatment_model.dart` documentado mas inexistente~~ ✅ corrigido (removido do AGENTS.md; planos são `Map` crus) | RN-28 |
 | 7 | CPF duplicado: query existe mas bloqueio está comentado | RN-18 |
-| 8 | Código morto: `_showMonthlyValueDialog` (budgets_tab) e `_checkForGroupPayment` (patient_financial_tab) | — |
+| 8 | ~~Código morto: `_showMonthlyValueDialog`, `_checkForGroupPayment`, `_createNewProfile`, `_buildMinimalistCard`, `_getInitials`, `_isLoadingData`, `receivePayment`, `app_constants.dart`, rules `plans/anticipations`~~ ✅ removido (analyzer) | — |
 | 9 | Registro de funcionário pode deslogar o admin (FirebaseApp temporário) | RN-49 |
 | 10 | ~~Rules amplas (`financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`) liberavam qualquer autenticado~~ ✅ corrigido (redundância removida / blocos escopados; `procedures`/`inventory`/`suppliers` mantidos amplos de propósito) | RN-58 |
 | 11 | ~~`patientTabCount` divergia das abas renderizadas (psico 7 vs 6, default 8 vs 9)~~ ✅ corrigido (6/9 + comentário no código) | RN-05 |

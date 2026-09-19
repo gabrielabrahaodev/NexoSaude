@@ -9,6 +9,7 @@ import '../../services/appointment_service.dart';
 import '../../services/patient_service.dart'; 
 import '../../models/appointment_model.dart';
 import '../../models/patient_model.dart';
+import '../../utils/display.dart';
 
 class AgendaFormScreen extends StatefulWidget {
   final String? editAppointmentId;
@@ -430,7 +431,8 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                   selectedColor: Colors.greenAccent, 
                   disabledColor: Colors.grey[300],
                   labelStyle: TextStyle(
-                    color: isOccupied ? Colors.grey : (isSelected ? Colors.black : Colors.black87)
+                    color: slotCardColor(
+                        isOccupied: isOccupied, isSelected: isSelected)
                   ),
                   onSelected: isOccupied ? null : (selected) {
                     setState(() {

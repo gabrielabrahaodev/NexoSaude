@@ -10,6 +10,7 @@ description: Fluxo terapêutico (kanban) das agendas de psicologia.
 ## O que é
 
 Kanban por estágio do acompanhamento (`_CheckItem` por card), visível só na psico (menu 11).
+Colunas: Prospecto → Acompanhamento → Alta-Manutenção (gravados `lead/active/discharged` em `patients.status`; arrastar grava direto). Enum + labels em `models/therapeutic_status.dart`.
 
 ## Quando usar
 

@@ -14,9 +14,6 @@ class NewsService {
   // Cache em memória para evitar re-traduções e detectar duplicatas
   final Map<String, OrthoArticle> _cache = {};
   DateTime? _lastFetch;
-  
-  // Intervalo mínimo entre fetches (5 minutos)
-  static const Duration _minFetchInterval = Duration(minutes: 5);
 
   Future<List<OrthoArticle>> getLatestOrthoNews({bool forceRefresh = false}) async {
   final now = DateTime.now();

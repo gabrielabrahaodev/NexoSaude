@@ -156,7 +156,10 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                   return isDirectlyLinked || isLinkedToPayment;
                 });
 
-                double localPaid = planReceivables.where((f) => f.isPaid).fold(0.0, (sum, f) => sum + f.amount);
+                double localPaid = planReceivables
+                    .where((f) =>
+                        f.isPaid && f.status.toLowerCase() != 'cancelado')
+                    .fold(0.0, (sum, f) => sum + f.amount);
                 
                 // Separa Custos e Comissões
                 double localLabCost = planExpenses.where((e) => !e.isCommission).fold(0.0, (sum, e) => sum + e.amount);
@@ -169,7 +172,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                 double progress = planTotal == 0 ? 0 : (localPaid / planTotal);
                 if (progress > 1) progress = 1;
 
-                final installmentsList = planReceivables.where((f) => f.installmentNumber != null && f.installmentNumber!.contains('/')).toList();
+                final installmentsList = planReceivables.where((f) => f.installmentNumber != null && f.installmentNumber!.contains('/') && f.status.toLowerCase() != 'cancelado').toList();
                 int totalInstallments = installmentsList.length;
                 int paidInstallments = installmentsList.where((f) => f.isPaid).length;
                 String installmentStatus = totalInstallments > 0 ? "$paidInstallments/$totalInstallments Pagas" : "";
@@ -183,7 +186,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                       Container(
                         padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
                         decoration: BoxDecoration(
-                          color: status == 'active' ? Colors.white : Colors.grey[50],
+                          color: status == 'active' ? AppColors.surface : Colors.grey[50],
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           border: Border(bottom: BorderSide(color: Colors.grey[200]!))
                         ),

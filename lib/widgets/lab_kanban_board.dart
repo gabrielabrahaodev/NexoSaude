@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../ui/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:odonto_controle/models/lab_order.dart';
@@ -157,7 +158,6 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
   }
 
   String _formatRelativeDate(DateTime date) => DateFormat('dd/MM').format(date);
-  String _getInitials(String name) => name.isNotEmpty ? name[0].toUpperCase() : "?";
 
   @override
   Widget build(BuildContext context) {
@@ -243,7 +243,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
                     Expanded(child: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color[800]), overflow: TextOverflow.ellipsis)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10)),
                       child: Text("${items.length}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color[800])),
                     )
                   ],

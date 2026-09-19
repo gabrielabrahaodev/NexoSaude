@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/tooth_model.dart';
 import '../../../ui/odontogram/tooth_widget.dart';
@@ -90,19 +91,27 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
     }
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Dente ${tooth.id} - ${_getFaceName(face)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              if (face == ToothFace.root) _buildRootActions(tooth),
-              if (face == ToothFace.occlusal) _buildOcclusalActions(tooth),
-              if (face != ToothFace.root) _buildStandardActions(tooth, face),
-            ],
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.55,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Dente ${tooth.id} - ${_getFaceName(face)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  if (face == ToothFace.root) _buildRootActions(tooth),
+                  if (face == ToothFace.occlusal) _buildOcclusalActions(tooth),
+                  if (face != ToothFace.root) _buildStandardActions(tooth, face),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -112,7 +121,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
   // Replicando métodos auxiliares para garantir que o código compile
   Widget _buildRootActions(ToothModel tooth) {
     String? status = tooth.facesStatus[ToothFace.root.name];
-    return Wrap(spacing: 20, runSpacing: 20, alignment: WrapAlignment.center, children: [
+    return Wrap(spacing: 12, runSpacing: 12, alignment: WrapAlignment.center, children: [
       _buildActionButton("Saudável/Limpar", Colors.grey, null, Icons.cleaning_services, tooth, ToothFace.root),
       _buildActionButton("A Realizar Endodontia", Colors.pinkAccent, 'endo_planned', Icons.medical_services, tooth, ToothFace.root),
       if (status == 'endo_planned' || status == 'endo_done') _buildActionButton("Endodontia Realizada", Colors.black, 'endo_done', Icons.check_circle, tooth, ToothFace.root),
@@ -123,8 +132,8 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
   Widget _buildOcclusalActions(ToothModel tooth) {
     String? status = tooth.facesStatus[ToothFace.occlusal.name];
     return Column(children: [
-        const Text("Prótese / Coroa", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)), const SizedBox(height: 10),
-        Wrap(spacing: 20, runSpacing: 20, alignment: WrapAlignment.center, children: [
+          const Text("Prótese / Coroa", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)), const SizedBox(height: 8),
+          Wrap(spacing: 12, runSpacing: 12, alignment: WrapAlignment.center, children: [
            _buildActionButton("A Realizar Coroa", Colors.orangeAccent, 'crown_planned', Icons.star_border, tooth, ToothFace.occlusal),
            if (status == 'crown_planned' || status == 'crown_done' || tooth.isImplantDone) _buildActionButton("Coroa Realizada", Colors.teal, 'crown_done', Icons.star, tooth, ToothFace.occlusal),
         ]), const Divider(height: 30), const Text("Ações Padrão", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)), const SizedBox(height: 10),
@@ -132,7 +141,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
   }
   Widget _buildStandardActions(ToothModel tooth, ToothFace face) {
     if (tooth.isCrownDone && face == ToothFace.occlusal) return const Text("Coroa instalada. Ações padrão bloqueadas.");
-    return Wrap(spacing: 20, runSpacing: 20, alignment: WrapAlignment.center, children: [
+    return Wrap(spacing: 12, runSpacing: 12, alignment: WrapAlignment.center, children: [
       _buildActionButton("Saudável", Colors.grey, null, Icons.cleaning_services, tooth, face),
       _buildActionButton("Cárie/Lesão", Colors.redAccent, 'issue', Icons.warning, tooth, face),
       _buildActionButton("Restaurado", Colors.blueAccent, 'restored', Icons.check_circle, tooth, face),
@@ -152,8 +161,36 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
     );
   }
   String _getFaceName(ToothFace face) { switch (face) { case ToothFace.root: return "Raiz"; case ToothFace.occlusal: return "Oclusal/Centro"; case ToothFace.mesial: return "Mesial"; case ToothFace.distal: return "Distal"; case ToothFace.vestibular: return "Vestibular"; case ToothFace.lingual: return "Lingual"; } }
-  Widget _buildLegend() { return Container(padding: const EdgeInsets.all(12), color: Colors.white, height: 120, child: SingleChildScrollView(child: Wrap(spacing: 16, runSpacing: 8, alignment: WrapAlignment.center, children: [_legendItem(Colors.pinkAccent, "Endo (Planej.)"), _legendItem(Colors.black, "Endo (Realiz.)"), _legendItem(Colors.purpleAccent, "Implante (Planej.)"), _legendItem(Colors.grey, "Implante (Realiz.)"), _legendItem(Colors.orangeAccent, "Coroa (Planej.)"), _legendItem(Colors.teal, "Coroa (Realiz.)"), _legendItem(Colors.redAccent, "Cárie"), _legendItem(Colors.blueAccent, "Restaurado"), _legendItem(Colors.orange, "A Realizar (Face)"), _legendItem(Colors.black87, "Extraído")]))); }
-  Widget _legendItem(Color color, String label) => Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 4), Text(label, style: const TextStyle(fontSize: 11))]);
+  Widget _buildLegend() {
+    const items = [
+      [Colors.pinkAccent, "Endo (Planej.)"],
+      [Colors.black, "Endo (Realiz.)"],
+      [Colors.purpleAccent, "Implante (Planej.)"],
+      [Colors.grey, "Implante (Realiz.)"],
+      [Colors.orangeAccent, "Coroa (Planej.)"],
+      [Colors.teal, "Coroa (Realiz.)"],
+      [Colors.redAccent, "Cárie"],
+      [Colors.blueAccent, "Restaurado"],
+      [Colors.orange, "A Realizar (Face)"],
+      [Colors.black87, "Extraído"],
+    ];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: AppColors.surface,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) const SizedBox(width: 14),
+              _legendItem(items[i][0] as Color, items[i][1] as String),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _legendItem(Color color, String label) => Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 4), Text(label, style: const TextStyle(fontSize: 10))]);
 
   @override
   Widget build(BuildContext context) {

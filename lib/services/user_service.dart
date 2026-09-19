@@ -100,4 +100,24 @@ class UserService {
       }).toList();
     });
   }
+
+  /// Todos os usuários da clínica (sem filtro de papel) — aba Configurações.
+  /// Inclui `menuAccess` (Map) quando existir.
+  Stream<List<Map<String, dynamic>>> watchClinicUsers(String clinicId) {
+    if (clinicId.isEmpty) return Stream.value([]);
+    return _users
+        .where('allowedClinics', arrayContains: clinicId)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
+  }
+
+  /// Salva o mapa de acesso ao menu (`menuAccess`) do usuário.
+  /// Regra Firestore: escrita em `users` só p/ owner.
+  Future<void> updateMenuAccess(String uid, Map<String, bool> access) {
+    return _users.doc(uid).update({'menuAccess': access});
+  }
 }

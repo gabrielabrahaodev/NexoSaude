@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import '../ui/app_theme.dart';
+import '../utils/display.dart';
 import '../services/session_manager.dart';
 
 class PatientSmartContextCard extends StatelessWidget {
@@ -31,7 +31,7 @@ class PatientSmartContextCard extends StatelessWidget {
         DateTime date = (data['date'] as Timestamp).toDate();
         int daysAgo = DateTime.now().difference(date).inDays;
         
-        String timeStr = daysAgo == 0 ? "hoje" : (daysAgo == 1 ? "ontem" : "há $daysAgo dias");
+        String timeStr = daysAgoLabel(daysAgo);
         highlights.add("Último atendimento foi $timeStr ($proc).");
       } else {
         highlights.add("Paciente ainda não possui histórico clínico registrado.");
@@ -109,7 +109,9 @@ class PatientSmartContextCard extends StatelessWidget {
           decoration: BoxDecoration(
             // Gradiente suave para dar ar de "Inteligência Artificial" / Modernidade
             gradient: LinearGradient(
-              colors: [Colors.indigo.shade50, Colors.purple.shade50],
+              colors: AppColors.isDark
+                  ? [const Color(0xFF1A2340), const Color(0xFF2A1A40)]
+                  : [Colors.indigo.shade50, Colors.purple.shade50],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -130,7 +132,7 @@ class PatientSmartContextCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
                 ),
@@ -156,8 +158,7 @@ class PatientSmartContextCard extends StatelessWidget {
                     Text(
                       snapshot.data!,
                       style: const TextStyle(
-                        fontSize: 13, 
-                        color: Colors.black87, 
+                        fontSize: 13,
                         height: 1.4,
                         fontWeight: FontWeight.w500
                       ),

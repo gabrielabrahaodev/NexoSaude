@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../ui/app_theme.dart';
+import '../../../models/therapeutic_status.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-
-// Enum para tipar os status e evitar "Strings Mágicas" (Regra do Dr. Code)
-enum PatientStatus { lead, active, discharged }
 
 class PsychologyKanbanBoard extends StatelessWidget {
   const PsychologyKanbanBoard({super.key});
@@ -14,39 +13,39 @@ class PsychologyKanbanBoard extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Gestão de Pacientes (PsychoFlow)"),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
         elevation: 1,
       ),
       body: Container(
-        color: const Color(0xFFF5F7FA), // Fundo suave para não cansar a vista
+        color: AppColors.background, // Fundo suave para não cansar a vista
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Coluna 1: Leads (Vendas/CRM)
+              // Coluna 1: Prospecto
               _buildKanbanColumn(
                 context,
-                "Triagem / Leads",
-                PatientStatus.lead,
+                TherapeuticStatus.lead.label,
+                TherapeuticStatus.lead,
                 Colors.blue,
                 icon: Icons.person_add_alt_1,
               ),
-              // Coluna 2: Ativos (Clínico/Financeiro)
+              // Coluna 2: Acompanhamento
               _buildKanbanColumn(
                 context,
-                "Em Acompanhamento",
-                PatientStatus.active,
+                TherapeuticStatus.active.label,
+                TherapeuticStatus.active,
                 Colors.green,
                 icon: Icons.favorite,
               ),
-              // Coluna 3: Alta (Retenção/Histórico)
+              // Coluna 3: Alta-Manutenção
               _buildKanbanColumn(
                 context,
-                "Alta / Manutenção",
-                PatientStatus.discharged,
+                TherapeuticStatus.discharged.label,
+                TherapeuticStatus.discharged,
                 Colors.grey,
                 icon: Icons.check_circle_outline,
               ),
@@ -60,7 +59,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
   Widget _buildKanbanColumn(
     BuildContext context,
     String title,
-    PatientStatus status,
+    TherapeuticStatus status,
     Color color, {
     required IconData icon,
   }) {
@@ -68,9 +67,9 @@ class PsychologyKanbanBoard extends StatelessWidget {
       width: 320, // Largura fixa para cada coluna
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.borderSoft),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -85,9 +84,9 @@ class PsychologyKanbanBoard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+              border: Border(bottom: BorderSide(color: AppColors.borderSoft)),
             ),
             child: Row(
               children: [
@@ -104,7 +103,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
                   title,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+                    color: AppColors.textPrimary,
                     fontSize: 16,
                   ),
                 ),
@@ -272,26 +271,20 @@ class PsychologyKanbanBoard extends StatelessWidget {
   }
 
   // --- LÓGICA DE TRANSIÇÃO SEGURA (GATEKEEPER) ---
-  void _handleStatusTransition(BuildContext context, DocumentSnapshot doc, PatientStatus newStatus) {
+  void _handleStatusTransition(BuildContext context, DocumentSnapshot doc, TherapeuticStatus newStatus) {
     final data = doc.data() as Map<String, dynamic>;
-    // Converte string do banco para Enum (Fallback para 'lead' se erro)
-    final currentStatusStr = data['status'] ?? 'lead';
-    PatientStatus currentStatus;
-    try {
-      currentStatus = PatientStatus.values.firstWhere((e) => e.name == currentStatusStr);
-    } catch (e) {
-      currentStatus = PatientStatus.lead;
-    }
+    // Converte string do banco para Enum (fallback prospecto)
+    final currentStatus = parseTherapeuticStatus(data['status']?.toString());
 
     // Se soltou na mesma coluna, não faz nada
     if (currentStatus == newStatus) return;
 
     // REGRA 1 (SecOps): Lead -> Ativo exige burocracia
-    if (newStatus == PatientStatus.active) {
+    if (newStatus == TherapeuticStatus.active) {
       _showStartTreatmentDialog(context, doc, newStatus);
     } 
     // REGRA 2 (Growth): Ativo -> Alta exige motivo (retenção)
-    else if (newStatus == PatientStatus.discharged) {
+    else if (newStatus == TherapeuticStatus.discharged) {
       _showDischargeDialog(context, doc, newStatus);
     } 
     // REGRA 3: Movimentação livre para Lead (ex: cancelou antes de começar)
@@ -301,7 +294,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
   }
 
   // Dialog de Início de Tratamento (Consentimento Informado)
-  void _showStartTreatmentDialog(BuildContext context, DocumentSnapshot doc, PatientStatus newStatus) {
+  void _showStartTreatmentDialog(BuildContext context, DocumentSnapshot doc, TherapeuticStatus newStatus) {
     showDialog(
       context: context,
       barrierDismissible: false, // Obriga a decisão
@@ -353,7 +346,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
   }
 
   // Dialog de Alta (Motivo)
-  void _showDischargeDialog(BuildContext context, DocumentSnapshot doc, PatientStatus newStatus) {
+  void _showDischargeDialog(BuildContext context, DocumentSnapshot doc, TherapeuticStatus newStatus) {
     final reasonController = TextEditingController();
     showDialog(
       context: context,

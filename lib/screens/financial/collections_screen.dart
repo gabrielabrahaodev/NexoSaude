@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../ui/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/appointment_model.dart';
@@ -24,8 +25,9 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
   bool _showMonthlyPackages = false; // Toggle para visualização de pacotes mensais (psicologia)
   
   // Controle de quem está sendo cobrado no momento para exibir o Dialog ao voltar
-  String? _currentProcessingId;
-  String? _currentProcessingName;
+  String? _currentProcessingId;  String? _currentProcessingName;
+  // Docs do pacote mensal aguardando confirmação (SIM marca; NÃO é no-op puro)
+  List<DocumentSnapshot>? _pendingPackageDocs;
 
   @override
   void initState() {
@@ -207,23 +209,14 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
     final success = await WhatsAppHelper.openWhatsApp(phone: phone, message: message);
 
     if (success) {
+      // Só registra o pendente: a marcação como cobrado acontece
+      // exclusivamente no SIM do dialog de confirmação (NÃO = no-op puro,
+      // o pacote continua pendente e visível para cobrar de novo).
       setState(() {
         _currentProcessingId = '${_monthlyPackagePrefix}_${items.first.id}';
         _currentProcessingName = "$patientName - Pacote $periodLabel";
+        _pendingPackageDocs = items;
       });
-
-      // Marca todos como cobrados
-      final batch = FirebaseFirestore.instance.batch();
-      for (final doc in items) {
-        batch.update(doc.reference, {
-          'status': 'cobrado',
-          'lastContactDate': FieldValue.serverTimestamp(),
-          'contactHistory': FieldValue.arrayUnion([
-            {'date': DateTime.now().toIso8601String(), 'method': 'whatsapp_monthly_package_full'}
-          ])
-        });
-      }
-      await batch.commit();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Não foi possível abrir o WhatsApp.")));
     }
@@ -328,7 +321,36 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
       processingId: id,
       monthlyPackagePrefix: _monthlyPackagePrefix,
       onMarkCharged: _markAsCharged,
-    );
+      onMarkPackageCharged: _markPackageAsCharged,
+    ).then((_) {
+      // Segurança: não vaza pendência entre cobranças (NÃO = no-op puro)
+      _pendingPackageDocs = null;
+    });
+  }
+
+  /// Marca o pacote mensal como cobrado (só no SIM do dialog).
+  Future<void> _markPackageAsCharged(String firstDocId) async {
+    final docs = _pendingPackageDocs;
+    _pendingPackageDocs = null;
+    if (docs == null || docs.isEmpty) return;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in docs) {
+      batch.update(doc.reference, {
+        'status': 'cobrado',
+        'lastContactDate': FieldValue.serverTimestamp(),
+        'contactHistory': FieldValue.arrayUnion([
+          {
+            'date': DateTime.now().toIso8601String(),
+            'method': 'whatsapp_monthly_package_full'
+          }
+        ])
+      });
+    }
+    await batch.commit();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Pacote marcado como cobrado.")));
+    }
   }
 
   Future<void> _markAsCharged(String financialId) async {
@@ -465,12 +487,12 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
             .where('dueDate', isLessThanOrEqualTo: _endOfMonth);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Cobrança Manual Inteligente", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: const Text("Cobrança Manual Inteligente", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: const IconThemeData(),
         actions: [
           if (isPsychology)
             Padding(
@@ -493,7 +515,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
           // Filtros de Mês
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.white,
+            color: AppColors.surface,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

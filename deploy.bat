@@ -25,10 +25,10 @@ if exist version.json move version.json sistema-interno
 if exist sistema-interno\confirmar.html move sistema-interno\confirmar.html .
 if exist sistema-interno\anamnese.html move sistema-interno\anamnese.html .
 
-echo --- 3. ENVIANDO PARA O FIREBASE ---
+echo --- 3. ENVIANDO PARA O FIREBASE (projeto nexosaude) ---
 :: Voltamos para a raiz do projeto para rodar o deploy
 cd ..\..
-call firebase deploy --only hosting
+call firebase deploy --only hosting --project=nexosaude
 
 echo --- SUCESSO! SITE ATUALIZADO ---
 pause

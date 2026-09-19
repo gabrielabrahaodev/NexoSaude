@@ -67,7 +67,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         appBar: AppBar(
           backgroundColor: AppColors.surface,
           elevation: 0,
-          iconTheme: const IconThemeData(color: AppColors.textPrimary),
+          iconTheme: IconThemeData(color: AppColors.textPrimary),
           title: Text(widget.patientName, style: AppTextStyles.h2),
           bottom: TabBar(
             labelColor: AppColors.primary,
@@ -176,6 +176,7 @@ class _HeaderSummaryRow extends StatelessWidget {
                 double pendente = 0;
                 if (snapshot.hasData) {
                   for (var item in snapshot.data!) {
+                    if (item.status.toLowerCase() == 'cancelado') continue;
                     if (!item.isPaid) {
                       pendente += item.amount - item.paidAmount;
                     }
