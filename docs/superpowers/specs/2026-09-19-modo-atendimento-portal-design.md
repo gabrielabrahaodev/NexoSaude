@@ -65,8 +65,9 @@ então `patients/` e `financial/` seguem fechados).
 
 ### 4.1b Espelho de disponibilidade `portal_slots/{clinicId}` (compartilhado)
 
-- Conteúdo: `{dentistId: {data: ["HH:mm", ...]}}` com os horários LIVRES dos
-  próximos 60 dias. Só horários — zero dado de paciente, público sem drama.
+- Conteúdo: `{dentistId: {data: ["HH:mm", ...]}}` com os horários LIVRES da
+  semana atual + próxima (janela rolante de 14 dias — o paciente só vê e
+  propõe dentro dela). Só horários — zero dado de paciente, público sem drama.
 - Grade-fonte v1: a mesma da agenda (08:30–20:00, slots de 30min, hardcoded
   como hoje). Grade configurável pelo owner é futuro (fora do v1).
 - Manutenção atômica: agendar/bloquear = `arrayRemove` do slot;
@@ -75,6 +76,10 @@ então `patients/` e `financial/` seguem fechados).
 - Mudança de grade (horário do dentista) exige rebuild: rotina
   `rebuildSlotsMirror()` (botão no Gestão v1; automático quando a grade
   virar configurável).
+- Janela rolante sem backend: rotina `ensureSlotsWindow()` roda no login do
+  app (recepção/owner) e após cada rebuild — completa os dias faltantes da
+  janela de 14 dias e apaga dias passados. Mutacões de agenda só fazem
+  `arrayUnion/Remove` no dia afetado.
 - Invariante: o espelho é consultivo — o aceite SEMPRE revalida no dado
   vivo (`getBusySlots`). Pior caso de deriva: mostrar slot errado, nunca
   double-booking real.
