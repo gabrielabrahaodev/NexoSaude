@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/financial_model.dart';
+import 'portal_mirror.dart';
 import 'session_manager.dart';
 
 /// Parcela calculada: bruto, taxa e líquido (2 casas, ajustes na 1ª).
@@ -18,6 +19,15 @@ class InstallmentSlice {
 class FinancialService {
   // --- ESSA LINHA É CRÍTICA PARA FUNCIONAR ---
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  /// Espelho do portal após mutação de lançamento (best-effort).
+  Future<void> _syncPatientOfCharge(String id) async {
+    try {
+      final d = await _db.collection('financial').doc(id).get();
+      final pid = '${d.data()?['patientId'] ?? ''}';
+      if (pid.isNotEmpty) await PortalMirrorSync.patient(pid);
+    } catch (_) {}
+  }
 
   /// Parcela calculada (bruto, taxa e líquido já com ajustes de centavos).
   /// Extraído puro a partir do loop do `processPayment` — mesma matemática.
@@ -85,8 +95,8 @@ class FinancialService {
   }
 
   // Estornar pagamento (volta a pendente, mantém histórico)
-  Future<void> voidPayment(String id) {
-    return _db.collection('financial').doc(id).update({
+  Future<void> voidPayment(String id) async {
+    await _db.collection('financial').doc(id).update({
       'status': 'pendente',
       'isPaid': false,
       'paidAmount': 0.0,
@@ -98,17 +108,19 @@ class FinancialService {
       'valorLiquido': 0.0,
       'netAmount': 0.0,
     });
+    await _syncPatientOfCharge(id);
   }
 
   /// Cancela uma cobrança/lançamento (soft-delete com trilha).
   /// Some dos relatórios/cobrança/risco (todos excluem `cancelado`)
   /// sem apagar o histórico (fiscal). Para corrigir valor, usar
   /// estorno + relançamento em vez disso.
-  Future<void> cancelCharge(String id) {
-    return _db.collection('financial').doc(id).update({
+  Future<void> cancelCharge(String id) async {
+    await _db.collection('financial').doc(id).update({
       'status': 'cancelado',
       'cancelledAt': FieldValue.serverTimestamp(),
     });
+    await _syncPatientOfCharge(id);
   }
 
   /// Monta os dados da cobrança recriada a partir de um doc cancelado.
@@ -153,6 +165,8 @@ class FinancialService {
     data['date'] = FieldValue.serverTimestamp();
     data['createdAt'] = FieldValue.serverTimestamp();
     final ref = await _db.collection('financial').add(data);
+    final pid = '${original['patientId'] ?? ''}';
+    if (pid.isNotEmpty) await PortalMirrorSync.patient(pid);
     return ref.id;
   }
 
@@ -169,6 +183,7 @@ class FinancialService {
     if (dueDate != null) data['dueDate'] = Timestamp.fromDate(dueDate);
     if (data.isEmpty) return;
     await _db.collection('financial').doc(id).update(data);
+    await _syncPatientOfCharge(id);
   }
 
   // --- PROCESSA E SALVA TUDO DE UMA VEZ ---
@@ -271,5 +286,6 @@ class FinancialService {
     }
 
     await batch.commit();
+    await PortalMirrorSync.patient(originalTransaction.patientId);
   }
 }

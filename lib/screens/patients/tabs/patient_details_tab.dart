@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import '../../../services/portal_mirror.dart';
+import '../../../services/remarcacao_service.dart' show portalUrl;
 import '../../../ui/app_theme.dart';
 import '../../../utils/display.dart';
 
@@ -15,6 +18,7 @@ class PatientDetailsTab extends StatefulWidget {
 
 class _PatientDetailsTabState extends State<PatientDetailsTab> {
   bool _isEditing = false;
+  bool _workingLink = false;
   final _formKey = GlobalKey<FormState>();
   
   final _nameCtrl = TextEditingController();
@@ -27,6 +31,52 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
   final maskPhone = MaskTextInputFormatter(mask: '(##) #####-####', filter: { "#": RegExp(r'[0-9]') }, type: MaskAutoCompletionType.lazy);
   final maskCPF = MaskTextInputFormatter(mask: '###.###.###-##', filter: { "#": RegExp(r'[0-9]') }, type: MaskAutoCompletionType.lazy);
   final maskDate = MaskTextInputFormatter(mask: '##/##/####', filter: { "#": RegExp(r'[0-9]') }, type: MaskAutoCompletionType.lazy);
+
+  /// Gera (ou revoga e gera de novo) o link do portal. Revogar mata o
+  /// link antigo: apaga o espelho velho e sincroniza o novo.
+  Future<void> _rotatePortalLink(String docId, String? oldToken) async {
+    setState(() => _workingLink = true);
+    try {
+      final token = newPortalToken();
+      await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(docId)
+          .update({'portalToken': token});
+      if ((oldToken ?? '').isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('portal')
+            .doc(oldToken)
+            .delete()
+            .catchError((_) {});
+      }
+      await PortalMirrorSync.patient(docId);
+      if (mounted) toast(context, "Link do portal pronto.", ok: true);
+    } catch (e) {
+      if (mounted) toast(context, "Falha ao gerar link: $e", error: true);
+    } finally {
+      if (mounted) setState(() => _workingLink = false);
+    }
+  }
+
+  Future<void> _confirmRevoke(String docId, String oldToken) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text("Revogar link?"),
+        content: const Text(
+            "O link atual para de funcionar na hora. Gere e envie o novo."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text("Cancelar")),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text("Revogar e gerar novo")),
+        ],
+      ),
+    );
+    if (ok == true) await _rotatePortalLink(docId, oldToken);
+  }
 
   Future<void> _updatePatient(String docId) async {
     if (_formKey.currentState!.validate()) {
@@ -159,12 +209,74 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
                     )
                   ), 
                   const SizedBox(height: 20)
-                ]
+                ],
+
+                // ---------- PORTAL DO PACIENTE ----------
+                const SizedBox(height: 10),
+                const Text("Portal do paciente",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 10),
+                _portalSection(doc.id, '${data['portalToken'] ?? ''}'),
+                const SizedBox(height: 20),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  /// Link do portal: gerar, copiar ou revogar (mata o antigo).
+  Widget _portalSection(String docId, String token) {
+    if (token.isEmpty) {
+      return OutlinedButton.icon(
+        onPressed:
+            _workingLink ? null : () => _rotatePortalLink(docId, null),
+        icon: const Icon(Icons.link_outlined),
+        label: Text(
+            _workingLink ? "Gerando..." : "Gerar link do portal"),
+      );
+    }
+    final link = portalUrl(token);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(link,
+                style: const TextStyle(fontSize: 12)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: link));
+                      toast(context, "Link copiado.");
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text("Copiar link"),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _workingLink
+                        ? null
+                        : () => _confirmRevoke(docId, token),
+                    icon: const Icon(Icons.refresh,
+                        size: 18, color: Colors.red),
+                    label: const Text("Revogar",
+                        style: TextStyle(color: Colors.red)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

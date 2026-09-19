@@ -11,6 +11,8 @@ import '../patients/patient_details_screen.dart';
 import '../../ui/app_theme.dart';
 import 'agenda_skeleton.dart';
 import '../../services/session_manager.dart';
+import '../../services/portal_mirror.dart';
+import '../care/remarcar_dialog.dart';
 import '../../services/month_agenda_cache.dart';
 import '../../services/user_service.dart';
 import '../../services/treatment_service.dart';
@@ -143,6 +145,22 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     try {
       if (count > 0) {
         await batch.commit();
+        // Espelho de slots (best-effort): bloqueados saem dos livres.
+        if (_selectedDentistId != null) {
+          final slots = <DateTime>[];
+          for (String time in _timeSlots) {
+            int h = int.parse(time.split(':')[0]);
+            int m = int.parse(time.split(':')[1]);
+            if (h >= startHour && h < endHour) {
+              slots.add(baseDate.add(Duration(hours: h, minutes: m)));
+            }
+          }
+          await PortalMirrorSync.adjustSlots(
+            clinicId: clinicId,
+            byDentist: {_selectedDentistId!: slots},
+            occupy: true,
+          );
+        }
         if (mounted) toast(context, "$label aplicado ($count horários).");
       } else {
         if (mounted) toast(context, "Nenhum horário no intervalo selecionado.");
@@ -175,6 +193,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
       WriteBatch batch = FirebaseFirestore.instance.batch();
       int deleteCount = 0;
+      final freedByDentist = <String, List<DateTime>>{};
 
       for (var doc in snapshot.docs) {
         String? docDentistId = doc.data().containsKey('dentistId') ? doc['dentistId'] : null;
@@ -182,13 +201,25 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
         if (_selectedDentistId != null && docDentistId != null && docDentistId != _selectedDentistId) {
           continue; 
         }
-        
+
+        final d = (doc.data()['date'] as Timestamp?)?.toDate();
+        if (d != null && (docDentistId ?? '').isNotEmpty) {
+          freedByDentist
+              .putIfAbsent(docDentistId!, () => [])
+              .add(d);
+        }
         batch.delete(doc.reference);
         deleteCount++;
       }
 
       if (deleteCount > 0) {
         await batch.commit();
+        // Espelho de slots (best-effort): liberados voltam aos livres.
+        await PortalMirrorSync.adjustSlots(
+          clinicId: clinicId,
+          byDentist: freedByDentist,
+          occupy: false,
+        );
         if (mounted) toast(context, "Dia liberado com sucesso!");
       } else {
         if (mounted) toast(context, "Nenhum bloqueio corresponde ao filtro atual.");
@@ -504,6 +535,24 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 ),
 
                 const Divider(),
+
+                // Pedido de remarcação do portal: decide aqui.
+                if (appt.status.toLowerCase() == 'remarcar' &&
+                    appt.proposedDate != null)
+                  ListTile(
+                    leading:
+                        const Icon(Icons.event_repeat, color: Colors.orange),
+                    title: const Text("Decidir remarcação",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange)),
+                    subtitle: Text(
+                        "Propôs ${DateFormat('dd/MM HH:mm').format(appt.proposedDate!)}"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      showRemarcarDialog(context, appt);
+                    },
+                  ),
 
                 ListTile(
                   leading: const Icon(Icons.person, color: Colors.blue),

@@ -79,11 +79,44 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // D. EXCEÇÃO: CONFIRMAÇÃO VIA WHATSAPP
+    // D. EXCEÇÃO: CONFIRMAÇÃO VIA WHATSAPP / PORTAL
     match /appointments/{appointmentId} {
       allow update: if 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'confirmationDate']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 
+'confirmationDate']) &&
         request.resource.data.status == 'Confirmado';
+      // Portal: pedido de remarcação (vira pendência p/ recepção).
+      // Leva a data proposta + token (o app interno lê tudo do agendamento).
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['status', 'proposedDate', 'portalToken']) &&
+        request.resource.data.status == 'remarcar';
+    }
+
+    // A4. PORTAL DO PACIENTE (espelhos; sem Functions).
+    // portal/{token}: get público (doc opaco, só com o link); escrita sem
+    // login SOMENTE via allowlist (pedidos do paciente); create/delete e
+    // demais escritas: autenticado (o app escreve via syncPortalMirror).
+    // portal_slots/{clinicId}: get público (só horários livres, sem dado
+    // de paciente); escrita só autenticado (app mantém via arrayUnion).
+    match /portal/{token} {
+      allow get: if true;
+      allow create, delete: if isAuthenticated();
+      allow update: if isAuthenticated() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
+        ]);
+    }
+    match /portal_slots/{clinicId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Portal: "avisei que paguei" (selo p/ tesouraria dar baixa ou dispensar).
+    match /financial/{docId} {
+      allow update: if isAuthenticated() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['avisoPagamento', 'updatedAt']);
     }
 
     // E. ANAMNESE ONLINE

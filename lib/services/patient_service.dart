@@ -129,6 +129,16 @@ class PatientService {
     // Anamnese pública (doc top-level `anamnesis/{patientId}`, fora do paciente)
     deletes.add(db.collection('anamnesis').doc(patientId));
 
+    // Portal: revoga o link junto (espelho por token, fora da cascata).
+    try {
+      final pdata =
+          (await patientRef.get()).data() as Map<String, dynamic>?;
+      final token = '${pdata?['portalToken'] ?? ''}';
+      if (token.isNotEmpty) {
+        deletes.add(db.collection('portal').doc(token));
+      }
+    } catch (_) {}
+
     // Finalmente, o próprio paciente
     deletes.add(patientRef);
 

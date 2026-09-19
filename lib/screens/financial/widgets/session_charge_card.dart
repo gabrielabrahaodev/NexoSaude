@@ -8,11 +8,17 @@ class SessionChargeCard extends StatelessWidget {
   final bool contactedToday;
   final VoidCallback onTap;
 
+  /// Paciente avisou pagamento no portal (selo + dispensar na cobrança).
+  final bool paymentNoticed;
+  final VoidCallback? onDismissNotice;
+
   const SessionChargeCard({
     super.key,
     required this.item,
     required this.contactedToday,
     required this.onTap,
+    this.paymentNoticed = false,
+    this.onDismissNotice,
   });
 
   @override
@@ -42,7 +48,25 @@ class SessionChargeCard extends StatelessWidget {
                       color: Colors.orange,
                       fontSize: 12,
                       fontWeight: FontWeight.bold)),
-          ],
+            if (paymentNoticed)
+              Row(
+                children: [
+                  const Text("Avisei que paguei",
+                      style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
+                  if (onDismissNotice != null)
+                    InkWell(
+                      onTap: onDismissNotice,
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 6),
+                        child: Icon(Icons.close,
+                            size: 16, color: Colors.grey),
+                      ),
+                    ),
+                ],
+              ),          ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,

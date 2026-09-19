@@ -19,6 +19,8 @@ class AppointmentModel {
   final String? planId;
   final String? monthlyPeriod; // "YYYY-MM"
   final String? attendanceStatus; // 'Attended' | 'Missed' | null
+  final DateTime? proposedDate; // Proposta do portal (status 'remarcar')
+  final String? portalToken; // Token do espelho (p/ atualizar recusas)
   final bool hasMedicalCertificate;
 
   AppointmentModel({
@@ -36,6 +38,8 @@ class AppointmentModel {
     this.planId,
     this.monthlyPeriod,
     this.attendanceStatus,
+    this.proposedDate,
+    this.portalToken,
     this.hasMedicalCertificate = false,
   });
 
@@ -69,6 +73,8 @@ class AppointmentModel {
       monthlyPeriod: map['monthlyPeriod']?.toString(),
       attendanceStatus: map['attendanceStatus']?.toString(),
       hasMedicalCertificate: _toBool(map['hasMedicalCertificate']),
+      proposedDate: (map['proposedDate'] as Timestamp?)?.toDate(),
+      portalToken: map['portalToken']?.toString(),
     );
   }
 
@@ -88,6 +94,9 @@ class AppointmentModel {
       'monthlyPeriod': monthlyPeriod,
       'attendanceStatus': attendanceStatus,
       'hasMedicalCertificate': hasMedicalCertificate,
+      'proposedDate':
+          proposedDate != null ? Timestamp.fromDate(proposedDate!) : null,
+      'portalToken': portalToken,
     };
   }
 }

@@ -168,6 +168,9 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | UC-82 | **Skeleton do cálculo no card** | Todos | `BillingSkeleton` (shimmer, sem pulo de layout) enquanto calcula; timeout 5s → valor cheio + "Cálculo indisponível". | `screens/financial/widgets/billing_skeleton.dart` |
 | UC-83 | **Capabilities por tipo de clínica** | Sistema | `ClinicCapabilities` centraliza guards (tabs, menu, papéis, billing mensal). Proibido comparar `clinicType` solto. | `services/clinic_capabilities.dart` |
 | UC-84 | **Dashboard de KPIs (item 1)** | Todos | 4 cards (A Receber mês, Inadimplência, Agendamentos hoje, Aniversariantes) + próximos vencimentos + aniversariantes; `birthDate` String com parse defensivo. **Hoje conta só `status='Confirmado'`.** | `screens/dashboard/kpi_dashboard_screen.dart` |
+| UC-85 | **Modo Atendimento (item 12)** | Dentista/Psicologo/Owner | "Meu dia" (só hoje; profissional vê o próprio) + ficha em 3 blocos: evolução rápida com modelos, cobrança (Pix ou pendente), próxima sessão + WhatsApp. Helpers puros em `services/care_day.dart` (testado). | `screens/care/care_day_screen.dart` + `screens/care/care_visit_screen.dart` |
+| UC-86 | **Portal do paciente (HTML público)** | Paciente (link) | `web/portal.html?t=TOKEN`: sessões (confirmar/remarcar com slots livres de 14 dias), débitos + Pix + "avisei que paguei". Espelhos `portal/{token}` + `portal_slots/{clinicId}` (rules A4, allowlist). Sync via `PortalMirrorSync` nos pontos de escrita. | `web/portal.html` + `services/portal_mirror.dart` |
+| UC-87 | **Caixa de pendências (remarcar + aviso pago)** | Recep/Dentista | Selo "Decidir remarcação" na agenda + tile no Meu dia: aprovar (revalida choque, confirma, sincroniza) ou recusar via WhatsApp (some da lista do paciente). Selo "Avisei que paguei" nas Cobranças com dispensar; baixa segue no fluxo normal. | `screens/care/remarcar_dialog.dart` + `services/remarcacao_service.dart` |
 
 ---
 

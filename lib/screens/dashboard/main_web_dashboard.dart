@@ -23,6 +23,9 @@ import '../financial/collections_screen.dart';
 // --- TELA DE PSICOLOGIA ---
 import '../patients/psychology/psychology_kanban_board.dart';
 
+// --- MODO ATENDIMENTO ---
+import '../care/care_day_screen.dart';
+
 import '../../main.dart';
 import '../../utils/display.dart'; 
 
@@ -104,6 +107,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
     // --- TELA ESPECIALIZADA (psicologia) ---
     PsychologyKanbanBoard(key: ValueKey('$_currentClinicId-psy-kanban')), // 11
+
+    // --- MODO ATENDIMENTO (profissional) ---
+    CareDayScreen(key: ValueKey('$_currentClinicId-care-day')), // 12
   ];
 
   void _onMenuSelect(int index) {
@@ -336,6 +342,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                     .isPsychology) ...[
                   if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
                   if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact),
                   if (_canShow('pacientes')) _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
                   if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
                   if (_canShow('fluxo')) _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
@@ -346,6 +353,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 ] else ...[
                   if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
                   if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact),
 
                   // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
                   if (ClinicCapabilities.ofType(_currentClinicType)

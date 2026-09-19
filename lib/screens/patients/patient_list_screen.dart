@@ -65,6 +65,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
             color: AppColors.surface,
             child: TextField(
               controller: _searchController,
+              style: TextStyle(color: AppColors.textPrimary),
               onChanged: (value) {
                 setState(() {
                   _searchText = value.toLowerCase().trim();
@@ -72,6 +73,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
               },
               decoration: InputDecoration(
                 hintText: "Buscar por nome, CPF ou telefone...",
+                hintStyle: TextStyle(color: AppColors.textSecondary),
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 suffixIcon: _searchText.isNotEmpty
                     ? IconButton(
@@ -83,7 +85,9 @@ class _PatientListScreenState extends State<PatientListScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: AppColors.isDark
+                    ? const Color(0xFF262B31)
+                    : Colors.grey[100],
                 contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../services/session_manager.dart';
 import '../../models/psychology_schedule_model.dart';
 import '../../models/appointment_model.dart';
+import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
 
 class PsychologyScheduleFormScreen extends StatefulWidget {
@@ -509,9 +510,11 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
+        border: Border.all(color: AppColors.borderSoft),
         borderRadius: BorderRadius.circular(8),
-        color: Colors.grey[100],
+        color: AppColors.isDark
+            ? const Color(0xFF262B31)
+            : Colors.grey[100],
       ),
       child: Row(
         children: [
@@ -522,7 +525,11 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                Text(value,
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary)),
               ],
             ),
           ),

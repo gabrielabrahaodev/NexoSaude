@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/appointment_model.dart';
+import 'portal_mirror.dart';
 
 class AppointmentService {
   final CollectionReference _collection = FirebaseFirestore.instance.collection('appointments');
@@ -48,15 +49,54 @@ class AppointmentService {
     // Convertemos o model para mapa, removendo o ID que será gerado
     var map = appointment.toMap(); 
     await _collection.add(map);
+    // Espelhos do portal (best-effort, nunca quebram a escrita).
+    await PortalMirrorSync.patient(appointment.patientId);
+    await PortalMirrorSync.occupySlot(
+      clinicId: appointment.clinicId,
+      dentistId: appointment.dentistId ?? '',
+      date: appointment.date,
+    );
   }
 
   Future<void> update(AppointmentModel appointment) async {
     var map = appointment.toMap();
+    final old = (await _collection.doc(appointment.id).get()).data()
+        as Map<String, dynamic>?;
     // Em update, removemos campos que não queremos sobrescrever acidentalmente, ou enviamos tudo
     await _collection.doc(appointment.id).update(map);
+    // Troca de data/dentista: libera o slot antigo, ocupa o novo.
+    final oldDate = (old?['date'] as Timestamp?)?.toDate();
+    final oldDentist = '${old?['dentistId'] ?? ''}';
+    if (oldDate != null &&
+        (oldDate != appointment.date ||
+            oldDentist != (appointment.dentistId ?? ''))) {
+      await PortalMirrorSync.releaseSlot(
+        clinicId: appointment.clinicId,
+        dentistId: oldDentist,
+        date: oldDate,
+      );
+    }
+    await PortalMirrorSync.occupySlot(
+      clinicId: appointment.clinicId,
+      dentistId: appointment.dentistId ?? '',
+      date: appointment.date,
+    );
+    await PortalMirrorSync.patient(appointment.patientId);
   }
   
   Future<void> cancel(String id) async {
+    final old =
+        (await _collection.doc(id).get()).data() as Map<String, dynamic>?;
     await _collection.doc(id).update({'status': 'Cancelado'});
+    final oldDate = (old?['date'] as Timestamp?)?.toDate();
+    if (oldDate != null) {
+      await PortalMirrorSync.releaseSlot(
+        clinicId: '${old?['clinicId'] ?? ''}',
+        dentistId: '${old?['dentistId'] ?? ''}',
+        date: oldDate,
+      );
+    }
+    final pid = '${old?['patientId'] ?? ''}';
+    if (pid.isNotEmpty) await PortalMirrorSync.patient(pid);
   }
 }

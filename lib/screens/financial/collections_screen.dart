@@ -729,6 +729,12 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                       item: item,
                       contactedToday: contactedToday,
                       onTap: () => _handleCharge(item),
+                      paymentNoticed:
+                          (data['avisoPagamento'] as Map?) != null,
+                      onDismissNotice: () => FirebaseFirestore.instance
+                          .collection('financial')
+                          .doc(item.id)
+                          .update({'avisoPagamento': FieldValue.delete()}),
                     );
                   },
                 );

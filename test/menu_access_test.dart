@@ -56,24 +56,27 @@ void main() {
       );
     });
 
-    test('12 chaves cobrem todos os índices do menu', () {
-      expect(MenuAccess.indexKey.length, 12);
-      for (var i = 0; i < 12; i++) {
+    test('13 chaves cobrem todos os índices do menu (inclui atendimento)', () {
+      expect(MenuAccess.indexKey.length, 13);
+      for (var i = 0; i < 13; i++) {
         expect(MenuAccess.indexKey.containsKey(i), isTrue, reason: 'índice $i');
       }
-      expect(MenuAccess.keys.toSet().length, 12);
+      expect(MenuAccess.keys.toSet().length, 13);
+      expect(MenuAccess.keyIndex['atendimento'], 12);
     });
 
-    test('psico esconde laboratorio; dental esconde fluxo', () {
+    test('psico esconde laboratorio; dental esconde fluxo; atendimento nos dois', () {
       final psy = MenuAccess.keysForClinicType('psychology');
       expect(psy.contains('laboratorio'), isFalse);
       expect(psy.contains('fluxo'), isTrue);
-      expect(psy.length, 11);
+      expect(psy.contains('atendimento'), isTrue);
+      expect(psy.length, 12);
 
       final dental = MenuAccess.keysForClinicType('dental');
       expect(dental.contains('fluxo'), isFalse);
       expect(dental.contains('laboratorio'), isTrue);
-      expect(dental.length, 11);
+      expect(dental.contains('atendimento'), isTrue);
+      expect(dental.length, 12);
     });
 
     test('tipo desconhecido cai em dental', () {

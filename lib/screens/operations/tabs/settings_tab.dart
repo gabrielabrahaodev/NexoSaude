@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../services/menu_access.dart';
@@ -30,6 +31,8 @@ class _SettingsTabState extends State<SettingsTab> {
   final _currentPass = TextEditingController();
   final _newPass = TextEditingController();
   final _confirmPass = TextEditingController();
+  final _pixCtrl = TextEditingController();
+  bool _savingPix = false;
   bool _changing = false;
 
   @override
@@ -37,6 +40,7 @@ class _SettingsTabState extends State<SettingsTab> {
     _currentPass.dispose();
     _newPass.dispose();
     _confirmPass.dispose();
+    _pixCtrl.dispose();
     super.dispose();
   }
 
@@ -140,6 +144,10 @@ class _SettingsTabState extends State<SettingsTab> {
         children: [
           // ---------- MINHA CONTA ----------
           _accountCard(),
+          const SizedBox(height: 16),
+
+          // ---------- PIX DA CLÍNICA (vai p/ o portal) ----------
+          _pixCard(clinicId),
           const SizedBox(height: 16),
 
           // ---------- APARÊNCIA ----------
@@ -299,6 +307,91 @@ class _SettingsTabState extends State<SettingsTab> {
                     ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Pix da clínica (exibido no portal do paciente). Escrita só owner
+  /// (rules de `clinics`); demais veem somente leitura.
+  Widget _pixCard(String? clinicId) {
+    if (clinicId == null || clinicId.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("Selecione uma clínica."),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('clinics')
+              .doc(clinicId)
+              .get(),
+          builder: (context, snap) {
+            if (!snap.hasData) {
+              return const Center(
+                  child: SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2)));
+            }
+            if (_pixCtrl.text.isEmpty) {
+              _pixCtrl.text =
+                  '${(snap.data!.data() as Map?)?['pixKey'] ?? ''}';
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Pix da clínica", style: AppTextStyles.h2),
+                const SizedBox(height: 4),
+                const Text(
+                    "Chave exibida no portal do paciente para pagamento."),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _pixCtrl,
+                  enabled: _isOwner && !_savingPix,
+                  decoration: InputDecoration(
+                      labelText: "Chave Pix",
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                ),
+                if (_isOwner) ...[
+                  const SizedBox(height: 12),
+                  _savingPix
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton.icon(
+                          onPressed: () async {
+                            setState(() => _savingPix = true);
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('clinics')
+                                  .doc(clinicId)
+                                  .update({
+                                'pixKey':
+                                    _pixCtrl.text.trim()
+                              });
+                              _snack("Pix salvo.");
+                            } catch (e) {
+                              _snack("Falha ao salvar: $e",
+                                  error: true);
+                            } finally {
+                              if (mounted) {
+                                setState(
+                                    () => _savingPix = false);
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.save_outlined),
+                          label: const Text("Salvar Pix"),
+                        ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );

@@ -8,6 +8,7 @@ class MenuAccess {
   static const List<String> keys = [
     'dashboard',
     'agenda',
+    'atendimento',
     'pacientes',
     'laboratorio',
     'financeiro',
@@ -34,6 +35,7 @@ class MenuAccess {
     'funcionarios': 9,
     'gestao': 10,
     'fluxo': 11,
+    'atendimento': 12,
   };
 
   /// Índice → chave (inverso de [keyIndex]).
@@ -54,6 +56,7 @@ class MenuAccess {
   static const Map<String, String> labels = {
     'dashboard': 'Dashboard',
     'agenda': 'Agenda',
+    'atendimento': 'Atendimento',
     'pacientes': 'Pacientes',
     'laboratorio': 'Laboratório',
     'financeiro': 'Financeiro',

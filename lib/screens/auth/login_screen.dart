@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../services/session_manager.dart'; // Import necessário
+import '../../services/portal_mirror.dart';
 import '../../ui/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -45,6 +46,15 @@ class _LoginScreenState extends State<LoginScreen> {
         clinicName: firstClinicName,
         clinicType: firstClinicType,
       );
+
+      // Janela de slots do portal (owner/recepção varrem; best-effort).
+      final loginRole = (data['role'] ?? '').toString();
+      if ((loginRole == 'owner' ||
+              loginRole == 'recepcionista' ||
+              loginRole == 'receptionist') &&
+          firstClinicId != null) {
+        PortalMirrorSync.ensureWindow(firstClinicId);
+      }
     }
   }
 

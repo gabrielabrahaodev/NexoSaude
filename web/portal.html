@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexoSaúde — Portal do Paciente</title>
+    <style>
+        :root {
+            --bg: #0f1113; --card: #1a1e22; --card2: #22272d;
+            --line: #2e343b; --txt: #e9ecef; --mut: #9aa1a9;
+            --teal: #00c897; --teal-ink: #052e24;
+            --blue: #6ea8ff; --orange: #ffb35c; --red: #ff8a80; --green: #3ddc84;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--txt); margin: 0; padding: 0 16px 48px; }
+        .wrap { max-width: 600px; margin: 0 auto; }
+        header.top { position: sticky; top: 0; z-index: 5; background: rgba(15,17,19,.94); backdrop-filter: blur(6px); margin: 0 -16px; padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+        .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--teal); color: var(--teal-ink); font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+        .brand { font-weight: 800; font-size: 16px; letter-spacing: .2px; }
+        .tag { margin-left: auto; font-size: 12px; color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+        h2.sec { font-size: 15px; margin: 22px 2px 10px; display: flex; align-items: center; gap: 8px; }
+        h2.sec .n { background: var(--card2); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; padding: 1px 9px; color: var(--mut); }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+        .sess { display: flex; gap: 12px; align-items: flex-start; }
+        .dbox { min-width: 58px; text-align: center; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 4px; }
+        .dbox b { display: block; font-size: 19px; }
+        .dbox span { font-size: 11px; color: var(--mut); text-transform: uppercase; }
+        .info { flex: 1; min-width: 0; }
+        .prof { font-size: 13px; color: var(--mut); margin-top: 2px; }
+        .pill { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 10px; margin-top: 6px; }
+        .p-pend { background: rgba(110,168,255,.14); color: var(--blue); }
+        .p-ok { background: rgba(61,220,132,.13); color: var(--green); }
+        .p-wait { background: rgba(255,179,92,.14); color: var(--orange); }
+        .p-done { background: rgba(154,161,169,.14); color: var(--mut); }
+        .actions { display: flex; gap: 8px; margin-top: 12px; }
+        .actions button { flex: 1; }
+        button { border: none; border-radius: 12px; padding: 13px 14px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        button:disabled { opacity: .55; cursor: default; }
+        .btn-ok { background: var(--teal); color: var(--teal-ink); }
+        .btn-ghost { background: transparent; color: var(--blue); border: 1px solid var(--line); }
+        .btn-warn { background: #3a2e12; color: #ffd97a; width: 100%; margin-top: 10px; }
+        .note { font-size: 13px; color: var(--mut); background: var(--card2); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+        .panel { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 4px; }
+        .daygrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+        .daycard { padding: 9px 4px; font-size: 13px; background: var(--card2); color: var(--txt); border: 1px solid var(--line); border-radius: 11px; line-height: 1.35; }
+        .daycard small { display: block; color: var(--mut); font-weight: 400; font-size: 11px; }
+        .daycard.sel { border-color: var(--teal); border-width: 2px; }
+        .timegrid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .timecard { padding: 10px 15px; font-size: 14px; background: var(--card2); color: var(--blue); border: 1px solid var(--line); border-radius: 11px; }
+        .timecard.sel { background: var(--teal); color: var(--teal-ink); border-color: var(--teal); }
+        .confirmbar { display: flex; gap: 8px; align-items: center; margin-top: 10px; background: var(--card2); border-radius: 11px; padding: 10px 12px; font-size: 13px; }
+        .confirmbar button { flex: 1; padding: 10px; }
+        .debt { display: flex; gap: 10px; align-items: flex-start; }
+        .late { font-size: 11px; font-weight: 700; color: var(--red); background: rgba(255,138,128,.12); border-radius: 999px; padding: 2px 9px; margin-left: 6px; white-space: nowrap; }
+        .val { font-size: 16px; font-weight: 800; white-space: nowrap; }
+        .pixbox { margin-top: 10px; background: var(--card2); border: 1px dashed var(--line); border-radius: 11px; padding: 12px; }
+        .pixkey { font-family: ui-monospace, monospace; font-size: 14px; word-break: break-all; }
+        .skel { border-radius: 16px; padding: 14px; margin-bottom: 10px; background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%); background-size: 200% 100%; animation: sh 1.2s infinite; min-height: 86px; }
+        @keyframes sh { to { background-position: -200% 0; } }
+        .err { color: var(--red); text-align: center; padding: 24px 0; }
+        #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--card2); border: 1px solid var(--line); color: var(--txt); border-radius: 12px; padding: 12px 18px; font-size: 14px; opacity: 0; transition: all .25s; pointer-events: none; max-width: 90vw; z-index: 9; }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="top"><div class="mark">N</div><div class="brand">NexoSaúde</div><div class="tag">Portal do paciente</div></header>
+    <div id="content" style="margin-top:14px">
+        <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+    </div>
+</div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyD-4NjgWl9qa9wkb1EN-nB9wgWmzK815No",
+        authDomain: "nexosaude.firebaseapp.com",
+        projectId: "nexosaude",
+        storageBucket: "nexosaude.firebasestorage.app",
+        messagingSenderId: "388133875376",
+        appId: "1:388133875376:web:ad058507ea0b0f86cd5575"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const content = document.getElementById('content');
+    const token = new URLSearchParams(window.location.search).get('t');
+    const fmtDT = (d) => d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    const fmtBRL = (v) => 'R$ ' + Number(v || 0).toFixed(2);
+
+    let mirror = null, mirrorRef = null;
+
+    function esc(s) { return String(s ?? '').replace(/</g, '&lt;'); }
+
+    let toastT = null;
+    function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastT);
+        toastT = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+
+    async function boot() {
+        if (!token) { content.innerHTML = '<p class="err">Link inválido.</p>'; return; }
+        try {
+            mirrorRef = db.collection('portal').doc(token);
+            const snap = await mirrorRef.get();
+            if (!snap.exists) { content.innerHTML = '<p class="err">Link inválido ou revogado. Fale com a recepção.</p>'; return; }
+            mirror = snap.data();
+            render();
+        } catch (e) {
+            content.innerHTML = '<p class="err">Falha ao carregar. Tente de novo.</p>';
+        }
+    }
+
+    // Override por sessão (MAPA {id: status}): confirmar uma não apaga a outra.
+    // Suporta o formato antigo de objeto único {sessaoId, status}.
+    function sessionStatus(s) {
+        const ov = mirror.statusSessao || {};
+        if (ov[s.id]) return ov[s.id];
+        if (ov.sessaoId === s.id) return ov.status;
+        return s.status || 'Agendado';
+    }
+
+    function setOverride(id, status) {
+        let ov = mirror.statusSessao || {};
+        if (ov.sessaoId) ov = {[ov.sessaoId]: ov.status};
+        ov[id] = status;
+        mirror.statusSessao = ov;
+        return ov;
+    }
+
+    // "agendado" como conceito (não a string exata).
+    function podeConfirmar(st) {
+        const s = String(st || '').toLowerCase();
+        return s === 'agendado' || s === 'aguardando confirmação';
+    }
+
+    function pillFor(st) {
+        const s = String(st || '').toLowerCase();
+        if (s === 'confirmado') return '<span class="pill p-ok">Confirmada</span>';
+        if (s === 'remarcar') return '<span class="pill p-wait">Remarcação pedida</span>';
+        if (s === 'finalizado') return '<span class="pill p-done">Finalizada</span>';
+        if (s === 'cancelado' || s === 'faltou') return '<span class="pill p-done">' + esc(st) + '</span>';
+        return '<span class="pill p-pend">Aguardando confirmação</span>';
+    }
+
+    function render() {
+        const sessions = mirror.sessions || [];
+        let html = '<h2 class="sec">Próximas sessões <span class="n">' + sessions.length + '</span></h2>';
+        if (!sessions.length) html += '<div class="card"><p style="color:var(--mut);font-size:13px;margin:0">Nenhuma sessão futura.</p></div>';
+        for (const s of sessions) {
+            const st = sessionStatus(s);
+            const d = s.date && s.date.toDate ? s.date.toDate() : new Date(s.date);
+            const wd = d.toLocaleDateString('pt-BR', {weekday: 'short'}).replace('.', '');
+            const dd = String(d.getDate()).padStart(2, '0'), mm = String(d.getMonth() + 1).padStart(2, '0');
+            const hh = d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+            html += '<div class="card"><div class="sess">'
+                + '<div class="dbox"><b>' + dd + '</b><span>' + mm + ' • ' + wd + '</span><span>' + hh + '</span></div>'
+                + '<div class="info"><div style="font-weight:700">' + esc(s.professional || 'Sessão') + '</div>' + pillFor(st) + '</div>'
+                + '</div>';
+            if (podeConfirmar(st)) {
+                html += '<div class="actions"><button class="btn-ok" onclick="confirmar(\'' + s.id + '\')">Confirmar presença</button>'
+                    + '<button class="btn-ghost" onclick="abrirRemarcar(\'' + s.id + '\')">Remarcar</button></div>'
+                    + '<div id="rem-' + s.id + '"></div>';
+            } else if (String(st).toLowerCase() === 'remarcar') {
+                html += '<div class="note">Pedido de remarcação enviado. Aguarde a recepção.</div>';
+            } else if (String(st).toLowerCase() === 'confirmado') {
+                html += '<div class="actions"><button class="btn-ghost" onclick="abrirRemarcar(\'' + s.id + '\')">Pedir remarcação</button></div>'
+                    + '<div id="rem-' + s.id + '"></div>';
+            }
+            html += '</div>';
+        }
+
+        // Só atrasos (vencimento < hoje), ordenado, top 3. Vale com espelho antigo.
+        const now0 = new Date(); now0.setHours(0, 0, 0, 0);
+        const dueOf = (x) => x.dueDate && x.dueDate.toDate ? x.dueDate.toDate() : (x.dueDate ? new Date(x.dueDate) : null);
+        const debts = (mirror.debts || [])
+            .filter((x) => { const d = dueOf(x); return d && d < now0; })
+            .sort((a, b) => dueOf(a) - dueOf(b))
+            .slice(0, 3);
+        html += '<h2 class="sec">Em atraso <span class="n">' + debts.length + '</span></h2>';
+        if (!debts.length) html += '<div class="card"><p style="color:var(--mut);font-size:13px;margin:0">Nenhum pagamento em atraso. 🎉</p></div>';
+        let total = 0;
+        for (const x of debts) {
+            total += Number(x.amount || 0);
+            const dd = dueOf(x);
+            const lateDays = Math.floor((now0 - dd) / 86400000);
+            const due = dd.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+            html += '<div class="card"><div class="debt"><div class="info"><div style="font-weight:700">' + esc(x.title)
+                + '<span class="late">há ' + lateDays + 'd</span></div>'
+                + '<div style="font-size:12px;color:var(--mut)">venceu ' + due + '</div></div>'
+                + '<div class="val">' + fmtBRL(x.amount) + '</div></div>'
+                + '<div class="actions"><button class="btn-ghost" onclick="togglePix(\'' + x.id + '\')">Pagar com Pix</button></div>'
+                + '<div id="pix-' + x.id + '" style="display:none;">'
+                + '<div class="pixbox">'
+                + (mirror.pixKey
+                    ? '<div style="font-size:12px;color:var(--mut)">Chave Pix</div><div class="pixkey">' + esc(mirror.pixKey) + '</div>'
+                      + '<div class="actions"><button class="btn-ghost" onclick="copiarPix()">Copiar chave</button></div>'
+                    : '<p style="font-size:13px;color:var(--mut);margin:0">Pix não cadastrado. Fale com a recepção.</p>')
+                + '<button class="btn-warn" id="av-' + x.id + '" onclick="avisarUm(\'' + x.id + '\')">Avisei que paguei</button>'
+                + '</div></div></div>';
+        }
+        if (debts.length) {
+            const fresh = mirror && ('debtsTotal' in mirror);
+            const grand = fresh ? Number(mirror.debtsTotal || total) : total;
+            html += '<p style="font-size:13px;color:var(--mut)">Total em atraso: <b style="color:var(--txt)">' + fmtBRL(grand) + '</b></p>';
+            const count = Number(mirror.debtsCount || debts.length);
+            if (fresh && count > debts.length) html += '<p style="font-size:13px;color:var(--mut)">+ mais ' + (count - debts.length) + ' em atraso. Fale com a recepção.</p>';
+        }
+        content.innerHTML = html;
+        const warned = ((mirror.avisoPagamento && mirror.avisoPagamento.ids) || []).concat(avisoLocal);
+        for (const x of warned) marcarAvisado(x);
+    }
+
+    function copiarPix() {
+        const key = mirror.pixKey || '';
+        if (navigator.clipboard) navigator.clipboard.writeText(key).then(() => toast('Chave copiada.'));
+        else toast('Chave: ' + key);
+    }
+
+    async function confirmar(id) {
+        try {
+            await db.collection('appointments').doc(id).update({status: 'Confirmado', confirmationDate: new Date()});
+            await mirrorRef.update({statusSessao: setOverride(id, 'Confirmado'), updatedAt: new Date()});
+            render();
+            toast('Presença confirmada!');
+        } catch (e) { toast('Falha ao confirmar. Tente de novo.'); }
+    }
+
+    async function abrirRemarcar(id) {
+        const box = document.getElementById('rem-' + id);
+        box.innerHTML = '<p style="font-size:13px;color:var(--mut)">Carregando horários livres…</p>';
+        try {
+            const sess = (mirror.sessions || []).find((x) => x.id === id) || {};
+            const did = sess.dentistId || '';
+            const sDoc = await db.collection('portal_slots').doc(mirror.clinicId).get();
+            if (!sDoc.exists) {
+                box.innerHTML = '<p class="err">Horários em sincronização. Conclua um acesso no app e tente de novo.</p>';
+                return;
+            }
+            const data = sDoc.data() || {};
+            const refused = mirror.propostasRecusadas || [];
+            const byDay = {};
+            for (const k of Object.keys(data)) {
+                const dot = k.indexOf('.');
+                const kd = k.slice(0, dot), day = k.slice(dot + 1);
+                if (did && kd !== did) continue;
+                const times = (data[k] || []).filter((t) => !refused.includes(day + 'T' + t)).sort();
+                if (times.length) byDay[day] = times;
+            }
+            const days = Object.keys(byDay).sort().slice(0, 14);
+            if (!days.length) {
+                box.innerHTML = '<p style="font-size:13px;color:var(--mut)">Sem horários livres nos próximos dias.</p>';
+                return;
+            }
+            let html = '<div class="panel"><div style="font-size:13px;font-weight:700;color:var(--mut)">Escolha o dia</div><div class="daygrid">';
+            days.forEach((day, i) => {
+                const parts = day.split('-');
+                const dt = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+                const wd = dt.toLocaleDateString('pt-BR', {weekday: 'short'}).replace('.', '');
+                html += '<button class="daycard' + (i === 0 ? ' sel' : '') + '" data-day="' + day + '" onclick="escolherDia(\'' + id + '\',\'' + day + '\')">' + parts[2] + '/' + parts[1] + '<small>' + wd + ' • ' + byDay[day].length + '</small></button>';
+            });
+            html += '</div><div style="font-size:13px;font-weight:700;color:var(--mut);margin-top:10px">Horários</div><div class="timegrid" id="tg-' + id + '"></div><div id="cf-' + id + '"></div></div>';
+            box.innerHTML = html;
+            window['_slots_' + id] = byDay;
+            escolherDia(id, days[0]);
+        } catch (e) { box.innerHTML = '<p class="err">Falha ao carregar horários.</p>'; }
+    }
+
+    function escolherDia(id, day) {
+        const byDay = window['_slots_' + id] || {};
+        const box = document.getElementById('rem-' + id);
+        box.querySelectorAll('.daycard').forEach((b) => b.classList.toggle('sel', b.dataset.day === day));
+        document.getElementById('tg-' + id).innerHTML = (byDay[day] || []).map((t) =>
+            '<button class="timecard" onclick="selecionarHora(\'' + id + '\',\'' + day + '\',\'' + t + '\')">' + t + '</button>'
+        ).join('');
+        document.getElementById('cf-' + id).innerHTML = '';
+    }
+
+    function selecionarHora(id, day, t) {
+        const box = document.getElementById('rem-' + id);
+        box.querySelectorAll('.timecard').forEach((b) => b.classList.toggle('sel', b.textContent === t));
+        const parts = day.split('-');
+        document.getElementById('cf-' + id).innerHTML =
+            '<div class="confirmbar"><span>Trocar para <b>' + parts[2] + '/' + parts[1] + ' ' + t + '</b>?</span>'
+            + '<button class="btn-ok" onclick="propor(\'' + id + '\',\'' + day + 'T' + t + '\')">Confirmar troca</button></div>';
+    }
+
+    async function propor(id, iso) {
+        try {
+            await db.collection('appointments').doc(id).update({status: 'remarcar', proposedDate: new Date(iso), portalToken: token});
+            await mirrorRef.update({pedidoRemarcacao: {sessaoId: id, novaData: new Date(iso)}, updatedAt: new Date()});
+            setOverride(id, 'remarcar');
+            render();
+            toast('Pedido enviado! Aguarde a recepção.');
+        } catch (e) { toast('Falha ao enviar pedido. Tente de novo.'); }
+    }
+
+    let avisoLocal = [];
+
+    function marcarAvisado(id) {
+        const b = document.getElementById('av-' + id);
+        if (b) { b.textContent = 'Avisado ✓'; b.disabled = true; }
+        if (!avisoLocal.includes(id)) avisoLocal.push(id);
+    }
+
+    function togglePix(id) {
+        const el = document.getElementById('pix-' + id);
+        if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function avisarUm(id) {
+        try {
+            try { await db.collection('financial').doc(id).update({avisoPagamento: {at: new Date()}, updatedAt: new Date()}); } catch (e) {}
+            const prev = (mirror.avisoPagamento && mirror.avisoPagamento.ids) || [];
+            const ids = prev.includes(id) ? prev : prev.concat([id]);
+            await mirrorRef.update({avisoPagamento: {ids: ids, at: new Date()}, updatedAt: new Date()});
+            mirror.avisoPagamento = {ids: ids};
+            marcarAvisado(id);
+            toast('Avisado! A recepção confirma a baixa.');
+        } catch (e) { toast('Falha ao avisar. Tente de novo.'); }
+    }
+
+    boot();
+</script>
+</body>
+</html>
