@@ -63,18 +63,43 @@ então `patients/` e `financial/` seguem fechados).
   cancelar lançamento. Nenhum outro lugar escreve no espelho.
 - Custo: 1 doc por paciente; portal lê 1 doc (cota irrisória).
 
+### 4.1b Espelho de disponibilidade `portal_slots/{clinicId}` (compartilhado)
+
+- Conteúdo: `{dentistId: {data: ["HH:mm", ...]}}` com os horários LIVRES dos
+  próximos 60 dias. Só horários — zero dado de paciente, público sem drama.
+- Grade-fonte v1: a mesma da agenda (08:30–20:00, slots de 30min, hardcoded
+  como hoje). Grade configurável pelo owner é futuro (fora do v1).
+- Manutenção atômica: agendar/bloquear = `arrayRemove` do slot;
+  cancelar/desbloquear = `arrayUnion` de volta. Concorrência segura
+  (transform atômico). +1 escrita por mutação de agenda (cota ok).
+- Mudança de grade (horário do dentista) exige rebuild: rotina
+  `rebuildSlotsMirror()` (botão no Gestão v1; automático quando a grade
+  virar configurável).
+- Invariante: o espelho é consultivo — o aceite SEMPRE revalida no dado
+  vivo (`getBusySlots`). Pior caso de deriva: mostrar slot errado, nunca
+  double-booking real.
+
 ### 4.2 Tela pública e escritas com allowlist (padrão Confirmado/anamnese)
 
 - Rota pública Flutter `#/portal?t=TOKEN` (mesmo padrão da avaliação pública).
+- **Escrita pública (allowlist, padrão Confirmado/anamnese):** botões **Confirmar** / **Pedir remarcação** gravam só `{status, updatedAt}` no espelho + no agendamento. Pedido de remarcação vira pendência pra recepção (status `remarcar`), não remarca sozinho.
 - Leituras: `get` público em `portal/{token}` (doc opaco; sem token não há
-  como descobrir o ID).
+  como descobrir o ID) + `get` público em `portal_slots/{clinicId}`.
 - Escritas públicas restritas a:
-  - `portal/{token}`: `{statusSessao, pedidoRemarcacao, avisoPagamento, updatedAt}`
-    (allowlist rígida de chaves, como a anamnese);
+  - `portal/{token}`: `{statusSessao, pedidoRemarcacao, propostasRecusadas,
+    avisoPagamento, updatedAt}` (allowlist rígida de chaves, como a anamnese).
+    `pedidoRemarcacao = {sessaoId, novaData}` (escolhida da lista de livres);
+    `propostasRecusadas` = array de datetimes (só cresce via app interno).
   - `appointments/{id}`: só `status` em {`Confirmado`, `remarcar`} — espelhando
     a rule do Confirmado que já existe.
 - "Pedir remarcação" e "Avisei que paguei" viram pendências para recepção/
   tesouraria (não executam sozinhas).
+- **Fluxo remarcação:** paciente propõe (slot livre − `propostasRecusadas`)
+  → pendência com selo na agenda + item no "Meu dia" do dentista responsável
+  → recepção/dentista aprova (revalida `getBusySlots`, atualiza agendamento +
+  `syncPortalMirror`) ou **recusa e avisa** (abre `wa.me` com texto pronto +
+  link; proposta vai pra `propostasRecusadas` e some da lista DESSE paciente —
+  segue livre para os demais).
 - Débitos detalhados e baixa seguem no app interno.
 
 ### 4.3 Rules novas (firestore.rules)
@@ -97,6 +122,8 @@ então `patients/` e `financial/` seguem fechados).
 
 - Espelho dessincronizado (pior risco: valor errado no portal). Mitiga:
   helper único + teste que quebra se novo ponto de escrita não sincronizar.
+- Espelho de slots derivado (grade mudou e ninguém rebuildou). Mitiga:
+  botão `rebuildSlotsMirror` no Gestão + aceite sempre revalida no vivo.
 - Link vazado → revogar token.
 - Quota → portal lê 1 doc; Modo Atendimento lê só o dia.
 - Falha de rede no balcão → persistence local já ativa; toasts de erro
@@ -123,4 +150,6 @@ então `patients/` e `financial/` seguem fechados).
 - Paciente com link confirma sessão e vê débitos + Pix; "avisei que paguei"
   aparece como pendência interna.
 - Revogar token invalida o link antigo imediatamente.
+- Slot recusado some da lista do paciente e segue livre para os demais;
+  aprovação com slot ocupado no vivo é barrada com aviso.
 - Nenhuma tela nova lê collection inteira (cota sob controle).
