@@ -17,6 +17,7 @@ import 'package:universal_html/html.dart' as html;
 
 import '../../services/oracle_report_service.dart';
 import '../../services/payment_service.dart';
+import '../../utils/display.dart';
 
 class FinancialReportScreen extends StatefulWidget {
   const FinancialReportScreen({super.key});
@@ -91,7 +92,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
           item.title, // Nome do Paciente
           item.isIncome ? "Consulta/Procedimento" : item.category, // Descrição
           item.paymentMethod, // Dinheiro, Cartão, etc
-          "R\$ ${item.amount.toStringAsFixed(2)}"
+          "${formatBRL(item.amount)}"
         ]);
       }
 
@@ -163,9 +164,9 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text("Total de Receitas: R\$ ${calcIncome.toStringAsFixed(2)}", style: const pw.TextStyle(fontSize: 12)),
-                    pw.Text("Total de Despesas: R\$ ${calcExpense.toStringAsFixed(2)}", style: const pw.TextStyle(fontSize: 12)),
-                    pw.Text("Resultado Líquido: R\$ ${summary.netProfit.toStringAsFixed(2)}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                    pw.Text("Total de Receitas: ${formatBRL(calcIncome)}", style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text("Total de Despesas: ${formatBRL(calcExpense)}", style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text("Resultado Líquido: ${formatBRL(summary.netProfit)}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
                   ]
                 )
               ),
@@ -236,12 +237,12 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
 
   void _showSuccess(String msg) {
     if(!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+    toast(context, msg, ok: true);
   }
 
   void _showError(String msg) {
     if(!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    toast(context, msg, error: true);
   }
 
   // --- DIÁLOGO DE EXPORTAÇÃO ---
@@ -365,7 +366,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                             Text(DateFormat('MMMM yyyy', 'pt_BR').format(_currentMonth).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 4),
                             Text(
-                              "Saldo Realizado: R\$ ${data.netProfit.toStringAsFixed(2)}",
+                              "Saldo Realizado: ${formatBRL(data.netProfit)}",
                               style: TextStyle(color: data.netProfit >= 0 ? Colors.green[700] : Colors.red[700], fontWeight: FontWeight.bold, fontSize: 14),
                             )
                           ],
@@ -483,9 +484,9 @@ class _TransactionRow extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text("${item.isIncome ? '+' : '-'} R\$ ${item.amount.toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold, color: item.isIncome ? Colors.green[700] : Colors.red[700], fontSize: 15)),
+                Text("${item.isIncome ? '+' : '-'} ${formatBRL(item.amount)}", style: TextStyle(fontWeight: FontWeight.bold, color: item.isIncome ? Colors.green[700] : Colors.red[700], fontSize: 15)),
                 const SizedBox(height: 2),
-                Text("Saldo: R\$ ${item.runningBalance.toStringAsFixed(2)}", style: TextStyle(fontSize: 10, color: Colors.grey[400]))
+                Text("Saldo: ${formatBRL(item.runningBalance)}", style: TextStyle(fontSize: 10, color: Colors.grey[400]))
               ],
             )
           ],

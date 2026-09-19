@@ -5,7 +5,8 @@ import '../../../ui/app_theme.dart';
 import '../../../services/treatment_service.dart';
 import '../../../services/patient_financial_oracle.dart';
 import '../../../models/financial_model.dart'; 
-import '../../../models/expense_model.dart';   
+import '../../../models/expense_model.dart';
+import '../../../utils/display.dart';   
 
 class TreatmentsTab extends StatefulWidget {
   final String patientName;
@@ -41,25 +42,25 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
             ListTile(
               leading: const Icon(Icons.receipt_long, color: Colors.grey),
               title: const Text("Valor do Contrato"),
-              trailing: Text("R\$ ${total.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+              trailing: Text("${formatBRL(total)}", style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.arrow_circle_up, color: Colors.green),
               title: const Text("Recebido do Paciente"),
-              trailing: Text("R\$ ${paid.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+              trailing: Text("${formatBRL(paid)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
             ),
             ListTile(
               leading: const Icon(Icons.science, color: Colors.red),
               title: const Text("Custos Externos"),
               subtitle: const Text("Laboratórios e Materiais"),
-              trailing: Text("- R\$ ${labCost.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+              trailing: Text("- ${formatBRL(labCost)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
             ),
             ListTile(
               leading: const Icon(Icons.person, color: Colors.purple),
               title: const Text("Repasses/Comissões"),
               subtitle: const Text("Pagamento aos dentistas"),
-              trailing: Text("- R\$ ${commCost.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
+              trailing: Text("- ${formatBRL(commCost)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
             ),
             const Divider(),
             ListTile(
@@ -263,8 +264,8 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("R\$ ${localPaid.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                                Text("de R\$ ${planTotal.toStringAsFixed(2)}", style: const TextStyle(color: Colors.grey)),
+                                Text("${formatBRL(localPaid)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                Text("de ${formatBRL(planTotal)}", style: const TextStyle(color: Colors.grey)),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -283,9 +284,9 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                                 child: Row(
                                   children: [
                                     if (localLabCost > 0)
-                                      Text("Custos: R\$ ${localLabCost.toStringAsFixed(2)}  ", style: TextStyle(fontSize: 11, color: Colors.red[300], fontStyle: FontStyle.italic)),
+                                      Text("Custos: ${formatBRL(localLabCost)}  ", style: TextStyle(fontSize: 11, color: Colors.red[300], fontStyle: FontStyle.italic)),
                                     if (localCommCost > 0)
-                                      Text("Repasses: R\$ ${localCommCost.toStringAsFixed(2)}", style: TextStyle(fontSize: 11, color: Colors.purple[300], fontStyle: FontStyle.italic)),
+                                      Text("Repasses: ${formatBRL(localCommCost)}", style: TextStyle(fontSize: 11, color: Colors.purple[300], fontStyle: FontStyle.italic)),
                                   ],
                                 ),
                               )

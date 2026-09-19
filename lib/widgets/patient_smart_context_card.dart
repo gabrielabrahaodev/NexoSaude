@@ -81,7 +81,7 @@ class PatientSmartContextCard extends StatelessWidget {
         }
 
         if (overdueCount > 0) {
-          highlights.add("Possui $overdueCount pendência(s) vencida(s) totalizando R\$ ${overdueAmount.toStringAsFixed(2)}.");
+          highlights.add("Possui $overdueCount pendência(s) vencida(s) totalizando ${formatBRL(overdueAmount)}.");
         }
       }
 

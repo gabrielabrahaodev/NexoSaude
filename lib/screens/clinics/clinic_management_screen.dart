@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../utils/display.dart'; 
 
 class ClinicManagementScreen extends StatefulWidget {
   const ClinicManagementScreen({super.key});
@@ -106,7 +107,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
     final user = FirebaseAuth.instance.currentUser;
     
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro: Usuário não logado.")));
+      toast(context, "Erro: Usuário não logado.");
       return;
     }
 
@@ -125,11 +126,11 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Clínica de $type cadastrada com sucesso!")));
+        toast(context, "Clínica de $type cadastrada com sucesso!");
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao cadastrar: $e")));
+        toast(context, "Erro ao cadastrar: $e");
       }
     }
   }
@@ -258,7 +259,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                                 width: double.infinity,
                                 child: OutlinedButton(
                                   onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Selecionada: ${data['name']}")));
+                                    toast(context, "Selecionada: ${data['name']}");
                                   },
                                   child: const Text("Gerenciar"),
                                 ),

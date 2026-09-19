@@ -6,6 +6,7 @@ import '../../ui/app_theme.dart';
 import '../../services/session_manager.dart';
 import '../../services/clinic_capabilities.dart';
 import '../../models/therapeutic_status.dart';
+import '../../utils/display.dart';
 
 class CreatePatientScreen extends StatefulWidget {
   const CreatePatientScreen({super.key});
@@ -75,7 +76,7 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
     // --- SEGREGAÇÃO DE DADOS ---
     final clinicId = SessionManager().currentClinicId;
     if (clinicId == null) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro: Sessão inválida."), backgroundColor: Colors.red));
+       toast(context, "Erro: Sessão inválida.", error: true);
        return;
     }
 

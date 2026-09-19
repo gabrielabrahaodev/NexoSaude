@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../services/session_manager.dart';
 import '../../../ui/app_theme.dart';
+import '../../../utils/display.dart';
 
 // Classe auxiliar para as linhas de regras
 class InstallmentRangeRow {
@@ -202,10 +203,10 @@ class _CardFeesTabState extends State<CardFeesTab> {
       _selectedProfileId = null; // Volta para modo novo
       await _loadAllData(); // Recarrega lista
       
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Perfil excluído.")));
+      if(mounted) toast(context, "Perfil excluído.");
 
     } catch (e) {
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro ao excluir."), backgroundColor: Colors.red));
+      if(mounted) toast(context, "Erro ao excluir.", error: true);
     }
   }
 
@@ -215,7 +216,7 @@ class _CardFeesTabState extends State<CardFeesTab> {
     if (clinicId == null) return;
 
     if (_machineNameCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Dê um nome para a máquina (ex: Stone)."), backgroundColor: Colors.orange));
+      toast(context, "Dê um nome para a máquina (ex: Stone).", color: Colors.orange);
       return;
     }
 
@@ -272,10 +273,10 @@ class _CardFeesTabState extends State<CardFeesTab> {
       _selectedProfileId = docRef.id;
       await _loadAllData(); // Atualiza dropdown
 
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Salvo com sucesso!")));
+      if (mounted) toast(context, "Salvo com sucesso!");
     } catch (e) {
       debugPrint("$e");
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao salvar: $e"), backgroundColor: Colors.red));
+      if (mounted) toast(context, "Erro ao salvar: $e", error: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -294,7 +295,7 @@ class _CardFeesTabState extends State<CardFeesTab> {
       _activeProfileId = _selectedProfileId;
     });
     
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Esta máquina agora é a PADRÃO para cálculos.")));
+    toast(context, "Esta máquina agora é a PADRÃO para cálculos.");
   }
 
   // --- UI ---

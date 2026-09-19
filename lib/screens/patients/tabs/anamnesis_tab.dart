@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 import '../../../ui/app_theme.dart';
+import '../../../utils/display.dart';
 
 class AnamnesisTab extends StatefulWidget {
   final String patientId;
@@ -163,7 +164,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
       }
 
       if (phoneRaw == null || phoneRaw.isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Telefone não cadastrado.")));
+        if (mounted) toast(context, "Telefone não cadastrado.");
         return;
       }
 
@@ -180,11 +181,11 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Não foi possível abrir o WhatsApp.")));
+        if (mounted) toast(context, "Não foi possível abrir o WhatsApp.");
       }
 
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      if (mounted) toast(context, "Erro: $e");
     }
   }
 

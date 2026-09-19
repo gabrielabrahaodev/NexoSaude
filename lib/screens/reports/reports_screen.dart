@@ -6,7 +6,8 @@ import 'dart:async';
 import '../../services/session_manager.dart';
 import '../../models/financial_model.dart';
 import '../financial/financial_report_screen.dart'; 
-import '../financial/expenses_screen.dart'; 
+import '../financial/expenses_screen.dart';
+import '../../utils/display.dart'; 
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -247,9 +248,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: isProfit
-                                      ? (AppColors.isDark ? const Color(0xFF1B3A24) : Colors.green[50])
-                                      : (AppColors.isDark ? const Color(0xFF3A1B1B) : Colors.red[50]),
+                                  color: dreResultBg(isProfit),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: isProfit ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3)),
                                 ),
@@ -262,7 +261,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                         revenue == 0 && expenses == 0 
                                           ? "Sem dados apurados para o mês exibido." 
                                           : (isProfit ? "Resultado positivo! Margem: ${profitMargin.toStringAsFixed(1)}%." : "Atenção: Operação no prejuízo."),
-                                        style: TextStyle(color: isProfit ? (AppColors.isDark ? Colors.green[300] : Colors.green[800]) : (AppColors.isDark ? Colors.red[300] : Colors.red[800]), fontWeight: FontWeight.bold),
+                                        style: TextStyle(color: dreResultFg(isProfit), fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ],
@@ -319,7 +318,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
                                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                                     const Text("Saldo Projetado (Final do Mês):"),
-                                    Text("R\$ ${netProfit.toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: netProfit >= 0 ? AppColors.textPrimary : Colors.red))
+                                    Text("${formatBRL(netProfit)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: netProfit >= 0 ? AppColors.textPrimary : Colors.red))
                                 ]),
                               )
                             ],
@@ -394,7 +393,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       decoration: BoxDecoration(color: AppColors.isDark ? const Color(0xFF3A2E12) : Colors.amber[50], borderRadius: BorderRadius.circular(8)),
                       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                           const Text("Disponível:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
-                          Text("R\$ ${availableTotal.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text("${formatBRL(availableTotal)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       ]),
                     );
                   }
@@ -429,7 +428,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     double targetVal = double.tryParse(valueStr.replaceAll(',', '.')) ?? 0.0;
     
     if (targetVal <= 0 || targetVal > (maxAvailable + 0.05)) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Valor inválido ou superior ao disponível."), backgroundColor: Colors.red));
+       toast(context, "Valor inválido ou superior ao disponível.", error: true);
        return;
     }
 
@@ -528,7 +527,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             mainAxisSize: MainAxisSize.min, 
             crossAxisAlignment: CrossAxisAlignment.start, 
             children: [
-              Text("Você está a solicitar R\$ ${targetVal.toStringAsFixed(2)}. Veja abaixo as parcelas que serão utilizadas:", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text("Você está a solicitar ${formatBRL(targetVal)}. Veja abaixo as parcelas que serão utilizadas:", style: const TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 10),
               
               Flexible(
@@ -549,15 +548,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text("Venc: $dateStr", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                            Text("R\$ ${p.takenAmount.toStringAsFixed(2)}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text("${formatBRL(p.takenAmount)}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13)),
                           ],
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (p.isPartial) 
-                              Text("Utilizando parte da parcela de R\$ ${p.originalAmount.toStringAsFixed(2)}", style: const TextStyle(color: Colors.orange, fontSize: 10)),
-                            Text("Taxa est.: R\$ ${p.fee.toStringAsFixed(2)}", style: const TextStyle(color: Colors.red, fontSize: 10)),
+                              Text("Utilizando parte da parcela de ${formatBRL(p.originalAmount)}", style: const TextStyle(color: Colors.orange, fontSize: 10)),
+                            Text("Taxa est.: ${formatBRL(p.fee)}", style: const TextStyle(color: Colors.red, fontSize: 10)),
                           ],
                         ),
                       );
@@ -571,16 +570,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
               
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text("Total Bruto:", style: TextStyle(fontSize: 12)),
-                Text("R\$ ${totalRealized.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text("${formatBRL(totalRealized)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               ]),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text("Taxas da Antecipação:", style: TextStyle(fontSize: 12)),
-                Text("- R\$ ${totalFees.toStringAsFixed(2)}", style: const TextStyle(color: Colors.red, fontSize: 14)),
+                Text("- ${formatBRL(totalFees)}", style: const TextStyle(color: Colors.red, fontSize: 14)),
               ]),
               const SizedBox(height: 5),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text("LÍQUIDO A RECEBER:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Text("R\$ ${(totalRealized - totalFees).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+                Text("${formatBRL((totalRealized - totalFees))}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
               ]),
             ]
           ),
@@ -606,7 +605,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     'amount': totalFees,
                     'title': 'Taxa de Antecipação de Recebíveis',
                     'category': 'Taxas de Antecipação',
-                    'description': 'Taxa gerada automaticamente sobre antecipação de R\$ ${targetVal.toStringAsFixed(2)}',
+                    'description': 'Taxa gerada automaticamente sobre antecipação de ${formatBRL(targetVal)}',
                     'isPaid': true,
                     'status': 'pago',
                     'date': Timestamp.now(),
@@ -648,7 +647,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 if (ctx.mounted) Navigator.pop(ctx); 
                 if (context.mounted) Navigator.pop(context); 
                 
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Antecipação realizada! O valor bruto foi para as receitas e as taxas para as despesas."), backgroundColor: Colors.green));
+                toast(context, "Antecipação realizada! O valor bruto foi para as receitas e as taxas para as despesas.", ok: true);
               
               } catch(e) {
                 Navigator.pop(ctx); 
@@ -698,7 +697,7 @@ class _AnticipationCard extends StatelessWidget {
             const Spacer(),
             Text("Disponível p/ Antecipar", style: TextStyle(fontSize: 11, color: AppColors.isDark ? Colors.amber[200] : Colors.amber[800], fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.isDark ? Colors.amber[100] : Colors.amber[900])),
+            Text("${formatBRL(value)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.isDark ? Colors.amber[100] : Colors.amber[900])),
         ]),
       ),
     );
@@ -746,7 +745,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
                 const SizedBox(height: 10),
                 Text("Despesas Pagas", style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
-                Text("R\$ ${widget.totalValue.toStringAsFixed(2)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                Text("${formatBRL(widget.totalValue)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
               ]
             ),
           ),
@@ -869,7 +868,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
             )
           ), 
           const SizedBox(width: 8),
-          Text("R\$ ${val.toStringAsFixed(2)}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red))
+          Text("${formatBRL(val)}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red))
         ]
       )
     );
@@ -881,7 +880,7 @@ class _KpiCard extends StatelessWidget {
   const _KpiCard({required this.title, required this.value, required this.color, required this.icon, this.isHighlight = false});
   @override
   Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: const Text("RESULTADO", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)))]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("R\$ ${value.toStringAsFixed(2)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
+    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: const Text("RESULTADO", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)))]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("${formatBRL(value)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
   }
 }
 
@@ -892,4 +891,15 @@ class _MonthSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(30)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(icon: const Icon(Icons.chevron_left), onPressed: onPrev), Text(DateFormat('MMMM yyyy', 'pt_BR').format(date).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), IconButton(icon: const Icon(Icons.chevron_right), onPressed: onNext)]));
   }
+}
+/// Fundo da faixa de resultado do DRE (lucro/prejuizo, claro/escuro).
+Color dreResultBg(bool isProfit) {
+  if (isProfit) return AppColors.isDark ? const Color(0xFF1B3A24) : Colors.green[50]!;
+  return AppColors.isDark ? const Color(0xFF3A1B1B) : Colors.red[50]!;
+}
+
+/// Texto da faixa de resultado do DRE.
+Color dreResultFg(bool isProfit) {
+  if (isProfit) return AppColors.isDark ? Colors.green[300]! : Colors.green[800]!;
+  return AppColors.isDark ? Colors.red[300]! : Colors.red[800]!;
 }

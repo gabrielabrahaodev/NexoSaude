@@ -3,6 +3,7 @@ import '../../../ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/tooth_model.dart';
 import '../../../ui/odontogram/tooth_widget.dart';
+import '../../../utils/display.dart';
 
 class OdontogramScreen extends StatefulWidget {
   final String? patientId;
@@ -66,9 +67,9 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
     try {
       List<Map<String, dynamic>> dataToSave = teeth.map((t) => t.toMap()).toList();
       await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).collection('clinical_data').doc('odontogram').set({'teeth': dataToSave, 'lastUpdate': FieldValue.serverTimestamp()});
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Salvo com sucesso!"), backgroundColor: Colors.green));
+      if (mounted) toast(context, "Salvo com sucesso!", ok: true);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e"), backgroundColor: Colors.red));
+      if (mounted) toast(context, "Erro: $e", error: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -86,7 +87,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
   void _onFaceTap(ToothModel tooth, ToothFace face) {
     // ... (Copie a lógica do _onFaceTap anterior)
       if (tooth.isImplantDone && face != ToothFace.root && face != ToothFace.occlusal) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Dente com Implante: Ações nas faces estão bloqueadas.")));
+      toast(context, "Dente com Implante: Ações nas faces estão bloqueadas.");
       return;
     }
     showModalBottomSheet(

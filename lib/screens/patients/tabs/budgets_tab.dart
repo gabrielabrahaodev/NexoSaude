@@ -8,6 +8,7 @@ import '../../../models/budget_model.dart';
 import '../../../models/procedure_model.dart';
 // Adicione o import no topo:
 import '../wizards/budget_approval_wizard.dart';
+import '../../../utils/display.dart';
 
 class BudgetsTab extends StatefulWidget {
   final String patientName;
@@ -210,7 +211,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text("TOTAL:", style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text("R\$ ${getTotal().toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+                              Text("${formatBRL(getTotal())}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
                             ],
                           ),
                         ),
@@ -272,9 +273,9 @@ class _BudgetsTabState extends State<BudgetsTab> {
 
       await _budgetService.add(newBudget);
       
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Orçamento criado!")));
+      if (mounted) toast(context, "Orçamento criado!");
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao salvar: $e"), backgroundColor: Colors.red));
+      if (mounted) toast(context, "Erro ao salvar: $e", error: true);
     }
   }
 
@@ -367,7 +368,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                     child: ExpansionTile(
                       leading: Icon(budget.status == 'Aprovado' ? Icons.check_circle : Icons.request_quote, color: budget.status == 'Aprovado' ? Colors.green : Colors.orange),
                       title: Text("Orçamento - ${DateFormat('dd/MM/yyyy').format(budget.date)}"),
-                      subtitle: Text("Total: R\$ ${budget.total.toStringAsFixed(2)} • ${budget.status}"),
+                      subtitle: Text("Total: ${formatBRL(budget.total)} • ${budget.status}"),
                       children: [
                         const Divider(),
                         ...budget.items.map((i) => ListTile(dense: true, title: Text(i['name'] ?? 'Procedimento'), trailing: Text("R\$ ${i['price'] ?? 0}"))),

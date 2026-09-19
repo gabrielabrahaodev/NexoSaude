@@ -18,6 +18,7 @@ import '../../services/clinical_record_service.dart';
 import '../../services/patient_service.dart'; 
 import '../../models/appointment_model.dart';
 import '../../models/user_model.dart';
+import '../../utils/display.dart';
 
 class AgendaManagerScreen extends StatefulWidget {
   const AgendaManagerScreen({super.key});
@@ -142,12 +143,12 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     try {
       if (count > 0) {
         await batch.commit();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$label aplicado ($count horários).")));
+        if (mounted) toast(context, "$label aplicado ($count horários).");
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nenhum horário no intervalo selecionado.")));
+        if (mounted) toast(context, "Nenhum horário no intervalo selecionado.");
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao bloquear: $e"), backgroundColor: Colors.red));
+      if (mounted) toast(context, "Erro ao bloquear: $e", error: true);
     }
   }
 
@@ -168,7 +169,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nenhum bloqueio encontrado para esta data.")));
+        if (mounted) toast(context, "Nenhum bloqueio encontrado para esta data.");
         return;
       }
 
@@ -188,9 +189,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
       if (deleteCount > 0) {
         await batch.commit();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Dia liberado com sucesso!")));
+        if (mounted) toast(context, "Dia liberado com sucesso!");
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nenhum bloqueio corresponde ao filtro atual.")));
+        if (mounted) toast(context, "Nenhum bloqueio corresponde ao filtro atual.");
       }
 
     } catch (e) {
@@ -284,7 +285,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   void _launchWhatsApp(AppointmentModel appt) async {
     String? phoneRaw;
     try {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Buscando contato..."), duration: Duration(milliseconds: 500)));
+      toast(context, "Buscando contato...", duration: const Duration(milliseconds: 500));
       final patientDoc = await FirebaseFirestore.instance.collection('patients').doc(appt.patientId).get();
       if (patientDoc.exists) {
         final data = patientDoc.data();
@@ -293,12 +294,12 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     } catch (e) { /* ignore */ }
     
     if (phoneRaw == null || phoneRaw.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Telefone do paciente não encontrado no cadastro.")));
+      if (mounted) toast(context, "Telefone do paciente não encontrado no cadastro.");
       return;
     }
     String phone = phoneRaw.replaceAll(RegExp(r'[^\d]'), '');
     if (phone.length < 10) {
-       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Número de telefone inválido.")));
+       if (mounted) toast(context, "Número de telefone inválido.");
        return;
     }
     if (!phone.startsWith('55')) phone = '55$phone'; 
@@ -308,7 +309,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Não foi possível abrir o WhatsApp.")));
+      if (mounted) toast(context, "Não foi possível abrir o WhatsApp.");
     }
   }
 
@@ -378,7 +379,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (reasonCtrl.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Informe o motivo.")));
+                      toast(context, "Informe o motivo.");
                       return;
                     }
                     final String userName = SessionManager().userName ?? "Usuário";
@@ -402,7 +403,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     });
                     if (mounted) {
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Agendamento cancelado com sucesso.")));
+                      toast(context, "Agendamento cancelado com sucesso.");
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
@@ -527,7 +528,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     });
                     if (mounted) {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Presença confirmada com sucesso!")));
+                      toast(context, "Presença confirmada com sucesso!");
                     }
                   },
                 ),
@@ -587,7 +588,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   // OPÇÃO DE ENCAIXE
                   ListTile(
                     leading: Icon(Icons.group_add, color: canFitIn ? Colors.deepPurple : Colors.grey),
-                    title: Text("Realizar Encaixe", style: TextStyle(color: canFitIn ? Colors.black : Colors.grey)),
+                    title: Text("Realizar Encaixe", style: TextStyle(color: canFitIn ? AppColors.textPrimary : Colors.grey)),
                     subtitle: canFitIn 
                         ? const Text("Adicionar outro paciente neste horário")
                         : const Text("Horário já possui encaixe (Máx 2)"),
@@ -850,7 +851,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   ),
                   onPressed: () async {
                     if (!isAbsent && noteCtrl.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Descreva o que foi feito.")));
+                      toast(context, "Descreva o que foi feito.");
                       return;
                     }
                     String dentistName = 'Dr(a). Responsável';

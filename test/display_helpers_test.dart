@@ -25,6 +25,14 @@ void main() {
     });
   });
 
+  group('formatBRL', () {
+    test('2 casas com prefixo R\$', () {
+      expect(formatBRL(300), 'R\$ 300.00');
+      expect(formatBRL(10.5), 'R\$ 10.50');
+      expect(formatBRL(0), 'R\$ 0.00');
+    });
+  });
+
   group('daysAgoLabel', () {
     test('hoje, ontem e há N dias', () {
       expect(daysAgoLabel(0), 'hoje');

@@ -6,6 +6,7 @@ import '../../../models/financial_model.dart';
 import '../../../models/expense_model.dart'; 
 import '../../../services/treatment_service.dart';
 import '../../../ui/app_theme.dart';
+import '../../../utils/display.dart';
 
 class BudgetApprovalWizard extends StatefulWidget {
   final BudgetModel budget;
@@ -164,11 +165,11 @@ class _BudgetApprovalWizardState extends State<BudgetApprovalWizard> {
       
       if (mounted) {
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Aprovado com sucesso!"), backgroundColor: Colors.green));
+        toast(context, "Aprovado com sucesso!", ok: true);
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e"), backgroundColor: Colors.red));
+      if (mounted) toast(context, "Erro: $e", error: true);
     }
   }
 
@@ -203,7 +204,7 @@ class _BudgetApprovalWizardState extends State<BudgetApprovalWizard> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      "Um custo operacional de R\$ ${_automaticCostValue.toStringAsFixed(2)} será lançado automaticamente no Contas a Pagar.",
+                      "Um custo operacional de ${formatBRL(_automaticCostValue)} será lançado automaticamente no Contas a Pagar.",
                       style: TextStyle(fontSize: 12, color: Colors.orange[900]),
                     ),
                   ),
@@ -236,7 +237,7 @@ class _BudgetApprovalWizardState extends State<BudgetApprovalWizard> {
              Padding(
                padding: const EdgeInsets.only(top: 10),
                child: Text(
-                 "+ 1 Custo Operacional de R\$ ${_automaticCostValue.toStringAsFixed(2)}",
+                 "+ 1 Custo Operacional de ${formatBRL(_automaticCostValue)}",
                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange),
                ),
              ),

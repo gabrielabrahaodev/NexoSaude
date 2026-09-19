@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../services/session_manager.dart';
 import '../../models/psychology_schedule_model.dart';
 import '../../models/appointment_model.dart';
+import '../../utils/display.dart';
 
 class PsychologyScheduleFormScreen extends StatefulWidget {
   final String? editScheduleId;
@@ -113,7 +114,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPatientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Selecione um paciente")));
+      toast(context, "Selecione um paciente");
       return;
     }
 
@@ -159,7 +160,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      if (mounted) toast(context, "Erro: $e");
     }
   }
 

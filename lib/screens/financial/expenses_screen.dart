@@ -5,6 +5,7 @@ import '../../models/expense_model.dart';
 import '../../services/expense_service.dart';
 import '../../ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:odonto_controle/utils/display.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -115,7 +116,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Baixar Pagamento"),
-        content: Text("Confirma o pagamento de R\$ ${expense.amount.toStringAsFixed(2)} para ${expense.supplierName ?? 'Fornecedor'}?"),
+        content: Text("Confirma o pagamento de ${formatBRL(expense.amount)} para ${expense.supplierName ?? 'Fornecedor'}?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
           ElevatedButton(
@@ -149,7 +150,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 else if (_filterStatus == 'Pendente') _filterStatus = 'Pago';
                 else _filterStatus = 'Todos';
               });
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Filtrando por: $_filterStatus"), duration: const Duration(seconds: 1)));
+              toast(context, "Filtrando por: $_filterStatus", duration: const Duration(seconds: 1));
             },
           )
         ],
@@ -284,7 +285,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text("R\$ ${item.amount.toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isPaid ? Colors.grey : Colors.red[800])),
+            Text("${formatBRL(item.amount)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isPaid ? Colors.grey : Colors.red[800])),
             if (!isPaid)
               InkWell(
                 onTap: () => _confirmPayment(item),

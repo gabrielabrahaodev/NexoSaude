@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../../ui/app_theme.dart';
+import '../../../utils/display.dart';
 
 class PatientDetailsTab extends StatefulWidget {
   final String patientName;
@@ -41,9 +42,9 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
         });
         
         setState(() => _isEditing = false);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cadastro atualizado com sucesso!")));
+        if (mounted) toast(context, "Cadastro atualizado com sucesso!");
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao atualizar: $e"), backgroundColor: AppColors.danger));
+        if (mounted) toast(context, "Erro ao atualizar: $e");
       }
     }
   }

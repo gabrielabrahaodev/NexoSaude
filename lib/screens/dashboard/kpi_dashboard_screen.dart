@@ -5,6 +5,7 @@ import '../../models/financial_model.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/session_manager.dart';
+import '../../utils/display.dart';
 
 /// Dashboard de KPIs da clínica (item 0 do menu).
 ///
@@ -181,7 +182,7 @@ class KpiDashboardScreen extends StatelessWidget {
                                 _KpiCard(
                                   label: "A receber",
                                   value:
-                                      "R\$ ${toReceive.toStringAsFixed(2)}",
+                                      "${formatBRL(toReceive)}",
                                   caption: "neste mês",
                                   color: const Color(0xFF1E88E5),
                                   icon: Icons.trending_up,
@@ -189,7 +190,7 @@ class KpiDashboardScreen extends StatelessWidget {
                                 _KpiCard(
                                   label: "Inadimplência",
                                   value:
-                                      "R\$ ${overdue.toStringAsFixed(2)}",
+                                      "${formatBRL(overdue)}",
                                   caption: "$overdueCount em atraso",
                                   color: const Color(0xFFE53935),
                                   icon: Icons.warning_amber_rounded,
@@ -528,7 +529,7 @@ class _DueRow extends StatelessWidget {
               ),
             ),
           Text(
-            "R\$ ${(item['amount'] as double).toStringAsFixed(2)}",
+            "${formatBRL((item['amount'] as double))}",
             style: const TextStyle(
                 fontWeight: FontWeight.bold, fontSize: 15),
           ),

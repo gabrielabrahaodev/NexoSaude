@@ -23,7 +23,8 @@ import '../financial/collections_screen.dart';
 // --- TELA DE PSICOLOGIA ---
 import '../patients/psychology/psychology_kanban_board.dart';
 
-import '../../main.dart'; 
+import '../../main.dart';
+import '../../utils/display.dart'; 
 
 class MainWebDashboard extends StatefulWidget {
   const MainWebDashboard({super.key});
@@ -162,7 +163,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
             icon: const Icon(Icons.change_circle, color: Color(0xFF1E88E5)), 
             tooltip: "Trocar Clínica",
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Expanda o menu para trocar de clínica.")));
+              toast(context, "Expanda o menu para trocar de clínica.");
             },
           );
         }

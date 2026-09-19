@@ -24,6 +24,25 @@ double parseBRL(dynamic value) {
   return 0.0;
 }
 
+/// "R$ 1500.50" (2 casas, ponto decimal — igual ao `toStringAsFixed(2`
+/// usado nas telas; sem locale para nao mudar nenhuma string exibida).
+String formatBRL(num value) => 'R\$ ${value.toStringAsFixed(2)}';
+
+/// Atalho de SnackBar com o padrao do app: neutra, vermelha (erro), verde
+/// (ok) ou cor explícita. Mesma aparencia das chamadas manuais que substitui.
+void toast(BuildContext context, String msg,
+    {bool error = false,
+    bool ok = false,
+    Color? color,
+    Duration? duration}) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(msg),
+    backgroundColor:
+        color ?? (error ? Colors.red : (ok ? Colors.green : null)),
+    duration: duration ?? const Duration(seconds: 4),
+  ));
+}
+
 /// "hoje" / "ontem" / "há N dias".
 String daysAgoLabel(int daysAgo) {
   if (daysAgo == 0) return 'hoje';

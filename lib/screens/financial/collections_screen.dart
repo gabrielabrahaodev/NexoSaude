@@ -11,6 +11,7 @@ import '../../services/whatsapp_helper.dart';
 import 'widgets/charge_confirm_dialog.dart';
 import 'widgets/monthly_package_card.dart';
 import 'widgets/session_charge_card.dart';
+import '../../utils/display.dart';
 
 class CollectionsScreen extends StatefulWidget {
   const CollectionsScreen({super.key});
@@ -120,7 +121,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
         _currentProcessingName = item.patientName;
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Não foi possível abrir o WhatsApp.")));
+      toast(context, "Não foi possível abrir o WhatsApp.");
     }
   }
 
@@ -160,10 +161,10 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
             Text("Paciente: $patientName"),
             if (billingDetail != null) Text(billingDetail),
             Text(
-                "Valor a cobrar: R\$ ${totalAmount.toStringAsFixed(2)}"),
+                "Valor a cobrar: ${formatBRL(totalAmount)}"),
             if (fullAmount != totalAmount)
               Text(
-                  "Valor cheio do pacote: R\$ ${fullAmount.toStringAsFixed(2)}"),
+                  "Valor cheio do pacote: ${formatBRL(fullAmount)}"),
             Text("${items.length} conta(s) no mês"),
             const SizedBox(height: 16),
             const Text("Como deseja cobrar?"),
@@ -218,7 +219,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
         _pendingPackageDocs = items;
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Não foi possível abrir o WhatsApp.")));
+      toast(context, "Não foi possível abrir o WhatsApp.");
     }
   }
 
@@ -236,7 +237,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
           mainAxisSize: MainAxisSize.min,
           children: [
             Text("Paciente: $patientName"),
-            Text("Total do pacote: R\$ ${totalAmount.toStringAsFixed(2)}"),
+            Text("Total do pacote: ${formatBRL(totalAmount)}"),
             const SizedBox(height: 16),
             TextField(
               controller: amountCtrl,
@@ -362,9 +363,9 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
           {'date': DateTime.now().toIso8601String(), 'method': 'whatsapp_manual'}
         ])
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Status atualizado com sucesso!")));
+      toast(context, "Status atualizado com sucesso!");
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro ao atualizar status.")));
+      toast(context, "Erro ao atualizar status.");
     }
   }
 
@@ -663,7 +664,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                           final totalAmount = bill.amountDue;
                           final detail = bill == null
                               ? null
-                              : "${bill.describe()} • R\$ ${bill.amountDue.toStringAsFixed(2)}"
+                              : "${bill.describe()} • ${formatBRL(bill.amountDue)}"
                                   "${bill.isPartial ? " (parcial)" : ""}";
 
                           return MonthlyPackageCard(

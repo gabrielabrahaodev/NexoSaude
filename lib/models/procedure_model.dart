@@ -1,3 +1,4 @@
+import '../utils/display.dart';
 class ProcedureModel {
   final String id;
   final String clinicId;
@@ -63,7 +64,7 @@ class ProcedureModel {
     if (commissionType == 'percent') {
       return '${commissionValue.toStringAsFixed(1)}%';
     } else {
-      return 'R\$ ${commissionValue.toStringAsFixed(2)}';
+      return '${formatBRL(commissionValue)}';
     }
   }
   

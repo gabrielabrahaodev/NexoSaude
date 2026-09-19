@@ -3,6 +3,7 @@ import '../../../models/procedure_model.dart';
 import '../../../services/procedure_service.dart';
 import '../../../services/session_manager.dart';
 import '../../../ui/app_theme.dart';
+import '../../../utils/display.dart';
 
 class ProceduresTab extends StatefulWidget {
   const ProceduresTab({super.key});
@@ -235,7 +236,7 @@ class _ProceduresTabState extends State<ProceduresTab> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text("R\$ ${item.price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text("${formatBRL(item.price)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(width: 10),
                     IconButton(icon: const Icon(Icons.edit, color: Colors.grey), onPressed: () => _showEditDialog(model: item)),
                     IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _service.delete(item.id)),

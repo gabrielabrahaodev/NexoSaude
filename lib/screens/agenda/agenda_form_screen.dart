@@ -219,7 +219,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
               
               final currentClinicId = SessionManager().currentClinicId;
               if (currentClinicId == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro: Sessão de clínica inválida.")));
+                toast(context, "Erro: Sessão de clínica inválida.");
                 return;
               }
 
@@ -247,10 +247,10 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
 
                 if (mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Paciente cadastrado! Selecione-o na busca.")));
+                  toast(context, "Paciente cadastrado! Selecione-o na busca.");
                 }
               } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro ao salvar: $e")));
+                if (mounted) toast(context, "Erro ao salvar: $e");
               }
             },
             child: const Text("Salvar"),
@@ -456,7 +456,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                 onPressed: (_selectedTimes.isNotEmpty && _procedureCtrl.text.isNotEmpty) ? () async {
                   if (clinicId == null) return;
                   if (_selectedPatientId == null) {
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Selecione um Paciente.")));
+                     toast(context, "Selecione um Paciente.");
                      return;
                   }
                   String? finalDentistId;

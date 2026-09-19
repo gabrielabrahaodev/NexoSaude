@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../utils/display.dart';
 // import 'package:flutter_web_plugins/flutter_web_plugins.dart'; // Descomente se configurou web plugins
 
 class PublicEvaluationScreen extends StatefulWidget {
@@ -137,7 +138,7 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
       
     } catch (e) {
       debugPrint("Erro Firestore: $e");
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro ao salvar.")));
+      toast(context, "Erro ao salvar.");
       setState(() => _isSaving = false);
     }
   }

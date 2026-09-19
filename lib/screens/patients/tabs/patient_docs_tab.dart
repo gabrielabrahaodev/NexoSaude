@@ -13,6 +13,7 @@ import 'package:photo_view/photo_view.dart';
 import '../../../services/document_service.dart';
 import '../../../services/session_manager.dart';
 import '../../../models/patient_document_model.dart';
+import '../../../utils/display.dart';
 
 class PatientDocsTab extends StatefulWidget {
   final String patientId;
@@ -143,9 +144,9 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
         resourceType: uploaded.resourceType,
       );
 
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Upload concluído!")));
+      if (mounted) toast(context, "Upload concluído!");
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e"), backgroundColor: Colors.red));
+      if (mounted) toast(context, "Erro: $e", error: true);
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }

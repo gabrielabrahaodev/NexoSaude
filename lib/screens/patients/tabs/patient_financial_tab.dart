@@ -286,14 +286,14 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       String? phone = data['phone'] ?? data['celular'] ?? data['whatsapp'];
       
       if (phone == null || phone.isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Telefone não cadastrado.")));
+        if (mounted) toast(context, "Telefone não cadastrado.");
         return;
       }
       
       phone = phone.replaceAll(RegExp(r'[^\d]'), '');
       if (!phone.startsWith('55')) phone = '55$phone';
       
-      String msg = "Olá, lembrete da parcela de R\$ ${item.amount.toStringAsFixed(2)} vencendo em ${DateFormat('dd/MM').format(item.dueDate ?? DateTime.now())}.";
+      String msg = "Olá, lembrete da parcela de ${formatBRL(item.amount)} vencendo em ${DateFormat('dd/MM').format(item.dueDate ?? DateTime.now())}.";
       final url = Uri.parse("https://wa.me/$phone?text=${Uri.encodeComponent(msg)}");
       
       if (await canLaunchUrl(url)) {
@@ -547,7 +547,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-                "${item.title} — R\$ ${item.amount.toStringAsFixed(2)} (${isPaidDoc ? 'pago' : 'pendente'})"),
+                "${item.title} — ${formatBRL(item.amount)} (${isPaidDoc ? 'pago' : 'pendente'})"),
             if (hasFamily)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -769,7 +769,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-              child: Text("${item.title} — R\$ ${item.amount.toStringAsFixed(2)}",
+              child: Text("${item.title} — ${formatBRL(item.amount)}",
                   style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
             if (cancelled) ...[
@@ -830,7 +830,13 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
               (isCard &&
                   (fin.status == 'pending' || fin.status == 'pendente')));
 
-      status = isCancelled ? "Cancelada" : (isPaid ? "Pago" : "Pendente");
+      if (isCancelled) {
+        status = "Cancelada";
+      } else if (isPaid) {
+        status = "Pago";
+      } else {
+        status = "Pendente";
+      }
     } else {
       final exp = item as ExpenseModel;
       status = exp.status;
@@ -839,18 +845,26 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
     bool isPending = !isPaid && !isCancelled;
 
-    Color bgColor = isCancelled
-        ? Colors.grey[200]!
-        : isIncome
-            ? (isPending ? AppColors.surface : Colors.green[50]!)
-            : Colors.orange[50]!;
-    Color borderColor = isCancelled
-        ? Colors.grey.withValues(alpha: 0.5)
-        : isIncome
-            ? (isPending
-                ? Colors.red.withValues(alpha: 0.5)
-                : Colors.green.withValues(alpha: 0.2))
-            : Colors.orange.withValues(alpha: 0.2);
+    Color bgColor;
+    if (isCancelled) {
+      bgColor = Colors.grey[200]!;
+    } else if (!isIncome) {
+      bgColor = Colors.orange[50]!;
+    } else if (isPending) {
+      bgColor = AppColors.surface;
+    } else {
+      bgColor = Colors.green[50]!;
+    }
+    Color borderColor;
+    if (isCancelled) {
+      borderColor = Colors.grey.withValues(alpha: 0.5);
+    } else if (!isIncome) {
+      borderColor = Colors.orange.withValues(alpha: 0.2);
+    } else if (isPending) {
+      borderColor = Colors.red.withValues(alpha: 0.5);
+    } else {
+      borderColor = Colors.green.withValues(alpha: 0.2);
+    }
 
     // Variáveis visuais
     double taxVal = 0.0;
@@ -889,7 +903,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 ),
 
               const SizedBox(height: 4),
-              Text("R\$ ${amount.toStringAsFixed(2)}", 
+              Text("${formatBRL(amount)}", 
                 style: TextStyle(
                   color: isIncome ? (isPending ? Colors.red : Colors.green[700]) : Colors.orange[800], 
                   fontWeight: FontWeight.bold,
@@ -905,9 +919,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text("Taxa (${feePercentage.toStringAsFixed(2)}%): - R\$ ${taxVal.toStringAsFixed(2)}", style: TextStyle(fontSize: 10, color: Colors.red[800])),
+                      Text("Taxa (${feePercentage.toStringAsFixed(2)}%): - ${formatBRL(taxVal)}", style: TextStyle(fontSize: 10, color: Colors.red[800])),
                       const SizedBox(height: 2),
-                      Text("Líquido: R\$ ${valorLiquido.toStringAsFixed(2)}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green[800])),
+                      Text("Líquido: ${formatBRL(valorLiquido)}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green[800])),
                     ],
                   ),
                 ),
@@ -1169,7 +1183,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                           onSelected: (val) {
                              if (val) {
                                if ((m == "Débito" || m == "Cartão de Crédito") && feeProfile == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Atenção: Configure as taxas (Perfil Padrão)."), backgroundColor: Colors.orange));
+                                  toast(context, "Atenção: Configure as taxas (Perfil Padrão).", color: Colors.orange);
                                }
                                setStateModal(() {
                                  selectedMethod = m;
@@ -1227,7 +1241,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text("Taxa Maquininha (${currentFeeRate.toStringAsFixed(2)}%):", style: TextStyle(color: Colors.red[800], fontSize: 12)),
-                                Text("- R\$ ${totalFeeValue.toStringAsFixed(2)}", style: TextStyle(color: Colors.red[800], fontWeight: FontWeight.bold)),
+                                Text("- ${formatBRL(totalFeeValue)}", style: TextStyle(color: Colors.red[800], fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const Divider(height: 12),
@@ -1235,7 +1249,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text("Valor Líquido Total:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                Text("R\$ ${totalNetValue.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                Text("${formatBRL(totalNetValue)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                               ],
                             ),
                           ],

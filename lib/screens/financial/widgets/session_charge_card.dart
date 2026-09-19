@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/financial_model.dart';
+import '../../../utils/display.dart';
 
 class SessionChargeCard extends StatelessWidget {
   final FinancialModel item;
@@ -46,7 +47,7 @@ class SessionChargeCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("R\$ ${item.amount.toStringAsFixed(2)}",
+            Text("${formatBRL(item.amount)}",
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(width: 10),

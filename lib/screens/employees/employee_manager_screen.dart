@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart'; // Necessário para criar App Secundário
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../services/session_manager.dart';
+import '../../utils/display.dart';
 
 class EmployeeManagerScreen extends StatefulWidget {
   const EmployeeManagerScreen({super.key});
@@ -53,12 +54,12 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
   // --- LÓGICA CORE: CRIAR USUÁRIO SEM DESLOGAR ---
   Future<void> _registerEmployee() async {
     if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty || _cpfController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha todos os campos.")));
+      toast(context, "Preencha todos os campos.");
       return;
     }
 
     if (_selectedClinicId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro: Nenhuma clínica selecionada/identificada.")));
+      toast(context, "Erro: Nenhuma clínica selecionada/identificada.");
       return;
     }
 
@@ -93,7 +94,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
       // 4. Limpa e Sucesso
       if (mounted) {
         Navigator.pop(context); // Fecha o modal
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Funcionário cadastrado com sucesso!")));
+        toast(context, "Funcionário cadastrado com sucesso!");
         _clearForm();
       }
 
@@ -101,9 +102,9 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
       String msg = "Erro ao cadastrar";
       if (e.code == 'email-already-in-use') msg = "Este email já está em uso.";
       if (e.code == 'weak-password') msg = "A senha é muito fraca.";
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+      if (mounted) toast(context, msg, error: true);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e"), backgroundColor: Colors.red));
+      if (mounted) toast(context, "Erro: $e", error: true);
     } finally {
       // 5. Destrói o app temporário para liberar memória
       await tempApp?.delete();

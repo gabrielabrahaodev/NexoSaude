@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'billing_skeleton.dart';
+import '../../../utils/display.dart';
 
 class MonthlyPackageCard extends StatelessWidget {
   final String patientName;
@@ -104,13 +105,13 @@ class MonthlyPackageCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text("R\$ ${totalAmount.toStringAsFixed(2)}",
+                  Text("${formatBRL(totalAmount)}",
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: Colors.purple)),
                   if (fullAmount != null && fullAmount != totalAmount)
-                    Text("de R\$ ${fullAmount!.toStringAsFixed(2)}",
+                    Text("de ${formatBRL(fullAmount!)}",
                         style: const TextStyle(
                             fontSize: 11, color: Colors.grey)),
                 ],

@@ -19,6 +19,7 @@ import 'tabs/patient_lab_tab.dart';
 import 'tabs/patient_docs_tab.dart'; 
 import '../../../services/clinic_capabilities.dart';
 import '../../../services/session_manager.dart';
+import 'package:odonto_controle/utils/display.dart';
 
 class PatientDetailsScreen extends StatefulWidget {
   final String patientName; 
@@ -182,7 +183,7 @@ class _HeaderSummaryRow extends StatelessWidget {
                     }
                   }
                 }
-                return _buildSummaryItem("A RECEBER", "R\$ ${pendente.toStringAsFixed(2)}", Colors.orange);
+                return _buildSummaryItem("A RECEBER", "${formatBRL(pendente)}", Colors.orange);
               },
             ),
           ),
@@ -200,7 +201,7 @@ class _HeaderSummaryRow extends StatelessWidget {
                     if (item.isPaid) recebido += item.amount;
                   }
                 }
-                return _buildSummaryItem("RECEBIDO", "R\$ ${recebido.toStringAsFixed(2)}", Colors.green);
+                return _buildSummaryItem("RECEBIDO", "${formatBRL(recebido)}", Colors.green);
               },
             ),
           ),
@@ -227,7 +228,7 @@ class _HeaderSummaryRow extends StatelessWidget {
                   }
                 }
                 return _buildSummaryItem("CUSTO OPERACIONAL",
-                    "R\$ ${custo.toStringAsFixed(2)}", Colors.orange);
+                    "${formatBRL(custo)}", Colors.orange);
               },
             ),
           ),

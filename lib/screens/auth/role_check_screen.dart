@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:odonto_controle/screens/dashboard/main_web_dashboard.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_controller.dart';
+import 'package:odonto_controle/utils/display.dart';
 
 class RoleCheckScreen extends StatefulWidget {
   const RoleCheckScreen({super.key});
@@ -74,7 +75,7 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
   }
 
   void _showErrorAndLogout(String msg) async {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    if (mounted) toast(context, msg, error: true);
     await Future.delayed(const Duration(seconds: 2));
     await FirebaseAuth.instance.signOut();
     SessionManager().clear();

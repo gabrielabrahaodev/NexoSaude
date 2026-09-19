@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:odonto_controle/models/lab_order.dart';
 import '../services/lab_service.dart';
 import '../models/lab_order.dart';
+import 'package:odonto_controle/utils/display.dart';
 
 class LabKanbanBoard extends StatefulWidget {
   final List<LabOrderModel> orders;
@@ -41,7 +42,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
               Navigator.pop(ctx);
               await _labService.deleteOrder(orderId);
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pedido excluído.")));
+                toast(context, "Pedido excluído.");
               }
             },
             child: const Text("EXCLUIR"),
