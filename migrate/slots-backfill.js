@@ -62,8 +62,14 @@ const isDentist = (r) => {
       if (!m.date || !m.dentistId) return;
       if (String(m.status || '').toLowerCase() === 'cancelado') return;
       const dt = m.date.toDate();
-      const k = m.dentistId + '.' + dayKey(dt);
-      (busy[k] = busy[k] || new Set()).add(slotTime(dt));
+      // Expande pela duração (bloco por intervalo ocupa todos os slots).
+      const dur = Number(m.durationMinutes || 30);
+      const steps = dur <= 0 ? 1 : Math.ceil(dur / 30);
+      for (let i = 0; i < steps; i++) {
+        const s = new Date(dt.getTime() + i * 1800000);
+        const k = m.dentistId + '.' + dayKey(s);
+        (busy[k] = busy[k] || new Set()).add(slotTime(s));
+      }
     });
     const data = {};
     for (const did of dentists) {

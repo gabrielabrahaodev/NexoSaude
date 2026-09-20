@@ -20,6 +20,7 @@ import '../../services/clinical_record_service.dart';
 import '../../services/patient_service.dart'; 
 import '../../models/appointment_model.dart';
 import '../../models/user_model.dart';
+import '../../services/block_interval.dart';
 import '../../utils/display.dart';
 
 class AgendaManagerScreen extends StatefulWidget {
@@ -104,69 +105,142 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     super.dispose();
   }
 
-  // --- NOVA FUNCIONALIDADE: SISTEMA DE BLOQUEIO DE HORÁRIOS ---
+  // --- BLOQUEIO POR INTERVALO (1 doc; paciente primeiro, fusão, idempotência) ---
 
-  Future<void> _applyBlock(DateTime targetDate, int startHour, int endHour, String label) async {
+  String _hhmm(DateTime t) =>
+      "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+
+  Future<void> _applyBlockInterval({
+    required DateTime targetDate,
+    required TimeOfDay start,
+    required TimeOfDay end,
+    required String label,
+  }) async {
     final clinicId = SessionManager().currentClinicId;
     if (clinicId == null) return;
+    final dentistId = _selectedDentistId;
+    if (dentistId == null) {
+      if (mounted) toast(context, "Selecione o profissional para bloquear.");
+      return;
+    }
 
-    DateTime baseDate = DateTime(targetDate.year, targetDate.month, targetDate.day);
-    WriteBatch batch = FirebaseFirestore.instance.batch();
-    int count = 0;
+    final base = DateTime(targetDate.year, targetDate.month, targetDate.day);
+    final s = snapDown(
+        base.add(Duration(hours: start.hour, minutes: start.minute)));
+    final e =
+        snapUp(base.add(Duration(hours: end.hour, minutes: end.minute)));
+    if (!e.isAfter(s)) {
+      if (mounted) toast(context, "Intervalo inválido.", error: true);
+      return;
+    }
 
-    // Percorre os horários da grade para criar bloqueios
-    for (String time in _timeSlots) {
-      int h = int.parse(time.split(':')[0]);
-      int m = int.parse(time.split(':')[1]);
+    // Mesma forma da liberação (sem índice novo: filtra dentista no cliente).
+    final dayStart = DateTime(base.year, base.month, base.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    late QuerySnapshot dayDocs;
+    try {
+      dayDocs = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('clinicId', isEqualTo: clinicId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
+          .where('date', isLessThan: Timestamp.fromDate(dayEnd))
+          .get();
+    } catch (err) {
+      if (mounted) toast(context, "Erro ao ler agenda: $err", error: true);
+      return;
+    }
 
-      if (h >= startHour && h < endHour) {
-        DateTime slotTime = baseDate.add(Duration(hours: h, minutes: m));
-        
-        // Cria referência manual para usar no Batch
-        DocumentReference newDocRef = FirebaseFirestore.instance.collection('appointments').doc();
-        
-        final blockAppt = AppointmentModel(
-          id: newDocRef.id,
-          patientId: 'BLOCKED_SLOT', 
-          patientName: 'BLOQUEADO', 
-          date: slotTime,
-          status: 'Bloqueado', // Status diferenciado
-          procedure: label,
-          clinicId: clinicId,
-          dentistId: _selectedDentistId, 
-          durationMinutes: 30,
-        );
-        
-        batch.set(newDocRef, blockAppt.toMap());
-        count++;
+    final blocks = <QueryDocumentSnapshot>[];
+    final real = <BlockSpan>[];
+    for (final doc in dayDocs.docs) {
+      final m = doc.data() as Map<String, dynamic>;
+      if ('${m['dentistId'] ?? ''}' != dentistId) continue;
+      final d = (m['date'] as Timestamp?)?.toDate();
+      if (d == null) continue;
+      final dur = (m['durationMinutes'] as num?)?.toInt() ?? 30;
+      final st = '${m['status'] ?? ''}';
+      if (st == 'Bloqueado') {
+        blocks.add(doc);
+      } else if (st.toLowerCase() != 'cancelado') {
+        real.add((start: d, end: d.add(Duration(minutes: dur))));
+      }
+    }
+
+    // Regra 1: paciente primeiro — com consulta no meio, sem bloqueio.
+    final conflicts = findOverlaps(s, e, real);
+    if (conflicts.isNotEmpty) {
+      final times = conflicts.map((c) => _hhmm(c.start)).join(', ');
+      if (mounted) {
+        toast(context,
+            "Não bloqueado: há agendamento em $times. Escolha outro intervalo.",
+            error: true);
+      }
+      return;
+    }
+
+    // Regras 2+3: funde sobrepostos/adjacentes; repetido = sem escrita.
+    final overlapped = <QueryDocumentSnapshot>[];
+    final coverage = <BlockSpan>[(start: s, end: e)];
+    for (final b in blocks) {
+      final m = b.data() as Map<String, dynamic>;
+      final d = (m['date'] as Timestamp).toDate();
+      final dur = (m['durationMinutes'] as num?)?.toInt() ?? 30;
+      final bs = d;
+      final be = d.add(Duration(minutes: dur));
+      if (touchesOrOverlaps(s, e, bs, be)) {
+        overlapped.add(b);
+        coverage.add((start: bs, end: be));
+      }
+    }
+    final u = unionAll(coverage);
+    if (overlapped.length == 1) {
+      final m = overlapped.first.data() as Map<String, dynamic>;
+      final d = (m['date'] as Timestamp).toDate();
+      final dur = (m['durationMinutes'] as num?)?.toInt() ?? 30;
+      if (isNoOp(
+        mergedStart: u.start,
+        mergedEnd: u.end,
+        overlappedCount: 1,
+        existingStart: d,
+        existingEnd: d.add(Duration(minutes: dur)),
+      )) {
+        if (mounted) toast(context, "Intervalo já bloqueado.");
+        return;
       }
     }
 
     try {
-      if (count > 0) {
-        await batch.commit();
-        // Espelho de slots (best-effort): bloqueados saem dos livres.
-        if (_selectedDentistId != null) {
-          final slots = <DateTime>[];
-          for (String time in _timeSlots) {
-            int h = int.parse(time.split(':')[0]);
-            int m = int.parse(time.split(':')[1]);
-            if (h >= startHour && h < endHour) {
-              slots.add(baseDate.add(Duration(hours: h, minutes: m)));
-            }
-          }
-          await PortalMirrorSync.adjustSlots(
-            clinicId: clinicId,
-            byDentist: {_selectedDentistId!: slots},
-            occupy: true,
-          );
-        }
-        if (mounted) toast(context, "$label aplicado ($count horários).");
-      } else {
-        if (mounted) toast(context, "Nenhum horário no intervalo selecionado.");
+      final batch = FirebaseFirestore.instance.batch();
+      for (final b in overlapped) {
+        batch.delete(b.reference);
       }
-    } catch (e) {
-      if (mounted) toast(context, "Erro ao bloquear: $e", error: true);
+      final newDocRef =
+          FirebaseFirestore.instance.collection('appointments').doc();
+      batch.set(
+          newDocRef,
+          AppointmentModel(
+            id: newDocRef.id,
+            patientId: 'BLOCKED_SLOT',
+            patientName: 'BLOQUEADO',
+            date: u.start,
+            status: 'Bloqueado',
+            procedure: label,
+            clinicId: clinicId,
+            dentistId: dentistId,
+            durationMinutes: u.end.difference(u.start).inMinutes,
+          ).toMap());
+      await batch.commit();
+      // Espelho de slots (best-effort): intervalo sai dos livres.
+      await PortalMirrorSync.adjustSlots(
+        clinicId: clinicId,
+        byDentist: {dentistId: expandSlots(u.start, u.end)},
+        occupy: true,
+      );
+      if (mounted) {
+        toast(context, "$label aplicado (${_hhmm(u.start)}–${_hhmm(u.end)}).");
+      }
+    } catch (err) {
+      if (mounted) toast(context, "Erro ao bloquear: $err", error: true);
     }
   }
 
@@ -270,10 +344,15 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 ListTile(
                   leading: const Icon(Icons.wb_sunny_outlined, color: Colors.orange),
                   title: const Text("Bloquear Manhã"),
-                  subtitle: const Text("08:00 - 12:00"),
+                  subtitle: const Text("08:30 - 12:00"),
                   onTap: () {
                     Navigator.pop(context);
-                    _applyBlock(targetDate, 8, 12, "Manhã Fechada");
+                    _applyBlockInterval(
+                      targetDate: targetDate,
+                      start: const TimeOfDay(hour: 8, minute: 30),
+                      end: const TimeOfDay(hour: 12, minute: 0),
+                      label: "Manhã Fechada",
+                    );
                   },
                 ),
                 ListTile(
@@ -282,15 +361,50 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   subtitle: const Text("13:00 - 18:00"),
                   onTap: () {
                     Navigator.pop(context);
-                    _applyBlock(targetDate, 13, 18, "Tarde Fechada");
+                    _applyBlockInterval(
+                      targetDate: targetDate,
+                      start: const TimeOfDay(hour: 13, minute: 0),
+                      end: const TimeOfDay(hour: 18, minute: 0),
+                      label: "Tarde Fechada",
+                    );
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.block, color: Colors.red),
                   title: const Text("Bloquear Dia Todo"),
+                  subtitle: const Text("08:30 - 20:00"),
                   onTap: () {
                     Navigator.pop(context);
-                    _applyBlock(targetDate, 8, 20, "Dia Fechado");
+                    _applyBlockInterval(
+                      targetDate: targetDate,
+                      start: const TimeOfDay(hour: 8, minute: 30),
+                      end: const TimeOfDay(hour: 20, minute: 0),
+                      label: "Dia Fechado",
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.schedule, color: Colors.blue),
+                  title: const Text("Bloquear intervalo"),
+                  subtitle: const Text("Ex.: 12:00 - 14:00"),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final s = await showTimePicker(
+                      context: context,
+                      initialTime: const TimeOfDay(hour: 12, minute: 0),
+                    );
+                    if (s == null || !mounted) return;
+                    final e = await showTimePicker(
+                      context: context,
+                      initialTime: const TimeOfDay(hour: 14, minute: 0),
+                    );
+                    if (e == null) return;
+                    await _applyBlockInterval(
+                      targetDate: targetDate,
+                      start: s,
+                      end: e,
+                      label: "Intervalo fechado",
+                    );
                   },
                 ),
                 const Divider(),
@@ -456,7 +570,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           ListTile(
             leading: const Icon(Icons.lock_open, color: Colors.green),
             title: const Text("Desbloquear Horário"),
-            subtitle: const Text("Tornar este horário disponível novamente"),
+            subtitle: Text(appt.durationMinutes > 30
+                ? "Libera o intervalo todo"
+                : "Tornar este horário disponível novamente"),
             onTap: () async {
               await FirebaseFirestore.instance.collection('appointments').doc(appt.id).delete();
               Navigator.pop(ctx);

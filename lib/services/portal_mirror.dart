@@ -460,9 +460,16 @@ class PortalMirrorSync {
       if (date == null || did.isEmpty) continue;
       final st = '${m['status'] ?? ''}'.toLowerCase();
       if (st == 'cancelado') continue;
-      busyByDentistDay
-          .putIfAbsent('$did.${_dayKey(date)}', () => <String>{})
-          .add(_slotTime(date));
+      // Expande pela duração (bloco por intervalo e consultas longas
+      // ocupam todos os slots cobertos, igual à grade e ao getBusySlots).
+      final dur = (m['durationMinutes'] as num?)?.toInt() ?? 30;
+      final steps = dur <= 0 ? 1 : (dur / 30).ceil();
+      for (var i = 0; i < steps; i++) {
+        final slot = date.add(Duration(minutes: 30 * i));
+        busyByDentistDay
+            .putIfAbsent('$did.${_dayKey(slot)}', () => <String>{})
+            .add(_slotTime(slot));
+      }
     }
     final data = <String, dynamic>{};
     for (final did in dentists) {

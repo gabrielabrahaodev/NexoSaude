@@ -37,3 +37,4 @@ Grade, criar/editar/cancelar agendamento, presença, encaixe, disponibilidade.
 - `appointment` carrega `scheduleId/planId` — base do billing por presença; não remover.
 - Cancelado sai do billing e do risco; pendente (`Aguardando Confirmação`) não entra no cálculo.
 - Disponibilidade: slots de 30min a partir de `durationMinutes`.
+- Bloqueio por intervalo: 1 doc (`BLOCKED_SLOT`, `date`+duração); paciente primeiro, fusão, idempotência. Ver `services/block_interval.dart`.

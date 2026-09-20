@@ -99,11 +99,13 @@ Bloqueado (agendamento sintético)
 - Dentista visualiza **apenas seus agendamentos** (`dentistId == user.uid`); recepção/owner filtram por dropdown de dentista.
 - Referência: `agenda_manager_screen.dart:937-951`.
 
-### RN-12 - Bloqueio de horários
-- Bloqueios criados como `AppointmentModel` sintético: `patientId='BLOCKED_SLOT'`, `patientName='BLOQUEADO'`, `status='Bloqueado'`, `durationMinutes=30`.
-- Faixas: Manhã 08–12h, Tarde 13–18h, Dia Todo 08–20h (via WriteBatch).
+### RN-12 - Bloqueio de horários (1 doc por intervalo)
+- Bloqueio é 1 `AppointmentModel` sintético: `patientId='BLOCKED_SLOT'`, `patientName='BLOQUEADO'`, `status='Bloqueado'`, `date`=início, `durationMinutes`=duração (grade/`getBusySlots` expandem por duração — sem leitor novo).
+- Regras (`services/block_interval.dart`, puro + testado): (1) **paciente primeiro** — com consulta no intervalo, sem bloqueio; (2) **fusão** — sobrepostos/adjacentes viram 1 doc; (3) **idempotência** — repetido avisa e não escreve.
+- Faixas: Manhã 08:30–12:00, Tarde 13:00–18:00, Dia Todo 08:30–20:00 + intervalo personalizado (ex.: 12:00–14:00, snap na grade 30min).
 - Liberar dia: deleta todos `status='Bloqueado'` do intervalo (respeita filtro de dentista).
-- Referência: `agenda_manager_screen.dart:99-273`.
+- Espelho: rebuild (`ensureWindow` + `slots-backfill.js`) expande `durationMinutes` nos busy.
+- Referência: `agenda_manager_screen.dart` (`_applyBlockInterval`), `services/block_interval.dart`, `test/block_interval_test.dart`.
 
 ### RN-13 - Cancelamento com motivo
 - Origem obrigatória: `Paciente` ou `Clínica/Dr(a)`.
