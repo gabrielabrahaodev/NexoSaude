@@ -1,4 +1,9 @@
 ---
+title: Collections
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-collections
 description: Cobrança manual inteligente — pacotes mensais (psico) e avulsas com WhatsApp.
 ---
@@ -26,3 +31,7 @@ Cobrar, confirmar envio do WhatsApp, baixa de pacote completo/parcial.
 
 - `Switch activeColor` já migrado para `activeThumbColor`; `TextEditingController` do parcial com `try/finally dispose`.
 - `contactedToday` é só visual. Congelamento: `paid/anticipated/cobrado` não recalcula.
+
+## Atualizações
+
+- Selo "Avisei que paguei" por lançamento (do portal) com dispensar; baixa no fluxo normal. Ver [[portal-page]], [[remarcar-dialog]].

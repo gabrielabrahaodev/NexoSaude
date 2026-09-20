@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../ui/app_theme.dart';
-import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:odonto_controle/models/lab_order.dart';
 import '../services/lab_service.dart';
@@ -150,7 +149,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
 
   void _showInteractionHistory(LabOrderModel order) {
     // (Mesma implementação do seu código anterior)
-    showModalBottomSheet(context: context, isScrollControlled: true, builder: (c) => FractionallySizedBox(heightFactor: 0.6, child: ListView(children: order.interactions.map((i) => ListTile(title: Text(i.text), subtitle: Text("${i.author} - ${DateFormat('dd/MM HH:mm').format(i.date)}"))).toList())));
+    showModalBottomSheet(context: context, isScrollControlled: true, builder: (c) => FractionallySizedBox(heightFactor: 0.6, child: ListView(children: order.interactions.map((i) => ListTile(title: Text(i.text), subtitle: Text("${i.author} - ${formatDateTimeShort(i.date)}"))).toList())));
   }
 
   void _showOrderDetails(LabOrderModel order) {
@@ -158,7 +157,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
     showModalBottomSheet(context: context, builder: (c) => Padding(padding: EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, children: [Text(order.procedureName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), SizedBox(height: 10), Text(order.description)])));
   }
 
-  String _formatRelativeDate(DateTime date) => DateFormat('dd/MM').format(date);
+  String _formatRelativeDate(DateTime date) => formatDateShort(date);
 
   @override
   Widget build(BuildContext context) {
@@ -226,9 +225,9 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
           height: height > 100 ? height - 32 : 500, 
           margin: const EdgeInsets.only(right: 16),
           decoration: BoxDecoration(
-            color: isHovering ? color[50] : Colors.grey[50], 
+            color: isHovering ? color[50] : AppColors.surface, 
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isHovering ? color : Colors.grey[200]!, width: isHovering ? 2 : 1)
+            border: Border.all(color: isHovering ? color : AppColors.borderSoft, width: isHovering ? 2 : 1)
           ),
           child: Column(
             children: [
@@ -315,7 +314,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
                     Expanded(
                       child: Row(
                         children: [
-                          Icon(Icons.medical_services_outlined, size: 14, color: Colors.grey[700]),
+                          Icon(Icons.medical_services_outlined, size: 14, color: AppColors.textSecondary),
                           const SizedBox(width: 6),
                           Expanded(child: Text(order.procedureName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis))
                         ]
@@ -400,7 +399,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
                         children: [
                           Icon(Icons.calendar_today, size: 10, color: isOverdue ? Colors.red : Colors.grey[500]),
                           const SizedBox(width: 4),
-                          Text(_formatRelativeDate(relevantDate), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isOverdue ? Colors.red : Colors.grey[600])),
+                          Text(_formatRelativeDate(relevantDate), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isOverdue ? Colors.red : AppColors.textSecondary)),
                         ],
                       )
                     else 
@@ -419,7 +418,11 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
                                   margin: const EdgeInsets.only(left: 8),
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: lastInteraction.isProblem ? Colors.red[50] : Colors.grey[100],
+                                    color: lastInteraction.isProblem
+                                        ? (AppColors.isDark
+                                            ? const Color(0xFF3A1B1B)
+                                            : Colors.red[50])
+                                        : AppColors.surface,
                                     // Formato de balão de fala
                                     borderRadius: const BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8), bottomLeft: Radius.circular(8), bottomRight: Radius.circular(2)),
                                     border: Border.all(color: lastInteraction.isProblem ? Colors.red[200]! : Colors.grey[300]!),
@@ -428,7 +431,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
                                     mainAxisSize: MainAxisSize.min,
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      Icon(lastInteraction.isProblem ? Icons.warning_amber_rounded : Icons.chat_bubble_outline, size: 10, color: lastInteraction.isProblem ? Colors.red[700] : Colors.grey[600]),
+                                      Icon(lastInteraction.isProblem ? Icons.warning_amber_rounded : Icons.chat_bubble_outline, size: 10, color: lastInteraction.isProblem ? Colors.red[700] : AppColors.textSecondary),
                                       const SizedBox(width: 4),
                                       Flexible(
                                         child: Text(

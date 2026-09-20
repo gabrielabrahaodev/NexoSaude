@@ -1,4 +1,9 @@
 ---
+title: Psychology Schedule
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-psychology-schedule
 description: Contrato de pacote/sessão de psicologia — lista e formulário com geração em lote.
 ---

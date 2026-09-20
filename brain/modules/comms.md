@@ -1,4 +1,9 @@
 ---
+title: Comms
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: comms-module
 description: Comunicação e conteúdo — WhatsApp, upload de documentos (Cloudinary) e notícias de ortodontia.
 ---

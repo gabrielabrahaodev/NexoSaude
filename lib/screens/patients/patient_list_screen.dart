@@ -87,7 +87,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 filled: true,
                 fillColor: AppColors.isDark
                     ? const Color(0xFF262B31)
-                    : Colors.grey[100],
+                    : AppColors.surface,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),

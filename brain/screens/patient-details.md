@@ -1,4 +1,9 @@
 ---
+title: Patient Details
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-patient-details
 description: Ficha do paciente com tabs dinâmicas por tipo de clínica.
 ---
@@ -22,3 +27,7 @@ Adicionar/remover aba, mudar visibilidade por tipo.
 ## Gotchas
 
 - `TabBar` e `TabBarView` precisam ter os mesmos `if`s na mesma ordem — divergência quebra o índice.
+
+## Atualizações
+
+- Aba Cadastro: seção Portal (gerar/copiar/revogar link; revogar mata o espelho). Excluir paciente apaga o espelho na cascata. Ver [[portal-page]], [[portal-mirror]].

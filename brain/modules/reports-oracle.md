@@ -1,4 +1,9 @@
 ---
+title: Reports Oracle
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: reports-oracle-module
 description: Relatórios gerenciais, saúde financeira do paciente e snapshot mensal do oráculo.
 ---
@@ -29,3 +34,7 @@ KPI, antecipação de parcelas, mês fechado, score do paciente.
 
 - `clinics/{id}/settings/fees` alimenta os cálculos — ausência de perfil = fallback, conferir.
 - Queries com `whereIn` + ordenação exigem índice composto (ver `firestore.indexes.json`).
+
+## Atualizações (cota)
+
+- DRE/Livro Caixa: união de queries mensais por campo de data (exato, dedupe por id) em vez da collection inteira; `combineDocs` novo. Índices em `firestore.indexes.json`. Ver [[portal-mirror]] (mesmo padrão de união).

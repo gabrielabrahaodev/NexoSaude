@@ -1,4 +1,9 @@
 ---
+title: Psychology Kanban
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-psychology-kanban
 description: Fluxo terapêutico (kanban) das agendas de psicologia.
 ---
@@ -20,3 +25,7 @@ Mudar estágio, checklist de sessão.
 
 - Drag callbacks antigos (`onWillAccept/onAccept` → versões `WithDetails`).
 - `withOpacity` aqui (e não `withValues`) — migrar ao tocar.
+
+## Atualizações
+
+- Colunas filtram `clinicId` no server (índice status+clinicId); antes vazava entre clínicas. Ver [[portal-mirror]].

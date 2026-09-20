@@ -67,7 +67,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         );
                         if (picked != null) setStateModal(() => selectedDate = picked);
                       },
-                      child: Text(DateFormat('dd/MM/yyyy').format(selectedDate)),
+                      child: Text(formatDateFull(selectedDate)),
                     )
                   ],
                 )
@@ -172,7 +172,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeMonth(-1)),
                 Column(
                   children: [
-                    Text("COMPETÊNCIA", style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                    Text("COMPETÊNCIA", style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
                     Text(DateFormat('MMMM yyyy', 'pt_BR').format(_currentMonth).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ],
                 ),
@@ -276,7 +276,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   child: Text(statusText, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 8),
-                Text("Venc: ${DateFormat('dd/MM').format(item.dueDate)}", style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                Text("Venc: ${formatDateShort(item.dueDate)}", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
           ],

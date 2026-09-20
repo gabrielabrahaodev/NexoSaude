@@ -50,6 +50,10 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
 
   bool _isLoading = false;
 
+  /// Aceite LGPD p/ link de acompanhamento (portal/WhatsApp). Default
+  /// desmarcado (consentimento livre); sem aceite, sem token no cadastro.
+  bool _lgpdPortalConsent = false;
+
   bool _isValidCPF(String? cpf) {
     /*
     if (cpf == null) return false;
@@ -108,7 +112,11 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
       final isPsy = ClinicCapabilities.current().isPsychology;
       final newRef = await FirebaseFirestore.instance.collection('patients').add({
         'clinicId': clinicId, // CAMPO OBRIGATÓRIO NOVO
-        'portalToken': newPortalToken(), // Portal do paciente (espelho)
+        'portalToken': _lgpdPortalConsent ? newPortalToken() : '',
+        'lgpdPortalConsent': {
+          'accepted': _lgpdPortalConsent,
+          'at': FieldValue.serverTimestamp(),
+        },
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'cpf': _cpfController.text.trim(),
@@ -250,6 +258,20 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
                 ),
                 const SizedBox(height: 32),
               ],
+
+              CheckboxListTile(
+                value: _lgpdPortalConsent,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text(
+                    "Paciente autoriza link de acompanhamento (portal/WhatsApp)",
+                    style: TextStyle(fontSize: 13)),
+                subtitle: const Text(
+                    "Sem aceite, o link do portal só é gerado depois, na aba Cadastro.",
+                    style: TextStyle(fontSize: 12)),
+                onChanged: (v) =>
+                    setState(() => _lgpdPortalConsent = v ?? false),
+              ),
+              const SizedBox(height: 16),
 
               SizedBox(
                 height: 50,

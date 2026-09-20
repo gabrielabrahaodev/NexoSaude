@@ -68,20 +68,41 @@ class OracleReportService {
     DateTime start = DateTime(month.year, month.month, 1);
     DateTime end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
 
-    // MÁGICA DE PERFORMANCE E ANTI-CRASH: Puxamos os dados mestres e fazemos o roteamento na memória
-    // Evita crashes por falta de Índices (Indexes) no Firebase.
-    var incomes = _db.collection('financial').where('clinicId', isEqualTo: clinicId).snapshots();
-    var expenses = _db.collection('expenses').where('clinicId', isEqualTo: clinicId).snapshots();
+    // Economia de cota: união de queries mensais por campo de data em vez
+    // de baixar a collection inteira. Exato porque toda data efetiva usada
+    // abaixo (due/payment/paid/date) tem sua query; o mapa por id dedupica.
+    // (Exige os índices clinicId+<campo> em firestore.indexes.json.)
+    Stream<QuerySnapshot> bounded(String collection, String field) {
+      return _db
+          .collection(collection)
+          .where('clinicId', isEqualTo: clinicId)
+          .where(field,
+              isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where(field, isLessThanOrEqualTo: Timestamp.fromDate(end))
+          .snapshots();
+    }
 
-    return StreamCombiner.combine2(incomes, expenses)
-        .map((snaps) => _processSnapshots(snaps, start, end));
+    const dateFields = ['dueDate', 'paymentDate', 'paidDate', 'date'];
+    final incomeStreams =
+        dateFields.map((f) => bounded('financial', f)).toList();
+    final expenseStreams =
+        dateFields.map((f) => bounded('expenses', f)).toList();
+
+    return StreamCombiner.combineDocs([...incomeStreams, ...expenseStreams])
+        .map((lists) => _processDocs(
+              lists.sublist(0, 4).expand((l) => l).toList(),
+              lists.sublist(4).expand((l) => l).toList(),
+              start,
+              end,
+            ));
   }
 
-  OracleReportSnapshot _processSnapshots(List<QuerySnapshot> snaps, DateTime start, DateTime end) {
+  OracleReportSnapshot _processDocs(List<QueryDocumentSnapshot> incomes,
+      List<QueryDocumentSnapshot> expenses, DateTime start, DateTime end) {
     Map<String, TransactionItem> uniqueItems = {};
 
     // --- PROCESSAR RECEITAS (O REGIME DE CAIXA) ---
-    for (var doc in snaps[0].docs) {
+    for (var doc in incomes) {
       final data = doc.data() as Map<String, dynamic>;
       
       String id = doc.id;
@@ -143,7 +164,7 @@ class OracleReportService {
     }
 
     // --- PROCESSAR DESPESAS ---
-    for (var doc in snaps[1].docs) {
+    for (var doc in expenses) {
       final data = doc.data() as Map<String, dynamic>;
       String id = doc.id;
       String description = data['description'] ?? 'Despesa';
@@ -219,6 +240,39 @@ class StreamCombiner {
     void onError(Object e) { if (!controller.isClosed) controller.addError(e); }
     s1.listen((d) { values[0] = d; filled.add(0); emit(); }, onError: onError);
     s2.listen((d) { values[1] = d; filled.add(1); emit(); }, onError: onError);
+    return controller.stream;
+  }
+
+  /// Junta N streams emitindo a lista das últimas listas de docs.
+  static Stream<List<List<QueryDocumentSnapshot>>> combineDocs(
+      List<Stream<QuerySnapshot>> streams) {
+    final controller =
+        StreamController<List<List<QueryDocumentSnapshot>>>();
+    final values =
+        List<List<QueryDocumentSnapshot>>.generate(streams.length, (_) => []);
+    final filled = <int>{};
+    var closed = false;
+    void emit() {
+      if (!closed && filled.length == streams.length) {
+        controller.add([for (final v in values) List.of(v)]);
+      }
+    }
+
+    void onError(Object e) {
+      if (!closed) controller.addError(e);
+    }
+
+    for (var i = 0; i < streams.length; i++) {
+      streams[i].listen((snap) {
+        values[i] = snap.docs;
+        filled.add(i);
+        emit();
+      }, onError: onError, onDone: () {});
+    }
+    controller.onCancel = () {
+      closed = true;
+      controller.close();
+    };
     return controller.stream;
   }
 }

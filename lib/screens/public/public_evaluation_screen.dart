@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/display.dart';
+import '../../ui/app_theme.dart';
 // import 'package:flutter_web_plugins/flutter_web_plugins.dart'; // Descomente se configurou web plugins
 
 class PublicEvaluationScreen extends StatefulWidget {
@@ -219,7 +220,7 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       padding: const EdgeInsets.all(20),
-                                      backgroundColor: Colors.white,
+                                      backgroundColor: AppColors.surface,
                                       foregroundColor: Colors.teal[900],
                                       side: BorderSide(color: Colors.teal.shade100),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))

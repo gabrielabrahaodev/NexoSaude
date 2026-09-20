@@ -83,5 +83,13 @@ void main() {
       expect(g.last, '20:00');
       expect(g.length, 24);
     });
+
+    test('parâmetros customizados', () {
+      expect(
+          dailyGrade(start: '09:00', end: '10:00', slot: 30),
+          ['09:00', '09:30', '10:00']);
+      expect(dailyGrade(start: '08:00', end: '09:00', slot: 60),
+          ['08:00', '09:00']);
+    });
   });
 }

@@ -1,4 +1,9 @@
 ---
+title: Create Patient
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-create-patient
 description: Cadastro de paciente com clinicId da sessão.
 ---
@@ -19,3 +24,7 @@ Novo paciente, campos obrigatórios, duplicidade de CPF.
 ## Gotchas
 
 - Variável `cpfQuery` não usada — remover ou implementar checagem de duplicado.
+
+## Atualizações
+
+- Cadastro gera `portalToken` + espelho inicial imediato (link vale desde o cadastro). Ver [[portal-mirror]].

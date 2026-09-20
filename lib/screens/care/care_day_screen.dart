@@ -79,7 +79,7 @@ class _CareDayScreenState extends State<CareDayScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-            "Meu dia — Hoje, ${DateFormat('dd/MM').format(bounds.start)}"),
+            "Meu dia — Hoje, ${formatDateShort(bounds.start)}"),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -169,7 +169,7 @@ class _CareDayScreenState extends State<CareDayScreen> {
                           style:
                               const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(
-                          "${a.procedure}$dentistLabel • ${a.status}${paid ? ' • Pago' : ''}${isRemarcar ? ' • ${DateFormat('dd/MM HH:mm').format(a.proposedDate!)}' : ''}"),
+                          "${a.procedure}$dentistLabel • ${a.status}${paid ? ' • Pago' : ''}${isRemarcar ? ' • ${formatDateTimeShort(a.proposedDate!)}' : ''}"),
                       trailing: Icon(Icons.chevron_right,
                           color: isRemarcar
                               ? Colors.orange

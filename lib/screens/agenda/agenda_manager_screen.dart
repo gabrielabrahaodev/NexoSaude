@@ -253,7 +253,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     const Text("Gestão de Agenda", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.calendar_month, size: 16),
-                      label: Text("Data: ${DateFormat('dd/MM/yyyy').format(targetDate)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                      label: Text("Data: ${formatDateFull(targetDate)}", style: const TextStyle(fontWeight: FontWeight.bold)),
                       onPressed: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -335,7 +335,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     }
     if (!phone.startsWith('55')) phone = '55$phone'; 
     String link = "https://odontocontrole-1c701.web.app/confirmar.html?id=${appt.id}";
-    String message = "Olá ${appt.patientName}, por favor confirme sua consulta para o dia ${DateFormat('dd/MM às HH:mm').format(appt.date)} clicando neste link: $link";
+    String message = "Olá ${appt.patientName}, por favor confirme sua consulta para o dia ${formatDateAs(appt.date)} clicando neste link: $link";
     final url = Uri.parse("https://wa.me/$phone?text=${Uri.encodeComponent(message)}");
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -489,7 +489,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 ListTile(
                   leading: CircleAvatar(child: Text(appt.patientName.isNotEmpty ? appt.patientName.substring(0,1) : '?')),
                   title: Text(appt.patientName, style: TextStyle(fontWeight: FontWeight.bold, decoration: isCancelled ? TextDecoration.lineThrough : null)),
-                  subtitle: Text("${DateFormat('dd/MM/yyyy - HH:mm').format(appt.date)} • ${appt.status}"),
+                  subtitle: Text("${formatDateDash(appt.date)} • ${appt.status}"),
                 ),
 
                 FutureBuilder<Map<String, dynamic>>(
@@ -547,7 +547,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                             fontWeight: FontWeight.bold,
                             color: Colors.orange)),
                     subtitle: Text(
-                        "Propôs ${DateFormat('dd/MM HH:mm').format(appt.proposedDate!)}"),
+                        "Propôs ${formatDateTimeShort(appt.proposedDate!)}"),
                     onTap: () {
                       Navigator.pop(context);
                       showRemarcarDialog(context, appt);
@@ -693,7 +693,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             final String reason = data['cancellationReason'] ?? 'Motivo não informado.';
             final String byUser = data['cancelledBy'] ?? 'Usuário desconhecido';
             final Timestamp? at = data['cancelledAt'];
-            final String dateStr = at != null ? DateFormat('dd/MM/yyyy HH:mm').format(at.toDate()) : 'Data desconhecida';
+            final String dateStr = at != null ? formatDateTimeFull(at.toDate()) : 'Data desconhecida';
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -829,7 +829,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                               items: plans.map((doc) {
                                 final data = doc.data() as Map<String, dynamic>;
                                 final date = (data['startDate'] as Timestamp).toDate();
-                                String label = "Iniciado em ${DateFormat('dd/MM/yy').format(date)}";
+                                String label = "Iniciado em ${formatDateShortYear(date)}";
                                 return DropdownMenuItem(
                                   value: doc.id,
                                   onTap: () {
@@ -1007,7 +1007,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeWeek(-7)), 
                 Expanded(child: Column(children: [
                   Text("Semana", style: AppTextStyles.caption), 
-                  Text("${DateFormat('dd/MM').format(_currentWeekStart)}  –  ${DateFormat('dd/MM').format(weekEnd.subtract(const Duration(days: 1)))}", style: AppTextStyles.subtitle.copyWith(fontSize: 13))
+                  Text("${formatDateShort(_currentWeekStart)}  –  ${formatDateShort(weekEnd.subtract(const Duration(days: 1)))}", style: AppTextStyles.subtitle.copyWith(fontSize: 13))
                 ])), 
                 IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeWeek(7))
               ]),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../models/financial_model.dart';
 import '../../../utils/display.dart';
 
@@ -41,7 +40,7 @@ class SessionChargeCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-                "${item.title} - Vence: ${DateFormat('dd/MM').format(item.dueDate!)}"),
+                "${item.title} - Vence: ${formatDateShort(item.dueDate!)}"),
             if (contactedToday)
               const Text("Já contatado hoje",
                   style: TextStyle(

@@ -350,7 +350,7 @@ class _Header extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           "$clinicName • $monthLabel",
-          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -410,7 +410,7 @@ class _KpiCard extends StatelessWidget {
           ),
           Text(
             caption,
-            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -435,7 +435,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey[700]),
+        Icon(icon, size: 18, color: AppColors.textSecondary),
         const SizedBox(width: 8),
         Text(
           title,
@@ -504,9 +504,9 @@ class _DueRow extends StatelessWidget {
                     style: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(
-                  '${item['title']}${due != null ? ' • Vence ${DateFormat('dd/MM').format(due)}' : ''}',
+                  '${item['title']}${due != null ? ' • Vence ${formatDateShort(due)}' : ''}',
                   style:
-                      TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -554,7 +554,7 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: Colors.grey[400]),
           const SizedBox(width: 8),
-          Text(text, style: TextStyle(color: Colors.grey[600])),
+          Text(text, style: TextStyle(color: AppColors.textSecondary)),
         ],
       ),
     );

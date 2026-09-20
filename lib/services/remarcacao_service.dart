@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/appointment_model.dart';
 import 'appointment_service.dart';
 import 'portal_mirror.dart';
+import '../utils/display.dart';
 
 /// Link público do portal a partir do token.
 String portalUrl(String token) =>
@@ -15,7 +16,7 @@ String refuseText({
   required DateTime proposed,
   String portalUrl = '',
 }) {
-  final when = DateFormat('dd/MM').format(proposed);
+  final when = formatDateShort(proposed);
   final hour = DateFormat('HH:mm').format(proposed);
   final link = portalUrl.isEmpty ? '' : ' Escolha outro horário aqui: $portalUrl';
   return 'Olá $patientName, a data $when às $hour não está mais disponível.$link';

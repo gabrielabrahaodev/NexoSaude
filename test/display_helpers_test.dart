@@ -33,6 +33,21 @@ void main() {
     });
   });
 
+  group('format datas', () {
+    final d = DateTime(2026, 9, 5, 9, 5);
+    test('padrões pt-BR', () {
+      expect(formatDateShort(d), '05/09');
+      expect(formatDateTimeShort(d), '05/09 09:05');
+      expect(formatDateFull(d), '05/09/2026');
+      expect(formatDateShortYear(d), '05/09/26');
+      expect(formatDateTimeFull(d), '05/09/2026 09:05');
+      expect(formatDateDash(d), '05/09/2026 - 09:05');
+      expect(formatDateDot(d), '05/09 • 09:05');
+      // Quirk herdado: `s` de "às" vira "segundos" no intl (igual ao original).
+      expect(formatDateAs(d), '05/09 à0 09:05');
+    });
+  });
+
   group('daysAgoLabel', () {
     test('hoje, ontem e há N dias', () {
       expect(daysAgoLabel(0), 'hoje');

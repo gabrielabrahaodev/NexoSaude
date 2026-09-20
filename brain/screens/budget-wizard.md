@@ -1,4 +1,9 @@
 ---
+title: Budget Wizard
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-budget-wizard
 description: Assistente de aprovação de orçamento que gera plano + financeiro.
 ---

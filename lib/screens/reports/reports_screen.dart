@@ -7,7 +7,10 @@ import '../../services/session_manager.dart';
 import '../../models/financial_model.dart';
 import '../financial/financial_report_screen.dart'; 
 import '../financial/expenses_screen.dart';
-import '../../utils/display.dart'; 
+import '../../utils/display.dart';
+import '../../widgets/status_chip.dart';
+import '../../services/oracle_report_service.dart'
+    show StreamCombiner; 
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -67,18 +70,34 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   DateTime get _startOfMonth => DateTime(_currentMonth.year, _currentMonth.month, 1);
+  DateTime get _endOfMonth =>
+      DateTime(_currentMonth.year, _currentMonth.month + 1, 0, 23, 59, 59);
 
-  // --- STREAMS ---
+  // --- STREAMS (união de queries mensais por campo de data, nunca a
+  // collection inteira — cota. Dedupe por id: o mesmo doc pode casar
+  // em mais de um campo).
+  Stream<QuerySnapshot> _bounded(String collection, String clinicId,
+      String field, DateTime start, DateTime end) {
+    return FirebaseFirestore.instance
+        .collection(collection)
+        .where('clinicId', isEqualTo: clinicId)
+        .where(field, isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where(field, isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .snapshots();
+  }
 
   Stream<double> _getRevenueStream(String clinicId) {
     final start = _startOfMonth;
-    return FirebaseFirestore.instance.collection('financial')
-        .where('clinicId', isEqualTo: clinicId)
-        .snapshots()
-        .map((snap) {
+    final end = _endOfMonth;
+    final streams = ['dueDate', 'paymentDate', 'paidDate', 'date']
+        .map((f) => _bounded('financial', clinicId, f, start, end))
+        .toList();
+    return StreamCombiner.combineDocs(streams).map((lists) {
+             final seen = <String>{};
              double total = 0.0;
-             for (var doc in snap.docs) {
-               final data = doc.data();
+             for (var doc in lists.expand((l) => l)) {
+               if (!seen.add(doc.id)) continue;
+               final data = doc.data() as Map<String, dynamic>;
                if (data['type'] != 'income') continue;
 
                 final status = (data['status'] ?? '').toString().toLowerCase().trim();
@@ -127,13 +146,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Stream<double> _getExpensesStream(String clinicId) {
     final start = _startOfMonth;
-    return FirebaseFirestore.instance.collection('expenses')
-        .where('clinicId', isEqualTo: clinicId)
-        .snapshots()
-        .map((snap) {
+    final end = _endOfMonth;
+    final streams =
+        ['paidDate', 'paymentDate', 'dueDate', 'date', 'createdAt']
+            .map((f) => _bounded('expenses', clinicId, f, start, end))
+            .toList();
+    return StreamCombiner.combineDocs(streams).map((lists) {
+             final seen = <String>{};
              double total = 0.0;
-              for (var doc in snap.docs) {
-                final data = doc.data();
+             for (var doc in lists.expand((l) => l)) {
+               if (!seen.add(doc.id)) continue;
+               final data = doc.data() as Map<String, dynamic>;
                 // Definição única de "pago" (+ flag crua legada).
                 final isPaidExpense = FinancialModel.isPaidOf(
                         status: data['status']?.toString() ?? '',
@@ -161,15 +184,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
         });
   }
 
-  // O FUNIL DE ANTECIPAÇÃO (Implacável e Inteligente)
+  // O FUNIL DE ANTECIPAÇÃO (limitado a 12 meses à frente — pacotes são mensais)
   Stream<double> _getAvailableAnticipationStream(String clinicId) {
-    return FirebaseFirestore.instance.collection('financial')
-        .where('clinicId', isEqualTo: clinicId)
-        .snapshots()
-        .map((snap) {
+    final now = DateTime.now();
+    final today =
+        DateTime(now.year, now.month, now.day);
+    final horizon = DateTime(now.year + 1, now.month, now.day);
+    final streams = ['dueDate', 'date']
+        .map((f) => _bounded('financial', clinicId, f, today, horizon))
+        .toList();
+    return StreamCombiner.combineDocs(streams).map((lists) {
+             final seen = <String>{};
              double totalAvailable = 0.0;
-             for (var doc in snap.docs) {
-               final data = doc.data();
+             for (var doc in lists.expand((l) => l)) {
+               if (!seen.add(doc.id)) continue;
+               final data = doc.data() as Map<String, dynamic>;
                if (data['type'] != 'income') continue;
 
                final status = (data['status'] ?? '').toString().toLowerCase().trim();
@@ -539,7 +568,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final p = parcelsToAnticipate[index];
-                      final dateStr = DateFormat('dd/MM/yy').format(p.dueDate);
+                      final dateStr = formatDateShortYear(p.dueDate);
                       
                       return ListTile(
                         dense: true,
@@ -743,7 +772,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
                   ]
                 ),
                 const SizedBox(height: 10),
-                Text("Despesas Pagas", style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                Text("Despesas Pagas", style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
                 Text("${formatBRL(widget.totalValue)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
               ]
@@ -880,7 +909,7 @@ class _KpiCard extends StatelessWidget {
   const _KpiCard({required this.title, required this.value, required this.color, required this.icon, this.isHighlight = false});
   @override
   Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: const Text("RESULTADO", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)))]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("${formatBRL(value)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
+    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) StatusChip(label: "RESULTADO", color: color, horizontal: 8, vertical: 2, fontSize: 8)]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("${formatBRL(value)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
   }
 }
 

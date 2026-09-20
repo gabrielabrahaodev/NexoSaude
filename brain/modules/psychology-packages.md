@@ -1,4 +1,9 @@
 ---
+title: Psychology Packages
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: psychology-packages
 description: Pacotes e sessões de psicologia — geração mensal, monthlyPeriod e billing rateado por presença.
 ---

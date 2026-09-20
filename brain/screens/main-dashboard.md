@@ -1,4 +1,9 @@
 ---
+title: Main Dashboard
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-main-dashboard
 description: Shell principal — sidebar responsiva, seletor de clínica, menu por papel e tipo.
 ---

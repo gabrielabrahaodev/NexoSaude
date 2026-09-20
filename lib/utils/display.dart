@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 /// Helpers puros de exibição (testados em `test/display_helpers_test.dart`).
 ///
@@ -27,6 +28,18 @@ double parseBRL(dynamic value) {
 /// "R$ 1500.50" (2 casas, ponto decimal — igual ao `toStringAsFixed(2`
 /// usado nas telas; sem locale para nao mudar nenhuma string exibida).
 String formatBRL(num value) => 'R\$ ${value.toStringAsFixed(2)}';
+
+/// Datas pt-BR centralizadas (mesma saída dos `DateFormat` espalhados).
+String formatDateShort(DateTime d) => DateFormat('dd/MM').format(d);
+String formatDateTimeShort(DateTime d) => DateFormat('dd/MM HH:mm').format(d);
+String formatDateFull(DateTime d) => DateFormat('dd/MM/yyyy').format(d);
+String formatDateShortYear(DateTime d) => DateFormat('dd/MM/yy').format(d);
+String formatDateTimeFull(DateTime d) =>
+    DateFormat('dd/MM/yyyy HH:mm').format(d);
+String formatDateDash(DateTime d) =>
+    DateFormat('dd/MM/yyyy - HH:mm').format(d);
+String formatDateDot(DateTime d) => DateFormat('dd/MM • HH:mm').format(d);
+String formatDateAs(DateTime d) => DateFormat('dd/MM às HH:mm').format(d);
 
 /// Atalho de SnackBar com o padrao do app: neutra, vermelha (erro), verde
 /// (ok) ou cor explícita. Mesma aparencia das chamadas manuais que substitui.

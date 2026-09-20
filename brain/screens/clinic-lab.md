@@ -1,4 +1,9 @@
 ---
+title: Clinic Lab
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-clinic-lab
 description: Gestão de pedidos de laboratório da clínica (protéticos).
 ---

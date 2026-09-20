@@ -241,7 +241,7 @@ class _HeaderSummaryRow extends StatelessWidget {
     return Container(
       height: 60,
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: const Center(child: SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))),

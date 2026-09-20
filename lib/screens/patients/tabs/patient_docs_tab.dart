@@ -94,7 +94,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                     onChanged: (val) => setStateDialog(() => category = val!),
                   ),
                   const SizedBox(height: 10),
-                  Text("Tamanho aprox: ${(size / 1024).toStringAsFixed(0)} KB", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                  Text("Tamanho aprox: ${(size / 1024).toStringAsFixed(0)} KB", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 ],
               ),
               actions: [
@@ -328,7 +328,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
               child: Text(doc.category, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
             ),
             const SizedBox(width: 8),
-            Text(DateFormat('dd/MM/yyyy HH:mm').format(doc.uploadedAt), style: const TextStyle(fontSize: 11)),
+            Text(formatDateTimeFull(doc.uploadedAt), style: const TextStyle(fontSize: 11)),
           ],
         ),
         trailing: PopupMenuButton<String>(

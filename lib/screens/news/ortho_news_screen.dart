@@ -44,7 +44,7 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
             ),
             Text(
               "Últimas atualizações científicas",
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ],
         ),

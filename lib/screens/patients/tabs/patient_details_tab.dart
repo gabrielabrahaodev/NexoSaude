@@ -41,7 +41,14 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
       await FirebaseFirestore.instance
           .collection('patients')
           .doc(docId)
-          .update({'portalToken': token});
+          .update({
+        'portalToken': token,
+        // Gerar sob demanda = aceite colhido pelo atendente.
+        'lgpdPortalConsent': {
+          'accepted': true,
+          'at': FieldValue.serverTimestamp()
+        },
+      });
       if ((oldToken ?? '').isNotEmpty) {
         await FirebaseFirestore.instance
             .collection('portal')
@@ -217,7 +224,11 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
                     style: TextStyle(
                         fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 10),
-                _portalSection(doc.id, '${data['portalToken'] ?? ''}'),
+                _portalSection(
+                    doc.id,
+                    '${data['portalToken'] ?? ''}',
+                    (data['lgpdPortalConsent'] as Map?)?['accepted']
+                        as bool?),
                 const SizedBox(height: 20),
               ],
             ),
@@ -228,14 +239,26 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
   }
 
   /// Link do portal: gerar, copiar ou revogar (mata o antigo).
-  Widget _portalSection(String docId, String token) {
+  Widget _portalSection(String docId, String token, bool? consented) {
     if (token.isEmpty) {
-      return OutlinedButton.icon(
-        onPressed:
-            _workingLink ? null : () => _rotatePortalLink(docId, null),
-        icon: const Icon(Icons.link_outlined),
-        label: Text(
-            _workingLink ? "Gerando..." : "Gerar link do portal"),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (consented == false)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                  "Sem aceite LGPD no cadastro. Gerar o link registra novo aceite?",
+                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+            ),
+          OutlinedButton.icon(
+            onPressed:
+                _workingLink ? null : () => _rotatePortalLink(docId, null),
+            icon: const Icon(Icons.link_outlined),
+            label: Text(
+                _workingLink ? "Gerando..." : "Gerar link do portal"),
+          ),
+        ],
       );
     }
     final link = portalUrl(token);

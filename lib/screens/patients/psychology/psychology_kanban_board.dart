@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../ui/app_theme.dart';
 import '../../../models/therapeutic_status.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
+import '../../../services/session_manager.dart';
+import '../../../utils/display.dart';
 
 class PsychologyKanbanBoard extends StatelessWidget {
   const PsychologyKanbanBoard({super.key});
@@ -120,14 +121,17 @@ class PsychologyKanbanBoard extends StatelessWidget {
                 _handleStatusTransition(context, patientDoc, status);
               },
               builder: (context, candidateData, rejectedData) {
-                // Stream dedicado para esta coluna (Performance: filtra no server)
+                // Stream dedicado para esta coluna (filtra clínica + estágio
+                // no server; exige índice status+clinicId).
+                final clinicId = SessionManager().currentClinicId;
+                var query = FirebaseFirestore.instance
+                    .collection('patients')
+                    .where('status', isEqualTo: status.name);
+                if (clinicId != null) {
+                  query = query.where('clinicId', isEqualTo: clinicId);
+                }
                 return StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('patients')
-                      .where('status', isEqualTo: status.name)
-                      // Otimização: ordenar por última sessão para ver quem precisa de atenção
-                      // .orderBy('last_session_date', descending: true) // Requer índice no Firebase
-                      .snapshots(),
+                  stream: query.snapshots(),
                   builder: (context, snapshot) {
                     // Estado de Carregamento
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -264,7 +268,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           text,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -387,7 +391,7 @@ class PsychologyKanbanBoard extends StatelessWidget {
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return "Sem data";
     // Formata para dia/mês (ex: 12/Out)
-    return DateFormat('dd/MM').format(timestamp.toDate());
+    return formatDateShort(timestamp.toDate());
   }
 }
 

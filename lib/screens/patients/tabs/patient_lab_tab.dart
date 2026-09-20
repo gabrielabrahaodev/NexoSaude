@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/lab_order.dart'; // IMPORT CORRIGIDO
 import '../../../services/lab_service.dart';
@@ -7,7 +6,8 @@ import '../../../services/treatment_service.dart';
 import '../../../services/session_manager.dart';
 import '../../../services/user_service.dart'; 
 import '../../../models/user_model.dart';     
-import '../../../widgets/lab_kanban_board.dart'; 
+import '../../../widgets/lab_kanban_board.dart';
+import '../../../utils/display.dart'; 
 
 class PatientLabTab extends StatefulWidget {
   final String patientId;
@@ -73,8 +73,8 @@ class _PatientLabTabState extends State<PatientLabTab> {
                           else if (data['createdAt'] != null) date = (data['createdAt'] as Timestamp).toDate();
 
                           final total = data['totalValue'] ?? 0;
-                          String label = "${DateFormat('dd/MM').format(date)} (R\$ $total)";
-                          return DropdownMenuItem(value: doc.id, child: Text(label, style: const TextStyle(fontSize: 13)), onTap: () => selectedPlanName = "Tratamento ${DateFormat('dd/MM').format(date)}");
+                          String label = "${formatDateShort(date)} (R\$ $total)";
+                          return DropdownMenuItem(value: doc.id, child: Text(label, style: const TextStyle(fontSize: 13)), onTap: () => selectedPlanName = "Tratamento ${formatDateShort(date)}");
                         }).toList(),
                         onChanged: (val) => setStateModal(() => selectedPlanId = val),
                         decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/budget_model.dart';
 import '../../../models/financial_model.dart';
@@ -190,7 +189,7 @@ class _BudgetApprovalWizardState extends State<BudgetApprovalWizard> {
             Expanded(child: InkWell(onTap: () async {
               final d = await showDatePicker(context: context, initialDate: _firstDueDate, firstDate: DateTime.now(), lastDate: DateTime(2030));
               if (d != null) setState(() => _firstDueDate = d);
-            }, child: InputDecorator(decoration: const InputDecoration(labelText: "1º Vencimento", border: OutlineInputBorder()), child: Text(DateFormat('dd/MM/yyyy').format(_firstDueDate))))),
+            }, child: InputDecorator(decoration: const InputDecoration(labelText: "1º Vencimento", border: OutlineInputBorder()), child: Text(formatDateFull(_firstDueDate))))),
           ]),
           
           if (_automaticCostValue > 0) ...[

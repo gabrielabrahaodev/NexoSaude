@@ -1,4 +1,9 @@
 ---
+title: Clinic Management
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-clinic-management
 description: CRUD de clínicas (owner) com vínculo de ownerId e nome.
 ---

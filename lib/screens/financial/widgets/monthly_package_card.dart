@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'billing_skeleton.dart';
 import '../../../utils/display.dart';
+import '../../../ui/app_theme.dart';
 
 class MonthlyPackageCard extends StatelessWidget {
   final String patientName;
@@ -39,7 +39,7 @@ class MonthlyPackageCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: contactedToday ? Colors.grey[50] : Colors.purple[50],
+      color: contactedToday ? AppColors.surface : (AppColors.isDark ? const Color(0xFF2E1B3A) : Colors.purple[50]),
       child: ListTile(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -78,7 +78,7 @@ class MonthlyPackageCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-                "$installmentNumber • $sessionCount sessão(ões) • Vence: ${DateFormat('dd/MM').format(dueDate)}"),
+                "$installmentNumber • $sessionCount sessão(ões) • Vence: ${formatDateShort(dueDate)}"),
             if (billingLoading)
               const BillingDetailSkeleton()
             else if (billingDetail != null)

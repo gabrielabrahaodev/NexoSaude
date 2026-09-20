@@ -1,4 +1,9 @@
 ---
+title: Patient List
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-patient-list
 description: Lista de pacientes com busca, avatar e exclusão em cascata.
 ---

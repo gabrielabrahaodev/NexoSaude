@@ -1,4 +1,9 @@
 ---
+title: Financial Report
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-financial-report
 description: Posição financeira — transações, taxas e PDF (TableHelper).
 ---

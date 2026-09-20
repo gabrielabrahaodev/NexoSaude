@@ -193,7 +193,7 @@ class _CareVisitScreenState extends State<CareVisitScreen> {
       patientId: a.patientId,
       patientName: a.patientName,
       title:
-          "Atendimento ${a.procedure} ${DateFormat('dd/MM').format(a.date)}",
+          "Atendimento ${a.procedure} ${formatDateShort(a.date)}",
       description: '',
       amount: amount,
       paidAmount: receiveNow ? amount : 0.0,
@@ -296,7 +296,7 @@ class _CareVisitScreenState extends State<CareVisitScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            "${DateFormat('dd/MM HH:mm').format(a.date)} • ${a.procedure} • ${a.status}",
+            "${formatDateTimeShort(a.date)} • ${a.procedure} • ${a.status}",
             style: AppTextStyles.subtitle,
           ),
           const SizedBox(height: 16),

@@ -260,7 +260,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
                 decoration: BoxDecoration(
                   color: AppColors.isDark
                       ? AppColors.background
-                      : Colors.grey[50],
+                      : AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey[200]!)
                 ),
@@ -333,7 +333,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
       ),
     );
   }

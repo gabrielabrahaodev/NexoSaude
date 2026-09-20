@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import '../ui/app_theme.dart';
 import '../screens/agenda/agenda_form_screen.dart';
+import '../utils/display.dart';
 
 /// Função global para exibir o diálogo de cancelamento
 void _showCancelDialogGlobal(BuildContext context, DocumentSnapshot doc) {
@@ -104,7 +104,7 @@ class AppointmentActionCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                DateFormat('dd/MM • HH:mm').format(date),
+                formatDateDot(date),
                 style: AppTextStyles.caption,
               ),
             ],
@@ -230,7 +230,7 @@ class SimpleAppointmentCard extends StatelessWidget {
                 Text(doc['patientName'] ?? 'Paciente', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(
-                  "${DateFormat('dd/MM HH:mm').format(date)} • ${doc['procedure'] ?? ''}",
+                  "${formatDateTimeShort(date)} • ${doc['procedure'] ?? ''}",
                   style: AppTextStyles.caption,
                   overflow: TextOverflow.ellipsis,
                 ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:url_launcher/url_launcher.dart'; 
 import '../../../ui/app_theme.dart';
 import '../../../utils/display.dart';
+import '../../../widgets/status_chip.dart';
 import '../../../services/financial_service.dart';
 import '../../../services/user_service.dart'; 
 import '../../../services/session_manager.dart'; 
@@ -293,7 +293,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       phone = phone.replaceAll(RegExp(r'[^\d]'), '');
       if (!phone.startsWith('55')) phone = '55$phone';
       
-      String msg = "Olá, lembrete da parcela de ${formatBRL(item.amount)} vencendo em ${DateFormat('dd/MM').format(item.dueDate ?? DateTime.now())}.";
+      String msg = "Olá, lembrete da parcela de ${formatBRL(item.amount)} vencendo em ${formatDateShort(item.dueDate ?? DateTime.now())}.";
       final url = Uri.parse("https://wa.me/$phone?text=${Uri.encodeComponent(msg)}");
       
       if (await canLaunchUrl(url)) {
@@ -321,7 +321,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     return Row(
       children: [
         Expanded(
-          child: Text("Vence: ${DateFormat('dd/MM/yyyy').format(due)}"),
+          child: Text("Vence: ${formatDateFull(due)}"),
         ),
         TextButton(
           onPressed: () async {
@@ -892,7 +892,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
           child: Column(
             crossAxisAlignment: isIncome ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              Text(DateFormat('dd/MM').format(date), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+              Text(formatDateShort(date), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
               const SizedBox(height: 4),
               Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: isIncome ? TextAlign.right : TextAlign.left),
               
@@ -942,10 +942,14 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                          constraints: const BoxConstraints(),
                        ),
                      ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: chargeBadgeColor(isPaid: isPaid, isPending: isPending), borderRadius: BorderRadius.circular(4)),
-                    child: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 9)),
+                  StatusChip(
+                    label: status,
+                    color: chargeBadgeColor(
+                        isPaid: isPaid, isPending: isPending),
+                    horizontal: 6,
+                    vertical: 2,
+                    radius: 4,
+                    bold: false,
                   ),
                 ],
               )
@@ -1006,7 +1010,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     // --- 🛡️ WAR ROOM: O MOTOR DE PARSE INVENCÍVEL ---
     // Impede crashs mesmo que a clínica digite "R$ 1.500,50" ou se o banco estiver corrompido
     // Parse tolerante BR/US centralizado em `parseBRL` (testado).
-    double safeParse(dynamic value) => parseBRL(value);
+    // Parse tolerante: parseBRL direto (testado).
 
     // --- 🛡️ WAR ROOM: BUSCA TOLERANTE A FALHAS NO FIREBASE ---
     try {
@@ -1039,12 +1043,12 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
         hasCost = procedureData['hasCost'] == true || procedureData['hasCost'] == 'true'; 
         
         if (hasCost) {
-          double defCost = safeParse(procedureData['cost'] ?? procedureData['operationalCost']);
+          double defCost = parseBRL(procedureData['cost'] ?? procedureData['operationalCost']);
           costCtrl.text = defCost.toStringAsFixed(2);
         }
         
         // Cobre variações comuns de colunas de banco
-        double commVal = safeParse(procedureData['commissionValue'] ?? procedureData['commission'] ?? procedureData['repasse']);
+        double commVal = parseBRL(procedureData['commissionValue'] ?? procedureData['commission'] ?? procedureData['repasse']);
         
         if (commissionType == 'percent') {
           defaultPercent = commVal;
@@ -1059,7 +1063,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     if (item.dentistId != null && _dentists.any((d) => d.id == item.dentistId)) selectedProfessionalId = item.dentistId;
 
     // Usa o safeParse para garantir que 1.000,00 não vire 0.0
-    double initialPay = safeParse(amountCtrl.text);
+    double initialPay = parseBRL(amountCtrl.text);
     
     if (commissionType == 'percent') {
       commPercentCtrl.text = defaultPercent.toStringAsFixed(2); 
@@ -1081,7 +1085,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             
             // --- CÁLCULOS AGORA USAM SAFEPARSE GLOBALMENTE ---
             void calculateFees() {
-              double total = safeParse(amountCtrl.text);
+              double total = parseBRL(amountCtrl.text);
               int parc = int.tryParse(installmentsCtrl.text) ?? 1;
               if (parc < 1) parc = 1;
               
@@ -1089,10 +1093,10 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
               if (feeProfile != null && (selectedMethod == "Débito" || selectedMethod == "Cartão de Crédito")) {
                 if (selectedMethod == "Débito") {
-                  currentFeeRate = safeParse(feeProfile?['debit']);
+                  currentFeeRate = parseBRL(feeProfile?['debit']);
                 } else {
                   if (parc == 1) {
-                    currentFeeRate = safeParse(feeProfile?['credit_1x']);
+                    currentFeeRate = parseBRL(feeProfile?['credit_1x']);
                   } else {
                     final rules = List<Map<String, dynamic>>.from(feeProfile?['installment_rules'] ?? []);
                     final matchingRule = rules.firstWhere(
@@ -1100,11 +1104,11 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                       orElse: () => {},
                     );
                     if (matchingRule.isNotEmpty) {
-                      currentFeeRate = safeParse(matchingRule['rate']);
+                      currentFeeRate = parseBRL(matchingRule['rate']);
                     }
                   }
                   if (feeProfile?['anticipation_enabled'] == true) {
-                    double antRate = safeParse(feeProfile?['anticipation_rate']);
+                    double antRate = parseBRL(feeProfile?['anticipation_rate']);
                     currentFeeRate += (antRate * parc); 
                   }
                 }
@@ -1117,9 +1121,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             calculateFees(); 
 
             void recalculateFromPercent() {
-              double pay = safeParse(amountCtrl.text);
-              double pct = safeParse(commPercentCtrl.text);
-              double cost = safeParse(costCtrl.text);
+              double pay = parseBRL(amountCtrl.text);
+              double pct = parseBRL(commPercentCtrl.text);
+              double cost = parseBRL(costCtrl.text);
               double base = pay;
               if (deductCostFromBase) { base = pay - cost; if (base < 0) base = 0; }
               commValueCtrl.text = (base * (pct / 100)).toStringAsFixed(2);
@@ -1127,11 +1131,11 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             }
 
             void recalculateFromValue() {
-              double pay = safeParse(amountCtrl.text);
-              double valRepasse = safeParse(commValueCtrl.text);
+              double pay = parseBRL(amountCtrl.text);
+              double valRepasse = parseBRL(commValueCtrl.text);
               double base = pay;
               if (deductCostFromBase) {
-                  double cost = safeParse(costCtrl.text);
+                  double cost = parseBRL(costCtrl.text);
                   base = pay - cost; if (base < 0) base = 0;
               }
               if (base > 0) {
@@ -1312,7 +1316,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                              onTap: () => pickGenericDate((d) => costDueDate = d, costDueDate),
                                              child: InputDecorator(
                                                decoration: InputDecoration(labelText: "Vencimento", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-                                               child: Text(DateFormat('dd/MM').format(costDueDate), style: const TextStyle(fontSize: 13)),
+                                               child: Text(formatDateShort(costDueDate), style: const TextStyle(fontSize: 13)),
                                              ),
                                            ),
                                          ),
@@ -1403,7 +1407,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                     onTap: () => pickGenericDate((d) => labDeliveryDate = d, labDeliveryDate),
                                     child: InputDecorator(
                                       decoration: InputDecoration(labelText: "Previsão Entrega", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-                                      child: Text(DateFormat('dd/MM/yyyy').format(labDeliveryDate), style: const TextStyle(fontSize: 13)),
+                                      child: Text(formatDateFull(labDeliveryDate), style: const TextStyle(fontSize: 13)),
                                     ),
                                   ),
                                 ),
@@ -1421,12 +1425,12 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                         onPressed: isProcessingPayment
                             ? null
                             : () async {
-                                final val = safeParse(amountCtrl.text);
+                                final val = parseBRL(amountCtrl.text);
                                 final inst =
                                     int.tryParse(installmentsCtrl.text) ?? 1;
                                 final finalCommission =
-                                    safeParse(commValueCtrl.text);
-                                final finalCost = safeParse(costCtrl.text);
+                                    parseBRL(commValueCtrl.text);
+                                final finalCost = parseBRL(costCtrl.text);
 
                                 if (val <= 0) return;
 
@@ -1506,7 +1510,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                batch.set(expRef, {
                                  'clinicId': clinicId,
                                  'title': "Comissão - ${item.patientName}",
-                                 'description': "Ref. ${item.title} (${DateFormat('dd/MM').format(DateTime.now())})",
+                                 'description': "Ref. ${item.title} (${formatDateShort(DateTime.now())})",
                                  'amount': finalCommission,
                                  'date': DateTime.now(),
                                  'dueDate': commissionDueDate, 
@@ -1547,7 +1551,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                String? labName;
                                try { labName = _suppliers.firstWhere((s) => s.id == selectedLabId).name; } catch (e) {/**/}
                                
-                               double labCost = safeParse(labCostCtrl.text);
+                               double labCost = parseBRL(labCostCtrl.text);
 
                                DocumentReference labRef = FirebaseFirestore.instance.collection('lab_orders').doc();
                                batch.set(labRef, {

@@ -1,4 +1,9 @@
 ---
+title: Expenses
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-expenses
 description: Despesas da clínica, incluindo recorrentes e baixa como paga.
 ---

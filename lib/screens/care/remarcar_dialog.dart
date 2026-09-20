@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../models/appointment_model.dart';
 import '../../services/remarcacao_service.dart';
 import '../../services/whatsapp_helper.dart';
@@ -20,7 +19,7 @@ Future<void> showRemarcarDialog(
       builder: (ctx, setDlg) => AlertDialog(
         title: const Text("Pedido de remarcação"),
         content: Text(
-            "${appt.patientName} propôs ${DateFormat('dd/MM HH:mm').format(proposed)}."),
+            "${appt.patientName} propôs ${formatDateTimeShort(proposed)}."),
         actions: [
           TextButton(
             onPressed: busy

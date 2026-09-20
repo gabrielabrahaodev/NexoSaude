@@ -56,7 +56,7 @@ class _ProceduresTabState extends State<ProceduresTab> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
+                        color: AppColors.surface,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade200)
                       ),
@@ -203,7 +203,7 @@ class _ProceduresTabState extends State<ProceduresTab> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  child: Text(item.name.isNotEmpty ? item.name.substring(0, 1).toUpperCase() : '?', style: const TextStyle(color: AppColors.primary)),
+                  child: Text(item.name.isNotEmpty ? item.name.substring(0, 1).toUpperCase() : '?', style: TextStyle(color: AppColors.primary)),
                 ),
                 title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Column(

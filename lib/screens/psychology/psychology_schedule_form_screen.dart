@@ -514,7 +514,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
         borderRadius: BorderRadius.circular(8),
         color: AppColors.isDark
             ? const Color(0xFF262B31)
-            : Colors.grey[100],
+            : AppColors.surface,
       ),
       child: Row(
         children: [
@@ -524,7 +524,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text(label, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 Text(value,
                     style: TextStyle(
                         fontSize: 16,
@@ -602,7 +602,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
               _isDateLocked
                   ? _buildLockedField(
                       label: "Data de Início (vinda da agenda)",
-                      value: DateFormat('dd/MM/yyyy').format(_startDate),
+                      value: formatDateFull(_startDate),
                       icon: Icons.lock,
                     )
                   : InkWell(
@@ -621,7 +621,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(DateFormat('dd/MM/yyyy').format(_startDate)),
+                        child: Text(formatDateFull(_startDate)),
                       ),
                     ),
 

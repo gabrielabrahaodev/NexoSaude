@@ -1,4 +1,9 @@
 ---
+title: Public Evaluation
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-public-evaluation
 description: Avaliação pública (link externo) que gera lead dentro da clínica.
 ---

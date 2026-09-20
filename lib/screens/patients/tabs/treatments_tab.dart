@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../ui/app_theme.dart';
 import '../../../services/treatment_service.dart';
@@ -187,7 +186,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                       Container(
                         padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
                         decoration: BoxDecoration(
-                          color: status == 'active' ? AppColors.surface : Colors.grey[50],
+                          color: status == 'active' ? AppColors.surface : AppColors.background,
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           border: Border(bottom: BorderSide(color: Colors.grey[200]!))
                         ),
@@ -197,7 +196,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Iniciado em ${DateFormat('dd/MM/yy').format(startDate)}", style: TextStyle(color: Colors.grey[700], fontSize: 12)),
+                                Text("Iniciado em ${formatDateShortYear(startDate)}", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text(status == 'active' ? "EM ANDAMENTO" : "CONCLUÍDO", style: TextStyle(fontWeight: FontWeight.bold, color: status == 'active' ? AppColors.primary : Colors.grey)),
                               ],
@@ -251,7 +250,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Progresso Financeiro", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                Text("Progresso Financeiro", style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                 if (totalInstallments > 0)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

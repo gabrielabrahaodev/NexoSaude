@@ -1,12 +1,13 @@
 import 'dart:math';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import '../utils/display.dart';
 
 class WhatsAppHelper {
   // Templates rotativos para evitar Spam
   static String getMessage(String patientName, double amount, DateTime dueDate) {
     final money = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(amount);
-    final date = DateFormat('dd/MM').format(dueDate);
+    final date = formatDateShort(dueDate);
     
     final templates = [
       "Olá *$patientName*, tudo bem? 👋\nLembrete amigável sobre a parcela de *$money* com vencimento em *$date*.\nPodemos enviar o código de barras?",

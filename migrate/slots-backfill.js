@@ -10,9 +10,17 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-function grade() {
+function grade(cfg) {
+  cfg = cfg || {};
+  const start = String(cfg.start || '08:30');
+  const end = String(cfg.end || '20:00');
+  const slot = Number(cfg.slot || 30);
+  const toMin = (s) => {
+    const p = s.split(':');
+    return Number(p[0]) * 60 + Number(p[1]);
+  };
   const out = [];
-  for (let m = 8 * 60 + 30; m <= 20 * 60; m += 30) {
+  for (let m = toMin(start); m <= toMin(end); m += slot) {
     out.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
   }
   return out;
@@ -27,12 +35,12 @@ const isDentist = (r) => {
 };
 
 (async () => {
-  const G = grade();
+  const clinics = await db.collection('clinics').get();
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const end = new Date(start.getTime() + 14 * 86400000);
-  const clinics = await db.collection('clinics').get();
   for (const c of clinics.docs) {
+    const G = grade(c.data().gradeConfig);
     const users = await db
       .collection('users')
       .where('allowedClinics', 'array-contains', c.id)

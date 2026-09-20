@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../../ui/app_theme.dart';
 import '../../../services/session_manager.dart';
 import '../../../services/clinical_record_service.dart';
-import '../../../services/treatment_service.dart'; // Import para buscar tratamentos
+import '../../../services/treatment_service.dart';
+import '../../../utils/display.dart'; // Import para buscar tratamentos
 
 class ClinicalRecordTab extends StatefulWidget {
   final String patientName;
@@ -82,7 +82,7 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                             final date = (data['startDate'] as Timestamp).toDate();
                             return DropdownMenuItem(
                               value: doc.id,
-                              child: Text("Iniciado em ${DateFormat('dd/MM/yy').format(date)}"),
+                              child: Text("Iniciado em ${formatDateShortYear(date)}"),
                               onTap: () {
                                 setStateModal(() {
                                   _proceduresOfSelectedPlan = List.from(data['items'] ?? []);
@@ -211,11 +211,11 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(child: Text(data['procedureName'] ?? 'Procedimento', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-                            Text(DateFormat('dd/MM/yyyy HH:mm').format(date), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(formatDateTimeFull(date), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text("Realizado por: ${data['dentistName'] ?? 'Profissional'}", style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+                        Text("Realizado por: ${data['dentistName'] ?? 'Profissional'}", style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
                         const Divider(),
                         Text(data['description'] ?? '', style: const TextStyle(fontSize: 14, height: 1.4)),
                         

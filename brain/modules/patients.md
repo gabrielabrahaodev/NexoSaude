@@ -1,4 +1,9 @@
 ---
+title: Patients
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: patients-module
 description: Cadastro de pacientes, perfil de risco por assiduidade e exclusão em cascata.
 ---

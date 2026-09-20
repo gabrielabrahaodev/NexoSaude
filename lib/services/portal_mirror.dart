@@ -78,14 +78,38 @@ List<String> freeSlots({
   return out;
 }
 
-/// Grade-fonte v1: a mesma da agenda (08:30–20:00, slots de 30min).
-List<String> dailyGrade() {
+/// Grade de horários (configurável por clínica; default = agenda atual).
+/// `gradeConfig` em `clinics/{id}`: {start: "08:30", end: "20:00", slot: 30}.
+List<String> dailyGrade({String start = '08:30', String end = '20:00', int slot = 30}) {
+  int toMin(String s) {
+    final p = s.split(':');
+    return int.parse(p[0]) * 60 + int.parse(p[1]);
+  }
+
   final out = <String>[];
-  for (var m = 8 * 60 + 30; m <= 20 * 60; m += 30) {
+  for (var m = toMin(start); m <= toMin(end); m += slot) {
     out.add(
         "${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}");
   }
   return out;
+}
+
+/// Lê a grade da clínica (com fallback para o default).
+Future<List<String>> clinicGrade(String clinicId) async {
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('clinics')
+        .doc(clinicId)
+        .get();
+    final cfg = (doc.data()?['gradeConfig'] as Map?) ?? {};
+    return dailyGrade(
+      start: '${cfg['start'] ?? '08:30'}',
+      end: '${cfg['end'] ?? '20:00'}',
+      slot: (cfg['slot'] as num?)?.toInt() ?? 30,
+    );
+  } catch (_) {
+    return dailyGrade();
+  }
 }
 
 String _dayKey(DateTime d) =>
@@ -117,6 +141,10 @@ class PortalMirrorSync {
     if (pdata == null) return;
     var token = '${pdata['portalToken'] ?? ''}';
     if (token.isEmpty) {
+      // Sem aceite explícito, sem token automático (LGPD). Ausência do
+      // campo = paciente legado: mantém autocura para não quebrar o portal.
+      final consent = (pdata['lgpdPortalConsent'] as Map?)?['accepted'];
+      if (consent == false) return;
       token = newPortalToken();
       await pRef.update({'portalToken': token});
     }
@@ -190,7 +218,7 @@ class PortalMirrorSync {
     try {
       if (dentistId.isEmpty) return;
       final time = _slotTime(date);
-      if (!dailyGrade().contains(time)) return;
+      if (!RegExp(r'^\d{2}:\d{2}$').hasMatch(time)) return;
       await _db.collection('portal_slots').doc(clinicId).set({
         '$dentistId.${_dayKey(date)}': occupy
             ? FieldValue.arrayRemove([time])
@@ -237,7 +265,7 @@ class PortalMirrorSync {
         if (entry.key.isEmpty || entry.value.isEmpty) continue;
         final byDay = <String, List<String>>{};
         for (final s in entry.value) {
-          if (!dailyGrade().contains(_slotTime(s))) continue;
+          if (!RegExp(r'^\d{2}:\d{2}$').hasMatch(_slotTime(s))) continue;
           byDay
               .putIfAbsent(
                   '${entry.key}.${_dayKey(s)}', () => [])
@@ -273,6 +301,7 @@ class PortalMirrorSync {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 14));
+    final grade = await clinicGrade(clinicId);
     final users = await _db
         .collection('users')
         .where('allowedClinics', arrayContains: clinicId)
@@ -305,7 +334,6 @@ class PortalMirrorSync {
           .putIfAbsent('$did.${_dayKey(date)}', () => <String>{})
           .add(_slotTime(date));
     }
-    final grade = dailyGrade();
     final data = <String, dynamic>{};
     for (final did in dentists) {
       for (var i = 0; i < 14; i++) {

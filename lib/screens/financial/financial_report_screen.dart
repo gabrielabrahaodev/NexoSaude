@@ -87,7 +87,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
         }
 
         tableData.add([
-          DateFormat('dd/MM').format(item.date),
+          formatDateShort(item.date),
           patientCpf.isEmpty ? "---" : patientCpf,
           item.title, // Nome do Paciente
           item.isIncome ? "Consulta/Procedimento" : item.category, // Descrição
@@ -202,7 +202,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
 
       for (var item in transactions) {
         rows.add([
-          DateFormat('dd/MM/yyyy').format(item.date),
+          formatDateFull(item.date),
           item.title,
           item.category,
           item.paymentMethod,
@@ -463,8 +463,8 @@ class _TransactionRow extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), 
-                        decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)), 
-                        child: Text(item.category, style: TextStyle(fontSize: 10, color: Colors.grey[700]))
+                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(4)), 
+                        child: Text(item.category, style: TextStyle(fontSize: 10, color: AppColors.textSecondary))
                       ),
                       const SizedBox(width: 8),
                       // NOVA LÓGICA DE TAGS DE STATUS (Reconhece a Antecipação e evita o erro do ícone)

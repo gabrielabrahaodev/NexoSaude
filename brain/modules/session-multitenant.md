@@ -1,4 +1,9 @@
 ---
+title: Session Multitenant
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: session-multitenant
 description: Sessão global, isolamento multi-tenant por clinicId, fluxo de auth e decisões por tipo de clínica.
 ---

@@ -1,4 +1,9 @@
 ---
+title: Reports
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-reports
 description: Relatórios gerenciais com KPIs, antecipações e lançamentos manuais.
 ---

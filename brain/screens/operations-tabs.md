@@ -1,4 +1,9 @@
 ---
+title: Operations Tabs
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-operations-tabs
 description: Abas de gestão — estoque, fornecedores, procedimentos, taxas de cartão e configurações (tema + acesso).
 ---
@@ -23,3 +28,7 @@ Cadastro operacional, taxa nova, parcela de máquina, tema, acesso ao menu.
 
 - `Radio/Switch activeColor` e `groupValue` depreciados nas 4 tabs antigas — migrar ao tocar.
 - Tema escuro: superfícies/textos de appbar migram p/ `AppColors`/tema; residuais intencionais: botões coloridos com texto branco, swatches da legenda do odonto, cards tintados (verde/laranja), chips de filtro.
+
+## Atualizações
+
+- Aba Configurações: card Pix da clínica (`pixKey`, só owner escreve) + "Minha conta" (troca de senha). Ver [[patient-details]] (link do portal).

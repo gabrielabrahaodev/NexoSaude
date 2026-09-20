@@ -1,4 +1,9 @@
 ---
+title: Financial
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: financial-module
 description: Contas a receber/pagar, cobrança via WhatsApp, despesas e processamento de pagamentos.
 ---

@@ -1,4 +1,9 @@
 ---
+title: Agenda Manager
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-agenda-manager
 description: Grade semanal de agendamentos com finalização (Realizado/Falta/Atestado), encaixe e cancelamento.
 ---
@@ -28,3 +33,9 @@ Ver/editar/cancelar/finalizar atendimento; célula vazia cria; long-press exclui
 - Slots derivam de `durationMinutes` (30min base); bloqueios e cancelados têm render próprio (cenários A/B/C em `_buildCell`).
 - Carregamento: `AgendaSkeleton` (shimmer, `screens/agenda/agenda_skeleton.dart`) enquanto `waiting`; erro explícito, sem loader infinito. Shimmer compartilhado em `widgets/shimmer_box.dart` (também usado pelo `BillingSkeleton`).
 - Filtro de dentista é assíncrono (`_checkRoleAndFetchDentists`): a grade segura no skeleton enquanto `_isLoadingDentists` p/ não exibir tudo sem filtro e trocar depois.
+
+## Atualizações (web-designer + portal)
+
+- Cache mensal deslizante (`MonthAgendaCache`): janela anterior/atual/próxima; semana em cache = zero leitura. Ver [[care-day]].
+- Bloqueio/desbloqueio atualiza `portal_slots` via `adjustSlots` (1 escrita). Ver [[portal-mirror]].
+- Menu "Decidir remarcação" abre [[remarcar-dialog]].

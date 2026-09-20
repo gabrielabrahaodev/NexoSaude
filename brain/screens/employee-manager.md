@@ -1,4 +1,9 @@
 ---
+title: Employee Manager
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-employee-manager
 description: Gestão de funcionários — cria Auth + doc users com role e allowedClinics.
 ---

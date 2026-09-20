@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/clinic_capabilities.dart';
 import '../../services/menu_access.dart';
+import '../../services/pending_counts.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_controller.dart';
 import '../../ui/app_theme.dart';
@@ -70,6 +71,44 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   }
 
   Map<String, bool>? _menuAccess;
+
+  // Sino de pendências: streams recriados só ao trocar de clínica/role
+  // (broadcast: Agenda e Atendimento compartilham sem duplicar leitura).
+  Stream<int>? _remarcarStream;
+  Stream<int>? _avisoStream;
+  String? _pendingScope;
+
+  bool get _isProfessional {
+    final role = (_userRole ?? '').toLowerCase();
+    return role.contains('dentist') ||
+        role == 'dentista' ||
+        role == 'psicologo';
+  }
+
+  void _ensurePendingStreams() {
+    final cid = _currentClinicId;
+    final scope = '$cid|$_userRole';
+    if (cid == null || scope == _pendingScope) return;
+    _pendingScope = scope;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    var q = FirebaseFirestore.instance
+        .collection('appointments')
+        .where('clinicId', isEqualTo: cid)
+        .where('status', isEqualTo: 'remarcar');
+    if (_isProfessional && uid != null) {
+      q = q.where('dentistId', isEqualTo: uid);
+    }
+    _remarcarStream = q.snapshots().map((s) => countRemarcar(
+        s.docs.map((d) => d.data()).toList())).asBroadcastStream();
+    _avisoStream = FirebaseFirestore.instance
+        .collection('financial')
+        .where('clinicId', isEqualTo: cid)
+        .where('status', whereIn: ['pendente', 'pending'])
+        .snapshots()
+        .map((s) => countAvisos(
+            s.docs.map((d) => d.data()).toList()))
+        .asBroadcastStream();
+  }
 
   /// Visibilidade do item de menu p/ o usuário atual (aba Configurações).
   /// Owner ignora restrições (ver `MenuAccess`).
@@ -297,6 +336,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   }
 
   Widget _buildMenuContent(bool isCompact, Color highlightColor, Color primaryColor) {
+    _ensurePendingStreams();
     return Column(
       children: [
         // CABEÇALHO (Mantido igual)
@@ -341,10 +381,10 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 if (ClinicCapabilities.ofType(_currentClinicType)
                     .isPsychology) ...[
                   if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
-                  if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
-                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
+                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
                   if (_canShow('pacientes')) _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
-                  if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
+                  if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact, badge: _avisoStream),
                   if (_canShow('fluxo')) _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
                       highlightColor, Colors.purple, isCompact),
                   if (_canShow('financeiro')) _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
@@ -352,8 +392,8 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   if (_canShow('noticias')) _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
                 ] else ...[
                   if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
-                  if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact),
-                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
+                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
 
                   // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
                   if (ClinicCapabilities.ofType(_currentClinicType)
@@ -367,7 +407,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   if (_canShow('financeiro')) _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
                   if (_canShow('relatorios')) _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
                   if (_canShow('noticias')) _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
-                  if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact),
+                  if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact, badge: _avisoStream),
                 ],
 
                 // DONO
@@ -408,7 +448,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     );
   }
 
-  Widget _buildMenuItem(int index, String title, IconData icon, Color highlightColor, Color primaryColor, bool isCompact) {
+  Widget _buildMenuItem(int index, String title, IconData icon, Color highlightColor, Color primaryColor, bool isCompact, {Stream<int>? badge}) {
     bool isSelected = _selectedIndex == index;
     return Material(
       color: Colors.transparent,
@@ -430,6 +470,27 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                     Icon(icon, color: isSelected ? primaryColor : Colors.grey[600], size: 22),
                     const SizedBox(width: 15),
                     Expanded(child: Text(title, overflow: TextOverflow.ellipsis, style: TextStyle(color: isSelected ? primaryColor : Colors.grey[700], fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, fontSize: 15))),
+                    if (badge != null)
+                      StreamBuilder<int>(
+                        stream: badge,
+                        builder: (context, snap) {
+                          final n = snap.data ?? 0;
+                          if (n <= 0) return const SizedBox.shrink();
+                          return Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: Colors.orange,
+                                borderRadius: BorderRadius.circular(10)),
+                            child: Text("$n",
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold)),
+                          );
+                        },
+                      ),
                     if (isSelected) Container(width: 6, height: 6, decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle))
                   ],
                 ),

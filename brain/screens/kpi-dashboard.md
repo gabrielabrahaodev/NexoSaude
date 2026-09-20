@@ -1,4 +1,9 @@
 ---
+title: Kpi Dashboard
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-kpi-dashboard
 description: Dashboard de KPIs da clínica (item 1 do menu) — receber, inadimplência, hoje, aniversariantes.
 ---

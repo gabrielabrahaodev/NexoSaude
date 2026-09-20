@@ -284,7 +284,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
       children: [
         Icon(icon, size: 16, color: Colors.grey),
         const SizedBox(width: 8),
-        Expanded(child: Text(text, style: TextStyle(color: Colors.grey[700], fontSize: 13), overflow: TextOverflow.ellipsis)),
+        Expanded(child: Text(text, style: TextStyle(color: AppColors.textSecondary, fontSize: 13), overflow: TextOverflow.ellipsis)),
       ],
     );
   }

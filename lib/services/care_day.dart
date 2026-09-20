@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../utils/display.dart';
 
 /// Lógica pura do Modo Atendimento (testada em `test/care_day_test.dart`).
 /// Telas em `screens/care/` consomem estes helpers; services de escrita
@@ -36,7 +37,7 @@ List<String> attendanceTemplates(String? clinicType) {
 
 /// Texto de confirmação da próxima sessão (mesmo tom do app).
 String nextSessionText({required String patientName, required DateTime date}) {
-  final when = DateFormat('dd/MM').format(date);
+  final when = formatDateShort(date);
   final hour = DateFormat('HH:mm').format(date);
   return 'Olá $patientName, por favor confirme sua próxima sessão para o dia '
       '$when às $hour. Responda esta mensagem confirmando. Obrigado!';

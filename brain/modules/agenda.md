@@ -1,4 +1,9 @@
 ---
+title: Agenda
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: agenda-module
 description: Agendamentos, grade semanal, finalização com presença/atestado e repositório unificado dental+psico.
 ---

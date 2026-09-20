@@ -171,6 +171,12 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | UC-85 | **Modo Atendimento (item 12)** | Dentista/Psicologo/Owner | "Meu dia" (só hoje; profissional vê o próprio) + ficha em 3 blocos: evolução rápida com modelos, cobrança (Pix ou pendente), próxima sessão + WhatsApp. Helpers puros em `services/care_day.dart` (testado). | `screens/care/care_day_screen.dart` + `screens/care/care_visit_screen.dart` |
 | UC-86 | **Portal do paciente (HTML público)** | Paciente (link) | `web/portal.html?t=TOKEN`: sessões (confirmar/remarcar com slots livres de 14 dias), débitos + Pix + "avisei que paguei". Espelhos `portal/{token}` + `portal_slots/{clinicId}` (rules A4, allowlist). Sync via `PortalMirrorSync` nos pontos de escrita. | `web/portal.html` + `services/portal_mirror.dart` |
 | UC-87 | **Caixa de pendências (remarcar + aviso pago)** | Recep/Dentista | Selo "Decidir remarcação" na agenda + tile no Meu dia: aprovar (revalida choque, confirma, sincroniza) ou recusar via WhatsApp (some da lista do paciente). Selo "Avisei que paguei" nas Cobranças com dispensar; baixa segue no fluxo normal. | `screens/care/remarcar_dialog.dart` + `services/remarcacao_service.dart` |
+| UC-88 | **Cobrança dupla no atendimento** | Dentista/Psicologo | Alternador Nova/Em aberto: nova (pendente ou recebido) ou baixa de lançamento existente via `processPayment`. | `screens/care/care_visit_screen.dart` |
+| UC-89 | **Link do portal no Cadastro** | Recep/Owner | Gerar (espelho imediato), copiar e revogar token na aba Cadastro; excluir paciente apaga o espelho. | `patient_details_tab.dart` + cascata |
+| UC-90 | **Pix da clínica** | Owner | Salvar `pixKey` em Gestão → Configurações (só owner escreve); exibido no portal por débito. | `settings_tab.dart` |
+| UC-91 | **Portal: atrasos e painel refeito** | Paciente (link) | Só `dueDate < hoje` (top 3 + totais); toggle Pix por débito + "Avisei que paguei" individual; painel dias/horários filtrado pelo profissional. | `web/portal.html` |
+| UC-92 | **Sino de pendências no menu** | Recep/Dentista | Contador laranja em Agenda/Atendimento (remarcar) e Cobranças (avisos); profissional vê só os seus. | `main_web_dashboard.dart` + `services/pending_counts.dart` |
+| UC-93 | **Grade de horários da clínica** | Owner | Salvar início/fim/slot em Gestão → Configurações; reconstrói os slots do portal na hora. | `settings_tab.dart` + `portal_mirror.dart` |
 
 ---
 

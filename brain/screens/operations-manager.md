@@ -1,4 +1,9 @@
 ---
+title: Operations Manager
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-operations-manager
 description: Shell de gestão com abas (estoque, fornecedores, procedimentos, taxas).
 ---

@@ -461,6 +461,41 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 
 ---
 
+## 15. Modo Atendimento e Portal
+
+### RN-63 - Modo Atendimento (cobrança nova ou baixa)
+- "Meu dia": só hoje, profissional vê só `dentistId == uid`, sem Bloqueado/Cancelado; recepção vê todos + nome do profissional.
+- Ficha em 3 blocos: evolução (modelos + texto → `clinical_records` + appointment `Finalizado`), cobrança (nova ou baixa de em-aberto via `processPayment`), próxima sessão (`Agendando`→`Aguardando Confirmação` + `wa.me` padrão).
+- Referência: `screens/care/`, `services/care_day.dart` (testado).
+
+### RN-64 - Espelhos do portal
+- `portal/{token}`: próximas 3 sessões + top-3 atrasos + `debtsTotal`/`debtsCount` + Pix + `propostasRecusadas` + `clinicId`; `portal_slots/{clinicId}`: livres 14 dias por dentista (`arrayUnion/Remove`).
+- `syncPortalMirror()` em todos os pontos de escrita (best-effort, nunca quebra); janela varrida no login (owner/recepção); backfills em `migrate/`; grade configurável (`gradeConfig`, rebuild automático ao salvar).
+- Referência: `services/portal_mirror.dart` (testado), `web/portal.html`.
+
+### RN-65 - Caixa de pendências
+- Selo "Decidir remarcação" na agenda + card no Meu dia: aprovar (revalida `getBusySlots`, confirma, sincroniza) ou recusar via WhatsApp (some da lista do paciente, livre pros demais).
+- "Avisei que paguei" por débito → selo azul nas Cobranças com dispensar; baixa no fluxo normal.
+- Referência: `services/remarcacao_service.dart`, `screens/care/remarcar_dialog.dart`.
+
+### RN-66 - Pix da clínica e token do paciente
+- `pixKey` em `clinics/{id}`, editável só pelo owner em Gestão → Configurações; exibido no portal.
+- Token de 32 chars gerado no cadastro (espelho inicial imediato), copiável e revogável na aba Cadastro; excluir paciente apaga o espelho (cascata).
+- Referência: `settings_tab.dart` (`_pixCard`), `patient_details_tab.dart`, `patient_service.dart`.
+
+### RN-67 - Portal: regras de exibição
+- Botões só em sessão futura pendente (`Agendado`/`Aguardando Confirmação` como conceito; `Confirmado` só remarca; finais sem ação).
+- Débitos: só `dueDate < hoje` não-quitados; "+ mais N" só com espelho novo; `statusSessao` em mapa por sessão (confirmar uma não apaga outra).
+
+### RN-68 - Cota e queries limitadas (Spark 50 mil/dia)
+- DRE/Livro Caixa: união de queries mensais por campo de data (exato, dedupe por id) em vez da collection inteira; agenda por semana/mês em cache; kanban filtra `clinicId`.
+- Índices compostos em `firestore.indexes.json` (49); deploy separado de rules e indexes.
+
+### RN-69 - Consistência visual e helpers
+- Cores só via `AppColors` (+ `StatusChip`); moeda `formatBRL`, datas `formatDate*`, avisos `toast` — tudo em `utils/display.dart` com teste; sem `grey[]`/`DateFormat` soltos nas telas.
+
+---
+
 ## Apêndice A - Índice de referências rápidas
 
 | Regra | Arquivo principal |
@@ -479,6 +514,11 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 | RN-58 | `firestore.rules` |
 | RN-59..61 | `whatsapp_helper.dart`, `collections_screen.dart` |
 | RN-62 | `document_service.dart` |
+| RN-63 | `screens/care/` (Meu dia, ficha, cobrança dupla) |
+| RN-64..65 | `services/portal_mirror.dart`, `web/portal.html`, `services/remarcacao_service.dart` |
+| RN-66 | `settings_tab.dart`, `patient_details_tab.dart`, cascata |
+| RN-67 | `web/portal.html` (regras de exibição) |
+| RN-68..69 | queries limitadas, `firestore.indexes.json`, `utils/display.dart` |
 
 ---
 

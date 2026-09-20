@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../services/menu_access.dart';
+import '../../../services/portal_mirror.dart';
 import '../../../services/session_manager.dart';
 import '../../../services/theme_controller.dart';
 import '../../../services/user_service.dart';
@@ -33,6 +34,10 @@ class _SettingsTabState extends State<SettingsTab> {
   final _confirmPass = TextEditingController();
   final _pixCtrl = TextEditingController();
   bool _savingPix = false;
+  final _gradeStartCtrl = TextEditingController();
+  final _gradeEndCtrl = TextEditingController();
+  int _gradeSlot = 30;
+  bool _savingGrade = false;
   bool _changing = false;
 
   @override
@@ -41,6 +46,8 @@ class _SettingsTabState extends State<SettingsTab> {
     _newPass.dispose();
     _confirmPass.dispose();
     _pixCtrl.dispose();
+    _gradeStartCtrl.dispose();
+    _gradeEndCtrl.dispose();
     super.dispose();
   }
 
@@ -148,6 +155,10 @@ class _SettingsTabState extends State<SettingsTab> {
 
           // ---------- PIX DA CLÍNICA (vai p/ o portal) ----------
           _pixCard(clinicId),
+          const SizedBox(height: 16),
+
+          // ---------- GRADE DE HORÁRIOS (slots do portal) ----------
+          _gradeCard(clinicId),
           const SizedBox(height: 16),
 
           // ---------- APARÊNCIA ----------
@@ -387,6 +398,159 @@ class _SettingsTabState extends State<SettingsTab> {
                           },
                           icon: const Icon(Icons.save_outlined),
                           label: const Text("Salvar Pix"),
+                        ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Grade de horários (slots livres do portal). Salvar reconstrói a
+  /// janela de 14 dias na hora (rebuild automático).
+  Widget _gradeCard(String? clinicId) {
+    if (clinicId == null || clinicId.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("Selecione uma clínica."),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('clinics')
+              .doc(clinicId)
+              .get(),
+          builder: (context, snap) {
+            if (!snap.hasData) {
+              return const Center(
+                  child: SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2)));
+            }
+            final cfg =
+                ((snap.data!.data() as Map?)?['gradeConfig'] as Map?) ?? {};
+            if (_gradeStartCtrl.text.isEmpty) {
+              _gradeStartCtrl.text = '${cfg['start'] ?? '08:30'}';
+              _gradeEndCtrl.text = '${cfg['end'] ?? '20:00'}';
+              _gradeSlot =
+                  (cfg['slot'] as num?)?.toInt() ?? 30;
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Grade de horários", style: AppTextStyles.h2),
+                const SizedBox(height: 4),
+                const Text(
+                    "Vale para a agenda do portal (slots livres). Salvar reconstrói na hora."),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _gradeStartCtrl,
+                        enabled: _isOwner && !_savingGrade,
+                        decoration: InputDecoration(
+                            labelText: "Início (HH:mm)",
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.circular(12))),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _gradeEndCtrl,
+                        enabled: _isOwner && !_savingGrade,
+                        decoration: InputDecoration(
+                            labelText: "Fim (HH:mm)",
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.circular(12))),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        value: _gradeSlot,
+                        decoration: InputDecoration(
+                            labelText: "Slot",
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.circular(12))),
+                        items: const [
+                          DropdownMenuItem(
+                              value: 15, child: Text("15min")),
+                          DropdownMenuItem(
+                              value: 30, child: Text("30min")),
+                          DropdownMenuItem(
+                              value: 60, child: Text("60min")),
+                        ],
+                        onChanged: !_isOwner
+                            ? null
+                            : (v) => setState(
+                                () => _gradeSlot = v ?? 30),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_isOwner) ...[
+                  const SizedBox(height: 12),
+                  _savingGrade
+                      ? const Center(
+                          child: CircularProgressIndicator())
+                      : ElevatedButton.icon(
+                          onPressed: () async {
+                            final ok = RegExp(r'^\d{2}:\d{2}$')
+                                    .hasMatch(_gradeStartCtrl.text
+                                        .trim()) &&
+                                RegExp(r'^\d{2}:\d{2}$').hasMatch(
+                                    _gradeEndCtrl.text.trim());
+                            if (!ok) {
+                              _snack(
+                                  "Use HH:mm (ex. 08:30).",
+                                  error: true);
+                              return;
+                            }
+                            setState(() => _savingGrade = true);
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('clinics')
+                                  .doc(clinicId)
+                                  .update({
+                                'gradeConfig': {
+                                  'start': _gradeStartCtrl.text
+                                      .trim(),
+                                  'end': _gradeEndCtrl.text
+                                      .trim(),
+                                  'slot': _gradeSlot,
+                                }
+                              });
+                              await PortalMirrorSync.ensureWindow(
+                                  clinicId);
+                              _snack("Grade salva e slots "
+                                  "reconstruídos.");
+                            } catch (e) {
+                              _snack("Falha ao salvar: $e",
+                                  error: true);
+                            } finally {
+                              if (mounted) {
+                                setState(() =>
+                                    _savingGrade = false);
+                              }
+                            }
+                          },
+                          icon: const Icon(
+                              Icons.schedule_outlined),
+                          label:
+                              const Text("Salvar e reconstruir"),
                         ),
                 ],
               ],

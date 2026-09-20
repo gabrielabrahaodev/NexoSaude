@@ -226,7 +226,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
           IconButton(icon: const Icon(Icons.save), onPressed: _saveOdontogram)
         ],
       ),
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.surface,
       body: Column(
         children: [
           Expanded(

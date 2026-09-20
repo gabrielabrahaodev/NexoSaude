@@ -1,4 +1,9 @@
 ---
+title: 00 Index
+tags:
+  - nexosaude
+  - brain
+  - brain
 name: brain-index
 description: Mapa da pasta brain — um arquivo MD por módulo ou tela do OdontoControle, em formato de skill.
 ---

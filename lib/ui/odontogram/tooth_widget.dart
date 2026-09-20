@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/tooth_model.dart';
+import '../app_theme.dart';
 
 class ToothWidget extends StatelessWidget {
   final ToothModel tooth;
@@ -99,7 +100,7 @@ class ToothWidget extends StatelessWidget {
 
   Widget _buildLabel() => Text(
     "${tooth.id}",
-    style: TextStyle(fontSize: 10, color: Colors.grey[700], fontWeight: FontWeight.bold),
+    style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
   );
 }
 

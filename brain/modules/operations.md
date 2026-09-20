@@ -1,4 +1,9 @@
 ---
+title: Operations
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: operations-module
 description: Gestão operacional — estoque, fornecedores, catálogo de procedimentos e taxas de cartão/máquina.
 ---

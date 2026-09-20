@@ -1,4 +1,9 @@
 ---
+title: Ui Theme
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: ui-theme-module
 description: Tema global, estilos e widgets compartilhados (cards, kanban, contexto do paciente).
 ---
@@ -27,3 +32,7 @@ Nova tela, card, lista kanban, atalho de ação.
 
 - `withOpacity` depreciado em todo o projeto → usar `withValues(alpha:)`.
 - `LabKanbanBoard` tem import duplicado e drag callbacks antigos (`onWillAccept/onAccept` → `WithDetails`).
+
+## Atualizações (web-designer)
+
+- Varredura dark completa; `StatusChip` único; datas/moeda/toast em [[ui-consistency]].

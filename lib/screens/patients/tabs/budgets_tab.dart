@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../ui/app_theme.dart';
 import '../../../services/budget_service.dart';
 import '../../../services/procedure_service.dart'; 
@@ -367,7 +366,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ExpansionTile(
                       leading: Icon(budget.status == 'Aprovado' ? Icons.check_circle : Icons.request_quote, color: budget.status == 'Aprovado' ? Colors.green : Colors.orange),
-                      title: Text("Orçamento - ${DateFormat('dd/MM/yyyy').format(budget.date)}"),
+                      title: Text("Orçamento - ${formatDateFull(budget.date)}"),
                       subtitle: Text("Total: ${formatBRL(budget.total)} • ${budget.status}"),
                       children: [
                         const Divider(),

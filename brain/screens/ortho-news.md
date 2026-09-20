@@ -1,4 +1,9 @@
 ---
+title: Ortho News
+tags:
+  - nexosaude
+  - brain
+  - screens
 name: screen-ortho-news
 description: Feed de notícias de ortodontia com tradução e cache.
 ---

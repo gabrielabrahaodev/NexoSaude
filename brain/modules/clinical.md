@@ -1,4 +1,9 @@
 ---
+title: Clinical
+tags:
+  - nexosaude
+  - brain
+  - modules
 name: clinical-module
 description: Prontuário, tratamentos, orçamentos, odontograma e laboratório do paciente.
 ---
