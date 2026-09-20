@@ -27,6 +27,9 @@ import '../patients/psychology/psychology_kanban_board.dart';
 // --- MODO ATENDIMENTO ---
 import '../care/care_day_screen.dart';
 
+// --- MASTER (dono da plataforma) ---
+import '../master/master_screen.dart';
+
 import '../../main.dart';
 import '../../utils/display.dart'; 
 
@@ -149,6 +152,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
     // --- MODO ATENDIMENTO (profissional) ---
     CareDayScreen(key: ValueKey('$_currentClinicId-care-day')), // 12
+
+    // --- MASTER (dono da plataforma) ---
+    MasterScreen(key: const ValueKey('master')), // 13
   ];
 
   void _onMenuSelect(int index) {
@@ -415,6 +421,12 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   const Divider(height: 30, thickness: 1),
                   _buildMenuItem(8, "Clínicas", Icons.store_mall_directory, highlightColor, primaryColor, isCompact),
                   _buildMenuItem(9, "Funcionários", Icons.badge_outlined, highlightColor, primaryColor, isCompact),
+                ],
+
+                // MASTER (dono da plataforma)
+                if (_userRole == 'superadmin') ...[
+                  const Divider(height: 30, thickness: 1),
+                  _buildMenuItem(13, "Master", Icons.admin_panel_settings_outlined, highlightColor, primaryColor, isCompact),
                 ],
 
                 // GESTÃO

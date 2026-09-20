@@ -69,9 +69,11 @@ const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     });
     open.sort((a, b) => a.dueDate - b.dueDate);
     let pixKey = '';
+    let clinicName = '';
     try {
       const c = await db.collection('clinics').doc(String(pdata.clinicId || '')).get();
       pixKey = String((c.data() || {}).pixKey || '');
+      clinicName = String((c.data() || {}).name || '');
     } catch (e) {}
     let refused = [];
     try {
@@ -82,6 +84,7 @@ const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     } catch (e) {}
     await db.collection('portal').doc(token).set({
       clinicId: String(pdata.clinicId || ''),
+      clinicName,
       sessions: upcoming,
       debts: open.slice(0, 3),
       debtsTotal: open.reduce((s, d) => s + d.amount, 0),

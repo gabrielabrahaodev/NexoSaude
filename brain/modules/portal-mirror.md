@@ -26,9 +26,17 @@ Sem Functions, o portal lê espelhos: `portal/{token}` (3 sessões + top-3 atras
 - Cadastro gera token + espelho inicial; revogar apaga o espelho; excluir paciente apaga junto (cascata).
 - `.set(..., merge: true)` — sync nunca destrói campos escritos pelo portal.
 
+
+## Atualizações (cota)
+
+- Sync por deltas (upsertSession/removeSession/upsertDebt, testados): 2 leituras + 1 escrita; rebuild só em cadastro/revogação/backfill; slots sem varredura no login. Ver [[pix-brcode]].
+
 ## Gotchas
 
 > [!danger]
 > Regra de ouro: aceite sempre revalida no vivo (`getBusySlots`). Espelho é consultivo; deriva mostra slot errado, nunca causa double-booking real.
+
+- Form psico grava em batch fora do `AppointmentService`: `_generateAppointments` e `_cancelSchedule` fazem rebuild via `PortalMirrorSync.patient()` (sem isso o portal não recebe psicologia).
+- Rebuild exclui `Cancelado` das próximas (igual ao delta `removeSession`); query com limit 100 p/ cobrir pacote anual (~52 sessões).
 
 Ver [[portal-page]], [[remarcar-dialog]], [[atendimento]].

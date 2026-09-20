@@ -168,6 +168,11 @@ Psicologia: 0 Dashboard, 1 Agenda, 2 Pacientes, 7 Cobranças, 11 Fluxo Terapêut
 - `firestore.indexes.json` mesclado (console + novos filtros) — fonte da verdade; **nunca aceitar delete** no deploy (`No`)
 - Run: `firebase deploy --only firestore:rules,indexes` (rules liberam `user_prefs` p/ o tema por usuário)
 
+### Hosting layout (build/web)
+- App em `/sistema-interno/` (`--base-href`); raiz: `index.html` (landing), `anamnese.html`, `confirmar.html`, `portal.html`, `assinatura.html`, `logo.png`.
+- `deploy.bat`: build → move app p/ `sistema-interno/` → landing vira `index.html` → `firebase deploy --only hosting --project=nexosaude`.
+- Páginas públicas (`portal/assinatura/landing`): HTML estático + Firebase compat, sem build; deploy direto copiando p/ `build/web/`.
+
 ---
 
 ## Psychology Package Billing (implemented — see PSYCHOLOGY_PACKAGES.md + `brain/modules/psychology-packages.md`)

@@ -24,6 +24,15 @@ if exist version.json move version.json sistema-interno
 :: O confirmar.html tambem foi movido para dentro. Vamos busca-lo de volta para a raiz.
 if exist sistema-interno\confirmar.html move sistema-interno\confirmar.html .
 if exist sistema-interno\anamnese.html move sistema-interno\anamnese.html .
+if exist sistema-interno\logo.png move sistema-interno\logo.png .
+if exist sistema-interno\assinatura.html move sistema-interno\assinatura.html .
+if exist sistema-interno\master.html move sistema-interno\master.html .
+
+:: LANDING NA RAIZ: vira o index.html de nexosaude.web.app/
+:: (portal.html e demais páginas públicas PERMANECEM em /sistema-interno/)
+if exist sistema-interno\landing.html move sistema-interno\landing.html index.html
+:: (portal.html já nasce em build\web\ via web\ — move junto p/ dentro:)
+if exist portal.html move portal.html sistema-interno
 
 echo --- 3. ENVIANDO PARA O FIREBASE (projeto nexosaude) ---
 :: Voltamos para a raiz do projeto para rodar o deploy

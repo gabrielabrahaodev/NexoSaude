@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/session_manager.dart';
+import '../../services/portal_mirror.dart';
 import '../../models/psychology_schedule_model.dart';
 import '../../models/appointment_model.dart';
 import '../../ui/app_theme.dart';
@@ -324,6 +325,10 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
     }
 
     await batch.commit();
+    // Espelho do portal: este form grava appointments/financial em batch
+    // (fora do AppointmentService), então rebuild aqui — sem isso o
+    // portal.html nunca recebe as sessões da psicologia.
+    await PortalMirrorSync.patient(schedule.patientId);
   }
 
   Future<void> _confirmCancelSchedule() async {
@@ -402,6 +407,10 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
       }
 
       // 3. Batch (em blocos de 450 por segurança)
+      final patientIds = <String>{
+        for (final doc in apptsSnap.docs)
+          doc.data()['patientId']?.toString() ?? '',
+      }..remove('');
       final writes = <void Function(WriteBatch)>[
         (b) => b.update(
             db.collection('psychology_schedules').doc(scheduleId),
@@ -431,6 +440,12 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
         }
       }
       if (count > 0) await batch.commit();
+
+      // Espelho do portal: cancelamento direto em batch não passa pelos
+      // deltas — rebuild p/ tirar as sessões futuras do portal.html.
+      for (final pid in patientIds) {
+        await PortalMirrorSync.patient(pid);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -467,10 +482,11 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
             ),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
+                // Sem filtro de status: psico usa estágios terapêuticos
+                // (lead/active/discharged), dental usa 'Ativo'.
                 stream: FirebaseFirestore.instance
                     .collection('patients')
                     .where('clinicId', isEqualTo: clinicId)
-                    .where('status', isEqualTo: 'Ativo')
                     .snapshots(),
                 builder: (ctx, snapshot) {
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());

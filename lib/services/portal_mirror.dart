@@ -22,6 +22,7 @@ String newPortalToken() {
 /// crus (`date`, `amount`, `paidAmount`); filtragem acontece aqui.
 Map<String, dynamic> buildPortalMirror({
   required String clinicId,
+  String clinicName = '',
   required List<Map<String, dynamic>> sessions,
   required List<Map<String, dynamic>> debts,
   required String pixKey,
@@ -29,7 +30,12 @@ Map<String, dynamic> buildPortalMirror({
   List<String> refusedIso = const [],
 }) {
   final upcoming = sessions
-      .where((s) => !(s['date'] as DateTime).isBefore(now))
+      .where((s) {
+        // Cancelada não é "próxima": delta remove do espelho, rebuild igual.
+        final st = '${s['status'] ?? ''}'.toLowerCase();
+        if (st == 'cancelado' || st == 'cancelled') return false;
+        return !(s['date'] as DateTime).isBefore(now);
+      })
       .toList()
     ..sort((a, b) =>
         (a['date'] as DateTime).compareTo(b['date'] as DateTime));
@@ -55,6 +61,7 @@ Map<String, dynamic> buildPortalMirror({
       open.fold<double>(0.0, (s, d) => s + (d['amount'] as num).toDouble());
   return {
     'clinicId': clinicId,
+    'clinicName': clinicName,
     'sessions': upcoming.take(3).toList(),
     'debts': open.take(3).toList(),
     'debtsTotal': total,
@@ -75,6 +82,52 @@ List<String> freeSlots({
   final out =
       grade.where((s) => !busy.contains(s) && !refused.contains(s)).toList();
   out.sort();
+  return out;
+}
+
+/// Upsert de sessão no espelho (por id). Puro e testado.
+List<Map<String, dynamic>> applySessionUpsert(
+    List sessions, Map<String, dynamic> s) {
+  final out = [
+    for (final e in sessions) Map<String, dynamic>.from(e as Map)
+  ];
+  final i =
+      out.indexWhere((e) => '${e['id']}' == '${s['id']}');
+  if (i >= 0) {
+    out[i] = {...out[i], ...s};
+  } else {
+    out.add(Map<String, dynamic>.from(s));
+  }
+  return out;
+}
+
+/// Remove sessão do espelho (por id). Puro e testado.
+List<Map<String, dynamic>> applySessionRemove(
+    List sessions, String id) {
+  return [
+    for (final e in sessions)
+      if ('${(e as Map)['id']}' != id)
+        Map<String, dynamic>.from(e)
+  ];
+}
+
+/// Upsert de débito: pago/cancelado vira remoção. Puro e testado.
+List<Map<String, dynamic>> applyDebtUpsert(
+    List debts, Map<String, dynamic> d) {
+  final st = '${d['status'] ?? ''}'.toLowerCase();
+  final paid = (d['paidAmount'] as num?)?.toDouble() ?? 0.0;
+  final amount = (d['amount'] as num?)?.toDouble() ?? 0.0;
+  final dead = st == 'cancelado' ||
+      st == 'cancelled' ||
+      (amount > 0 && paid >= amount) ||
+      st == 'pago' ||
+      st == 'paid' ||
+      st == 'quitado';
+  final out = [
+    for (final e in debts) Map<String, dynamic>.from(e as Map)
+  ];
+  out.removeWhere((e) => '${e['id']}' == '${d['id']}');
+  if (!dead) out.add(Map<String, dynamic>.from(d));
   return out;
 }
 
@@ -149,20 +202,25 @@ class PortalMirrorSync {
       await pRef.update({'portalToken': token});
     }
     final now = DateTime.now();
+    // Limites altos de propósito: pacote psico gera ~52 appointments/ano;
+    // limit baixo + sem orderBy truncava futuros (portal sem psicologia).
     final appts = await _db
         .collection('appointments')
         .where('patientId', isEqualTo: patientId)
-        .limit(30)
+        .limit(100)
         .get();
     final sessions = <Map<String, dynamic>>[];
     for (final d in appts.docs) {
       final m = d.data();
       final date = (m['date'] as Timestamp?)?.toDate();
       if (date == null) continue;
+      if ('${m['status'] ?? ''}'.toLowerCase() == 'cancelado') continue;
+      final prof = '${m['dentistName'] ?? ''}';
       sessions.add({
         'id': d.id,
         'date': date,
-        'professional': '${m['dentistName'] ?? ''}',
+        // Psico não tem dentistName: mostra o procedimento ("Pacote ...").
+        'professional': prof.isEmpty ? '${m['procedure'] ?? ''}' : prof,
         'dentistId': '${m['dentistId'] ?? ''}',
         'status': '${m['status'] ?? ''}',
       });
@@ -170,7 +228,7 @@ class PortalMirrorSync {
     final fins = await _db
         .collection('financial')
         .where('patientId', isEqualTo: patientId)
-        .limit(50)
+        .limit(100)
         .get();
     final debts = <Map<String, dynamic>>[];
     for (final d in fins.docs) {
@@ -185,12 +243,14 @@ class PortalMirrorSync {
       });
     }
     String pixKey = '';
+    String clinicName = '';
     try {
       final cDoc = await _db
           .collection('clinics')
           .doc('${pdata['clinicId'] ?? ''}')
           .get();
       pixKey = '${cDoc.data()?['pixKey'] ?? ''}';
+      clinicName = '${cDoc.data()?['name'] ?? ''}';
     } catch (_) {}
     final refused = <String>[];
     try {
@@ -201,12 +261,82 @@ class PortalMirrorSync {
     } catch (_) {}
     await _db.collection('portal').doc(token).set(buildPortalMirror(
       clinicId: '${pdata['clinicId'] ?? ''}',
+      clinicName: clinicName,
       sessions: sessions,
       debts: debts,
       pixKey: pixKey,
       now: now,
       refusedIso: refused,
     ), SetOptions(merge: true)); // merge: preserva campos do portal (statusSessao, pedidos, avisos)
+  }
+
+  /// Delta: token do paciente (1 leitura) ou null.
+  static Future<String?> _tokenOf(String patientId) async {
+    try {
+      final p = await _db.collection('patients').doc(patientId).get();
+      final t = '${(p.data() ?? {})['portalToken'] ?? ''}';
+      return t.isEmpty ? null : t;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> _patchList(
+    String token,
+    String key,
+    List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) fn,
+  ) async {
+    try {
+      final ref = _db.collection('portal').doc(token);
+      final snap = await ref.get();
+      if (!snap.exists) return;
+      final data = snap.data() ?? {};
+      final list = ((data[key] as List?) ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      await ref.set({
+        key: fn(list),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("PortalMirror delta falhou: $e");
+    }
+  }
+
+  /// Delta de sessão (2 leituras + 1 escrita, sem scans).
+  static Future<void> upsertSession({
+    required String patientId,
+    String? token,
+    required Map<String, dynamic> session,
+  }) async {
+    token ??= await _tokenOf(patientId);
+    if (token == null || token.isEmpty) return;
+    await _patchList(
+        token, 'sessions', (l) => applySessionUpsert(l, session));
+  }
+
+  /// Remove sessão do espelho.
+  static Future<void> removeSession({
+    required String patientId,
+    String? token,
+    required String sessionId,
+  }) async {
+    token ??= await _tokenOf(patientId);
+    if (token == null || token.isEmpty) return;
+    await _patchList(
+        token, 'sessions', (l) => applySessionRemove(l, sessionId));
+  }
+
+  /// Delta de débito (pago/cancelado vira remoção).
+  static Future<void> upsertDebt({
+    required String patientId,
+    String? token,
+    required Map<String, dynamic> debt,
+  }) async {
+    token ??= await _tokenOf(patientId);
+    if (token == null || token.isEmpty) return;
+    await _patchList(
+        token, 'debts', (l) => applyDebtUpsert(l, debt));
   }
 
   static Future<void> _slotOp({

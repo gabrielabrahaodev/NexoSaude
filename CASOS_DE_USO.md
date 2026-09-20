@@ -177,6 +177,12 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | UC-91 | **Portal: atrasos e painel refeito** | Paciente (link) | Só `dueDate < hoje` (top 3 + totais); toggle Pix por débito + "Avisei que paguei" individual; painel dias/horários filtrado pelo profissional. | `web/portal.html` |
 | UC-92 | **Sino de pendências no menu** | Recep/Dentista | Contador laranja em Agenda/Atendimento (remarcar) e Cobranças (avisos); profissional vê só os seus. | `main_web_dashboard.dart` + `services/pending_counts.dart` |
 | UC-93 | **Grade de horários da clínica** | Owner | Salvar início/fim/slot em Gestão → Configurações; reconstrói os slots do portal na hora. | `settings_tab.dart` + `portal_mirror.dart` |
+| UC-94 | **Master da plataforma** | Superadmin | Abas Owners (bloquear/liberar, gerar mensalidade, novo owner+trial), Débitos (baixa/dispensa) e Trials. | `screens/master/master_screen.dart` + `web/master.html` |
+| UC-95 | **Assinatura do owner (página pública)** | Owner | Mesmo login em `assinatura.html`: resumo do plano + débitos com Pix e "avisei que paguei" (fora do app). | `web/assinatura.html` |
+| UC-96 | **Landing + trava de assinatura** | Visitante/Usuário | `/` abre a landing (sem redirect); trial expirado ou bloqueio manual barra o login com tela explicativa. | `web/landing.html` + `role_check_screen.dart` |
+| UC-99 | **Trial com porteira (autoprovisionamento aprovado)** | Visitante | Cadastro em `assinatura.html` cria Auth + owner pendente + `trial_requests`; Master aprova (cria clínica + trial 7d) ou recusa; relógio anda após aprovação. | `web/assinatura.html` + `web/master.html` + rules A1b |
+| UC-97 | **Pix BR Code grátis** | Paciente (link) | QR + copiar por débito gerados localmente (padrão Bacen, sem PSP); confirmação segue manual. | `services/pix_brcode.dart` + `web/portal.html` |
+| UC-98 | **Aceite LGPD no cadastro** | Recep/Owner | Checkbox default desmarcado; sem aceite, sem token; gerar depois registra aceite. | `create_patient_screen.dart` |
 
 ---
 

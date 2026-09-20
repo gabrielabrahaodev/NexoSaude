@@ -28,3 +28,4 @@ Novo paciente, campos obrigatórios, duplicidade de CPF.
 ## Atualizações
 
 - Cadastro gera `portalToken` + espelho inicial imediato (link vale desde o cadastro). Ver [[portal-mirror]].
+- Checkbox LGPD (default desmarcado): sem aceite, sem token; sync respeita recusa; gerar depois registra aceite. Ver [[portal-mirror]].

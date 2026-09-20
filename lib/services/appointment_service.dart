@@ -47,10 +47,20 @@ class AppointmentService {
 
   Future<void> add(AppointmentModel appointment) async {
     // Convertemos o model para mapa, removendo o ID que será gerado
-    var map = appointment.toMap(); 
-    await _collection.add(map);
-    // Espelhos do portal (best-effort, nunca quebram a escrita).
-    await PortalMirrorSync.patient(appointment.patientId);
+    var map = appointment.toMap();
+    final ref = _collection.doc();
+    await ref.set(map);
+    // Espelho (delta, sem scan): a sessão entra com os dados em mãos.
+    await PortalMirrorSync.upsertSession(
+      patientId: appointment.patientId,
+      session: {
+        'id': ref.id,
+        'date': appointment.date,
+        'professional': '',
+        'dentistId': appointment.dentistId ?? '',
+        'status': appointment.status,
+      },
+    );
     await PortalMirrorSync.occupySlot(
       clinicId: appointment.clinicId,
       dentistId: appointment.dentistId ?? '',
@@ -81,7 +91,16 @@ class AppointmentService {
       dentistId: appointment.dentistId ?? '',
       date: appointment.date,
     );
-    await PortalMirrorSync.patient(appointment.patientId);
+    await PortalMirrorSync.upsertSession(
+      patientId: appointment.patientId,
+      session: {
+        'id': appointment.id,
+        'date': appointment.date,
+        'professional': '',
+        'dentistId': appointment.dentistId ?? '',
+        'status': appointment.status,
+      },
+    );
   }
   
   Future<void> cancel(String id) async {
@@ -97,6 +116,8 @@ class AppointmentService {
       );
     }
     final pid = '${old?['patientId'] ?? ''}';
-    if (pid.isNotEmpty) await PortalMirrorSync.patient(pid);
+    if (pid.isNotEmpty) {
+      await PortalMirrorSync.removeSession(patientId: pid, sessionId: id);
+    }
   }
 }

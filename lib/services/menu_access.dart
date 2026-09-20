@@ -19,6 +19,7 @@ class MenuAccess {
     'funcionarios',
     'gestao',
     'fluxo',
+    'master',
   ];
 
   /// Índice em `MainWebDashboard._screens` por chave.
@@ -36,6 +37,7 @@ class MenuAccess {
     'gestao': 10,
     'fluxo': 11,
     'atendimento': 12,
+    'master': 13,
   };
 
   /// Índice → chave (inverso de [keyIndex]).
@@ -67,6 +69,7 @@ class MenuAccess {
     'funcionarios': 'Funcionários',
     'gestao': 'Gestão',
     'fluxo': 'Fluxo Terapêutico',
+    'master': 'Master',
   };
 
   /// Pode exibir o item? Puro e testado.

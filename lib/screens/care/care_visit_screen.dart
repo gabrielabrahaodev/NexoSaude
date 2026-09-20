@@ -216,9 +216,19 @@ class _CareVisitScreenState extends State<CareVisitScreen> {
     try {
       final ref =
           FirebaseFirestore.instance.collection('financial').doc();
-      await ref.set(_chargeMap(ref.id, receiveNow));
-      await PortalMirrorSync.patient(
-          widget.appointment.patientId);
+      final map = _chargeMap(ref.id, receiveNow);
+      await ref.set(map);
+      await PortalMirrorSync.upsertDebt(
+        patientId: widget.appointment.patientId,
+        debt: {
+          'id': ref.id,
+          'title': '${map['title'] ?? 'Lançamento'}',
+          'amount': (map['amount'] as num?)?.toDouble() ?? 0.0,
+          'paidAmount': (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
+          'dueDate': (map['dueDate'] as Timestamp?)?.toDate(),
+          'status': '${map['status'] ?? ''}',
+        },
+      );
       if (mounted) {
         toast(
             context,

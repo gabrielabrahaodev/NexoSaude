@@ -73,6 +73,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyD-4NjgWl9qa9wkb1EN-nB9wgWmzK815No",
@@ -92,6 +93,34 @@
     let mirror = null, mirrorRef = null;
 
     function esc(s) { return String(s ?? '').replace(/</g, '&lt;'); }
+
+    // BR Code Pix estático (padrão Bacen, 100% local) — espelha pix_brcode.dart.
+    function crc16(s) {
+        let crc = 0xFFFF;
+        for (let i = 0; i < s.length; i++) {
+            crc ^= (s.charCodeAt(i) << 8);
+            for (let b = 0; b < 8; b++) {
+                crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+                crc &= 0xFFFF;
+            }
+        }
+        return crc;
+    }
+    function emv(id, v) { return id + String(v.length).padStart(2, '0') + v; }
+    function norm(s, max) {
+        const accents = {á:'A',à:'A',ã:'A',â:'A',ä:'A',é:'E',è:'E',ê:'E',ë:'E',í:'I',ì:'I',î:'I',ï:'I',ó:'O',ò:'O',õ:'O',ô:'O',ö:'O',ú:'U',ù:'U',û:'U',ü:'U',ç:'C',ñ:'N'};
+        let o = String(s || '').toLowerCase().split('').map((c) => accents[c] || c).join('')
+            .toUpperCase().replace(/[^A-Z0-9 .,\-]/g, '');
+        return o.slice(0, max);
+    }
+    function pixBrCode(key, amount, nome, cidade) {
+        const gui = emv('00', 'br.gov.bcb.pix') + emv('01', String(key).trim());
+        let p = emv('00', '01') + emv('26', gui) + emv('52', '0000') + emv('53', '986');
+        if (amount > 0) p += emv('54', Number(amount).toFixed(2));
+        p += emv('58', 'BR') + emv('59', norm(nome, 25)) + emv('60', norm(cidade, 15))
+            + emv('62', emv('05', '***')) + '6304';
+        return p + crc16(p).toString(16).toUpperCase().padStart(4, '0');
+    }
 
     let toastT = null;
     function toast(msg) {
@@ -178,7 +207,14 @@
         const now0 = new Date(); now0.setHours(0, 0, 0, 0);
         const dueOf = (x) => x.dueDate && x.dueDate.toDate ? x.dueDate.toDate() : (x.dueDate ? new Date(x.dueDate) : null);
         const debts = (mirror.debts || [])
-            .filter((x) => { const d = dueOf(x); return d && d < now0; })
+            .filter((x) => {
+                const d = dueOf(x);
+                if (!d || !(d < now0)) return false;
+                const st = String(x.status || '').toLowerCase();
+                if (st === 'cancelado' || st === 'cancelled' || st === 'pago' || st === 'paid' || st === 'quitado') return false;
+                const paid = Number(x.paidAmount || 0), amount = Number(x.amount || 0);
+                return !(amount > 0 && paid >= amount);
+            })
             .sort((a, b) => dueOf(a) - dueOf(b))
             .slice(0, 3);
         html += '<h2 class="sec">Em atraso <span class="n">' + debts.length + '</span></h2>';
@@ -197,8 +233,9 @@
                 + '<div id="pix-' + x.id + '" style="display:none;">'
                 + '<div class="pixbox">'
                 + (mirror.pixKey
-                    ? '<div style="font-size:12px;color:var(--mut)">Chave Pix</div><div class="pixkey">' + esc(mirror.pixKey) + '</div>'
-                      + '<div class="actions"><button class="btn-ghost" onclick="copiarPix()">Copiar chave</button></div>'
+                    ? '<div style="display:flex;justify-content:center;margin-bottom:8px"><div id="qr-' + x.id + '"></div></div>'
+                      + '<div class="pixkey" id="code-' + x.id + '"></div>'
+                      + '<div class="actions"><button class="btn-ghost" onclick="copiarPixCode(\'' + x.id + '\')">Copiar código</button></div>'
                     : '<p style="font-size:13px;color:var(--mut);margin:0">Pix não cadastrado. Fale com a recepção.</p>')
                 + '<button class="btn-warn" id="av-' + x.id + '" onclick="avisarUm(\'' + x.id + '\')">Avisei que paguei</button>'
                 + '</div></div></div>';
@@ -219,6 +256,17 @@
         const key = mirror.pixKey || '';
         if (navigator.clipboard) navigator.clipboard.writeText(key).then(() => toast('Chave copiada.'));
         else toast('Chave: ' + key);
+    }
+
+    function pixCodeFor(id) {
+        const x = (mirror.debts || []).find((d) => d.id === id) || {};
+        return pixBrCode(mirror.pixKey, Number(x.amount || 0), mirror.clinicName || 'Clinica', 'BRASIL');
+    }
+
+    function copiarPixCode(id) {
+        const code = pixCodeFor(id);
+        if (navigator.clipboard) navigator.clipboard.writeText(code).then(() => toast('Código Pix copiado.'));
+        else toast(code);
     }
 
     async function confirmar(id) {
@@ -309,7 +357,16 @@
 
     function togglePix(id) {
         const el = document.getElementById('pix-' + id);
-        if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        if (!el) return;
+        const show = el.style.display === 'none';
+        el.style.display = show ? 'block' : 'none';
+        if (show && !el.dataset.qr && mirror.pixKey && window.QRCode) {
+            const code = pixCodeFor(id);
+            document.getElementById('code-' + id).textContent = code;
+            new QRCode(document.getElementById('qr-' + id),
+                {text: code, width: 160, height: 160});
+            el.dataset.qr = '1';
+        }
     }
 
     async function avisarUm(id) {

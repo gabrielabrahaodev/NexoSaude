@@ -20,12 +20,22 @@ class FinancialService {
   // --- ESSA LINHA É CRÍTICA PARA FUNCIONAR ---
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Espelho do portal após mutação de lançamento (best-effort).
-  Future<void> _syncPatientOfCharge(String id) async {
+  /// Delta do espelho após mutação de lançamento (1 leitura + patch).
+  Future<void> _syncDebtOfCharge(String id) async {
     try {
       final d = await _db.collection('financial').doc(id).get();
-      final pid = '${d.data()?['patientId'] ?? ''}';
-      if (pid.isNotEmpty) await PortalMirrorSync.patient(pid);
+      final m = d.data();
+      if (m == null) return;
+      final pid = '${m['patientId'] ?? ''}';
+      if (pid.isEmpty) return;
+      await PortalMirrorSync.upsertDebt(patientId: pid, debt: {
+        'id': id,
+        'title': '${m['title'] ?? 'Lançamento'}',
+        'amount': (m['amount'] as num?)?.toDouble() ?? 0.0,
+        'paidAmount': (m['paidAmount'] as num?)?.toDouble() ?? 0.0,
+        'dueDate': (m['dueDate'] as Timestamp?)?.toDate(),
+        'status': '${m['status'] ?? ''}',
+      });
     } catch (_) {}
   }
 
@@ -108,7 +118,7 @@ class FinancialService {
       'valorLiquido': 0.0,
       'netAmount': 0.0,
     });
-    await _syncPatientOfCharge(id);
+    await _syncDebtOfCharge(id);
   }
 
   /// Cancela uma cobrança/lançamento (soft-delete com trilha).
@@ -120,7 +130,7 @@ class FinancialService {
       'status': 'cancelado',
       'cancelledAt': FieldValue.serverTimestamp(),
     });
-    await _syncPatientOfCharge(id);
+    await _syncDebtOfCharge(id);
   }
 
   /// Monta os dados da cobrança recriada a partir de um doc cancelado.
@@ -166,7 +176,16 @@ class FinancialService {
     data['createdAt'] = FieldValue.serverTimestamp();
     final ref = await _db.collection('financial').add(data);
     final pid = '${original['patientId'] ?? ''}';
-    if (pid.isNotEmpty) await PortalMirrorSync.patient(pid);
+    if (pid.isNotEmpty) {
+      await PortalMirrorSync.upsertDebt(patientId: pid, debt: {
+        'id': ref.id,
+        'title': '${data['title'] ?? 'Lançamento'}',
+        'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+        'paidAmount': 0.0,
+        'dueDate': (data['dueDate'] as Timestamp?)?.toDate(),
+        'status': 'pendente',
+      });
+    }
     return ref.id;
   }
 
@@ -183,7 +202,7 @@ class FinancialService {
     if (dueDate != null) data['dueDate'] = Timestamp.fromDate(dueDate);
     if (data.isEmpty) return;
     await _db.collection('financial').doc(id).update(data);
-    await _syncPatientOfCharge(id);
+    await _syncDebtOfCharge(id);
   }
 
   // --- PROCESSA E SALVA TUDO DE UMA VEZ ---
@@ -286,6 +305,6 @@ class FinancialService {
     }
 
     await batch.commit();
-    await PortalMirrorSync.patient(originalTransaction.patientId);
+    await _syncDebtOfCharge(originalTransaction.id);
   }
 }

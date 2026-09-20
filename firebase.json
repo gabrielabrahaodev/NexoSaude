@@ -31,13 +31,6 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "redirects": [
-      {
-        "source": "/",
-        "destination": "https://dralaucielicosta.free.nf/",
-        "type": 301
-      }
-    ],
     "rewrites": [
       {
         "source": "/sistema-interno/**",

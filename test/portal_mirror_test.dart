@@ -34,6 +34,21 @@ void main() {
       expect(m['clinicId'], 'cid1');
     });
 
+    test('sessões canceladas não ocupam as vagas do portal', () {
+      final sessions = [
+        {'id': 'c1', 'date': DateTime(2026, 9, 20), 'status': 'Cancelado'},
+        {'id': 'c2', 'date': DateTime(2026, 9, 21), 'status': 'cancelado'},
+        {'id': 'c3', 'date': DateTime(2026, 9, 22), 'status': 'Cancelled'},
+        {'id': 's1', 'date': DateTime(2026, 9, 25), 'status': 'Aguardando Confirmação'},
+        {'id': 's2', 'date': DateTime(2026, 9, 27), 'status': 'Agendado'},
+      ];
+      final m = buildPortalMirror(
+          clinicId: 'cid1', sessions: sessions, debts: [], pixKey: '', now: now);
+      final ids =
+          (m['sessions'] as List).map((s) => (s as Map)['id']).toList();
+      expect(ids, ['s1', 's2']);
+    });
+
     test('sem vencimento ou futuro não aparece (só atrasos)', () {
       final debts = [
         {'id': 'd1', 'title': 'Sessão', 'amount': 300.0, 'paidAmount': 0.0},
@@ -44,6 +59,17 @@ void main() {
           sessions: [], debts: debts, pixKey: 'pix@clinica', now: now);
       expect((m['debts'] as List), isEmpty);
       expect(m['debtsCount'], 0);
+    });
+
+    test('espelho leva clinicName p/ QR do Pix', () {
+      final m = buildPortalMirror(
+          clinicId: 'cid1',
+          clinicName: 'Clínica Léo',
+          sessions: [],
+          debts: [],
+          pixKey: 'pix@clinica',
+          now: now);
+      expect(m['clinicName'], 'Clínica Léo');
     });
 
     test('top 3 atrasos por vencimento + totais', () {
@@ -90,6 +116,59 @@ void main() {
           ['09:00', '09:30', '10:00']);
       expect(dailyGrade(start: '08:00', end: '09:00', slot: 60),
           ['08:00', '09:00']);
+    });
+  });
+
+  group('applySessionUpsert', () {
+    test('atualiza existente ou adiciona', () {
+      final list = [
+        {'id': 'a', 'status': 'Agendado'},
+      ];
+      final out = applySessionUpsert(list, {'id': 'a', 'status': 'Confirmado'});
+      expect(out.length, 1);
+      expect(out.first['status'], 'Confirmado');
+      final out2 =
+          applySessionUpsert(out, {'id': 'b', 'status': 'Agendado'});
+      expect(out2.length, 2);
+    });
+  });
+
+  group('applySessionRemove', () {
+    test('remove por id', () {
+      expect(
+          applySessionRemove([
+            {'id': 'a'},
+            {'id': 'b'}
+          ], 'a'),
+          [
+            {'id': 'b'}
+          ]);
+    });
+  });
+
+  group('applyDebtUpsert', () {
+    test('pago ou cancelado vira remoção', () {
+      final list = [
+        {'id': 'd', 'status': 'pendente'}
+      ];
+      expect(
+          applyDebtUpsert(list,
+              {'id': 'd', 'status': 'pago', 'amount': 100.0, 'paidAmount': 100.0}),
+          isEmpty);
+      expect(
+          applyDebtUpsert(list,
+              {'id': 'd', 'status': 'cancelado', 'amount': 100.0, 'paidAmount': 0.0}),
+          isEmpty);
+    });
+
+    test('aberto atualiza ou adiciona', () {
+      final out = applyDebtUpsert([], {
+        'id': 'd',
+        'status': 'pendente',
+        'amount': 100.0,
+        'paidAmount': 0.0
+      });
+      expect(out.length, 1);
     });
   });
 }

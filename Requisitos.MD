@@ -471,11 +471,13 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 ### RN-64 - Espelhos do portal
 - `portal/{token}`: próximas 3 sessões + top-3 atrasos + `debtsTotal`/`debtsCount` + Pix + `propostasRecusadas` + `clinicId`; `portal_slots/{clinicId}`: livres 14 dias por dentista (`arrayUnion/Remove`).
 - `syncPortalMirror()` em todos os pontos de escrita (best-effort, nunca quebra); janela varrida no login (owner/recepção); backfills em `migrate/`; grade configurável (`gradeConfig`, rebuild automático ao salvar).
+- Economia de cota: sync por deltas (`upsertSession/removeSession/upsertDebt`: 2 leituras + 1 escrita, sem scans); rebuild completo só na criação, revogação e backfill manual; slots sem varredura no login (botão Reconstruir no Gestão).
 - Referência: `services/portal_mirror.dart` (testado), `web/portal.html`.
 
 ### RN-65 - Caixa de pendências
 - Selo "Decidir remarcação" na agenda + card no Meu dia: aprovar (revalida `getBusySlots`, confirma, sincroniza) ou recusar via WhatsApp (some da lista do paciente, livre pros demais).
 - "Avisei que paguei" por débito → selo azul nas Cobranças com dispensar; baixa no fluxo normal.
+- Sino no menu: contador laranja em Agenda/Atendimento (remarcar) e Cobranças (avisos); profissional vê só os seus (`pending_counts.dart`, streams compartilhados).
 - Referência: `services/remarcacao_service.dart`, `screens/care/remarcar_dialog.dart`.
 
 ### RN-66 - Pix da clínica e token do paciente
@@ -493,6 +495,25 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 
 ### RN-69 - Consistência visual e helpers
 - Cores só via `AppColors` (+ `StatusChip`); moeda `formatBRL`, datas `formatDate*`, avisos `toast` — tudo em `utils/display.dart` com teste; sem `grey[]`/`DateFormat` soltos nas telas.
+
+---
+
+## 16. Plataforma, Pix e LGPD
+
+### RN-70 - Pix BR Code grátis (sem PSP)
+- Gerador local EMV/Bacen (`pixBrCode`: chave + valor + txid + CRC16-CCITT-FALSE, testado com vetor `29B1`); QR + copiar por débito no portal (port JS validado com o mesmo vetor).
+- Dinâmico com baixa automática: fora (exige PSP pago). Confirmação segue manual ("Avisei que paguei").
+- Referência: `services/pix_brcode.dart`, `web/portal.html`.
+
+### RN-71 - Aceite LGPD do portal
+- Checkbox no cadastro (default desmarcado): sem aceite, sem token; sync não autocria com recusa explícita (legados sem campo mantêm autocura); gerar na aba Cadastro registra aceite novo.
+- Referência: `create_patient_screen.dart`, `patient_details_tab.dart`, `portal_mirror.dart`.
+
+### RN-72 - Master, Assinatura e landing
+- Master só `superadmin` (Owners/Débitos/Trials, gerar mensalidade `40+15×(n−1)`, novo owner+trial, bloqueio manual); trava login em trial expirado OU bloqueio.
+- Assinatura fora do app (`assinatura.html`, mesmo login): plano + débitos com Pix e aviso.
+- Landing em `/` (Tailwind, logo `logo.png`, preço real, FAQ, form→WhatsApp); `deploy.bat` leva `logo/portal/assinatura` + landing vira `index.html`.
+- Referência: `screens/master/master_screen.dart`, `web/assinatura.html`, `web/landing.html`.
 
 ---
 
@@ -519,6 +540,9 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 | RN-66 | `settings_tab.dart`, `patient_details_tab.dart`, cascata |
 | RN-67 | `web/portal.html` (regras de exibição) |
 | RN-68..69 | queries limitadas, `firestore.indexes.json`, `utils/display.dart` |
+| RN-70 | `services/pix_brcode.dart`, `web/portal.html` |
+| RN-71 | `create_patient_screen.dart`, `patient_details_tab.dart` |
+| RN-72 | `screens/master/`, `web/assinatura.html`, `web/landing.html`, `role_check_screen.dart` |
 
 ---
 

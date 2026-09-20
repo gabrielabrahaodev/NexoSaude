@@ -16,6 +16,19 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner';
     }
 
+    // 1b. Dono da plataforma (Master): gerencia owners, clínicas e débitos.
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    // 1c. Dono do débito da plataforma (owner da assinatura).
+    function isPlatformDebtor(resource) {
+      return isAuthenticated() &&
+             resource.data.ownerId == request.auth.uid;
+    }
+
     // 2. Verifica se a funcionária tem permissão para a clínica do documento
     function hasClinicAccess(clinicId) {
       let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
@@ -36,7 +49,7 @@ service cloud.firestore {
     // A. USUÁRIOS
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner();
+      allow write: if isOwner() || isSuperAdmin();
       // Auto-cadastro (email/Google): o próprio usuário cria o doc,
       // sem clínica e sem poder virar owner (owner libera depois).
       allow create: if isAuthenticated() && request.auth.uid == userId
@@ -44,6 +57,28 @@ service cloud.firestore {
              ['dentist', 'dentista', 'receptionist', 'recepcionista', 'psicologo']
           && request.resource.data.allowedClinics == []
           && request.resource.data.status == 'pending_approval';
+      // Trial com porteira: o próprio usuário cria o doc como owner
+      // PENDENTE (sem clínica, sem trial). Superadmin aprova e provisiona.
+      allow create: if isAuthenticated() && request.auth.uid == userId
+          && request.resource.data.role == 'owner'
+          && request.resource.data.allowedClinics == []
+          && request.resource.data.status == 'pending_approval'
+          && !('trialEndsAt' in request.resource.data.keys());
+    }
+
+    // A1b. PEDIDOS DE TRIAL (porteira do teste grátis). Create público com
+    // allowlist; leitura/escrita só superadmin (vê no Master e aprova).
+    match /trial_requests/{docId} {
+      allow create: if request.resource.data.keys().hasOnly(
+            ['nome', 'whatsapp', 'email', 'clinicName', 'type', 'status', 'createdAt'])
+          && request.resource.data.status == 'solicitado'
+          && request.resource.data.nome is string
+          && request.resource.data.nome.size() > 1
+          && request.resource.data.nome.size() < 100
+          && request.resource.data.email is string
+          && request.resource.data.email.size() > 3
+          && request.resource.data.email.size() < 100;
+      allow read, update, delete: if isSuperAdmin();
     }
 
     // A2. PREFERÊNCIAS DO USUÁRIO (ex.: tema) — o próprio usuário ou owner.
@@ -67,10 +102,25 @@ service cloud.firestore {
       allow read, update, delete: if isOwner();
     }
 
-    // B. CLÍNICAS
+    // B. CLÍNICAS (trialEndsAt + blockedByAdmin: só superadmin escreve)
     match /clinics/{clinicId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner();
+      allow write: if isOwner() || isSuperAdmin();
+    }
+
+    // B2. ASSINATURA DA PLATAFORMA (cobrança por usuário do owner).
+    // platform_config/geral: {basePrice, extraPrice, pixKey}.
+    match /platform_config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+    match /platform_debits/{debitId} {
+      allow read: if isSuperAdmin() || isPlatformDebtor(resource);
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() ||
+        (isPlatformDebtor(resource) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['avisoPagamento', 'updatedAt']));
     }
     
     // C. NOTÍCIAS

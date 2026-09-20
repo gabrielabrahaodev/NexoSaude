@@ -62,7 +62,19 @@ class RemarcacaoService {
         dentistId: appt.dentistId ?? '',
         date: proposed,
       );
-      await PortalMirrorSync.patient(appt.patientId);
+      await PortalMirrorSync.upsertSession(
+        patientId: appt.patientId,
+        token: (appt.portalToken ?? '').isEmpty
+            ? null
+            : appt.portalToken,
+        session: {
+          'id': appt.id,
+          'date': proposed,
+          'professional': '',
+          'dentistId': appt.dentistId ?? '',
+          'status': 'Confirmado',
+        },
+      );
       final token = appt.portalToken ?? '';
       if (token.isNotEmpty) {
         await _db.collection('portal').doc(token).set({
@@ -85,6 +97,18 @@ class RemarcacaoService {
       'status': 'Aguardando Confirmação',
       'proposedDate': null,
     });
+    await PortalMirrorSync.upsertSession(
+      patientId: appt.patientId,
+      token:
+          (appt.portalToken ?? '').isEmpty ? null : appt.portalToken,
+      session: {
+        'id': appt.id,
+        'date': appt.date,
+        'professional': '',
+        'dentistId': appt.dentistId ?? '',
+        'status': 'Aguardando Confirmação',
+      },
+    );
     if (token.isNotEmpty) {
       final data = <String, dynamic>{
         'pedidoRemarcacao': FieldValue.delete(),

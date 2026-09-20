@@ -32,9 +32,11 @@ Versão: 1.0 — 2026-09-19. Status: implementado (coberto por `Requisitos.MD`, 
 - **US-05 (recepção/owner):** Como cobrança, quero WhatsApp com templates rotativos e confirmação humana de envio. **AC:** 3 templates alternados; ao voltar do WhatsApp pergunta "Você enviou?" em 100% dos envios; SIM marca como cobrado.
 - **US-06 (owner):** Como dona, quero DRE/Livro Caixa mensais e antecipação de cartão, para decidir. **AC:** regime de caixa por data efetiva; Livro exporta PDF; antecipação gera taxa em despesas; valores conferem com soma manual (teste por amostragem).
 - **US-07 (paciente-portal):** Como paciente com link, quero confirmar ou pedir remarcação escolhendo dia/hora livres, para não ligar. **AC:** só sessões pendentes têm botões; janela de 14 dias (semana atual + próxima) filtrada pelo dentista da sessão; proposta grava `remarcar` + data e vira pendência; recusada some da minha lista e segue livre pros demais; sem telefone cadastrado o fluxo degrada pra balcão (aviso explícito, sem travar a tela).
-- **US-08 (paciente-portal):** Como paciente, quero ver só meus atrasos e pagar via Pix, para quitar sem balcão. **AC:** seção lista só `dueDate < hoje` não-quitados (top 3 + totais); toggle mostra chave Pix da clínica; "Avisei que paguei" por débito gera selo na Cobrança.
+- **US-08 (paciente-portal):** Como paciente, quero ver só meus atrasos e pagar via Pix, para quitar sem balcão. **AC:** seção lista só `dueDate < hoje` não-quitados (top 3 + totais); toggle mostra QR + código BR Code gerados localmente (grátis, sem PSP); "Avisei que paguei" por débito gera selo na Cobrança.
 - **US-09 (recepção/dentista):** Como equipe, quero decidir remarcações e avisos numa caixa única, para nada se perder. **AC:** selo na agenda + card no Meu dia; aprovar revalida choque no vivo; recusar abre WhatsApp pronto; aviso vira selo dispensável.
-- **US-10 (owner):** Como dona, quero gerenciar acessos, tema e Pix sem código. **AC:** `menuAccess` por usuário (owner ignora); tema por usuário com fallback claro; `pixKey` só owner escreve; token do portal gera/copia/revoga na aba Cadastro (revogar mata o link; link revogado retorna "inválido" em até 60s); excluir paciente apaga o espelho (cascata).
+- **US-10 (owner):** Como dona, quero gerenciar acessos, tema e Pix sem código. **AC:** `menuAccess` por usuário (owner ignora); tema por usuário com fallback claro; `pixKey` só owner escreve; token do portal gera/copia/revoga na aba Cadastro (revogar mata o link; link revogado retorna "inválido" em até 60s); excluir paciente apaga o espelho (cascata); aceite LGPD no cadastro (sem aceite, sem token).
+- **US-11 (superadmin):** Como dono da plataforma, quero gerenciar owners, trials e débitos. **AC:** seção Master só com `role=superadmin`; bloquear/liberar por clínica; gerar mensalidade `40+15×(n−1)` com vencimento +30d; novo owner+trial 7d em 1 fluxo; trial expirado ou bloqueio manual barra o login com tela explicativa.
+- **US-12 (owner):** Como dona, quero ver minha assinatura fora do operacional. **AC:** página `assinatura.html` (mesmo login): plano, débitos com Pix e aviso individual; sino de pendências no menu (remarcar/avisos, profissional vê só os seus).
 
 ### Non-Goals
 
@@ -64,7 +66,7 @@ Rules escopadas por `clinicId` (owner.full); `settings/integrations` só owner; 
 
 ## 5. Risks & Roadmap
 
-- **Phased Rollout:** MVP (agenda+pacientes+financeiro base) → v1.1 (Modo Atendimento) → v1.2 (Portal + pendências) → v1.3 (polish web-designer: tema, consistência, cota). Estado atual: v1.3 em `master`/`web-designer`.
+- **Phased Rollout:** MVP (agenda+pacientes+financeiro base) → v1.1 (Modo Atendimento) → v1.2 (Portal + pendências) → v1.3 (polish web-designer: tema, consistência, cota) → v1.4 (plataforma: landing, Master, Assinatura, trials, Pix BR Code). Estado atual: v1.4 em `master`/`web-designer`.
 - **Technical Risks:**
   - **Cota Spark (50 mil leituras/dia):** mitigado com queries mensais/diárias limitadas, cache mensal da agenda, espelhos de 1 doc; monitorar Uso; saída = Blaze com orçamento US$ 1.
   - **Deriva de espelhos:** escrita esquecida mente no portal; mitigado por helper único + aceite sempre revalida no vivo + backfills em `migrate/`.

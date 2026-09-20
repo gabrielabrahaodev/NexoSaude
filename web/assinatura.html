@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexoSaúde — Minha assinatura</title>
+    <style>
+        :root { --bg: #0f1113; --card: #1a1e22; --card2: #22272d; --line: #2e343b; --txt: #e9ecef; --mut: #9aa1a9; --teal: #00c897; --teal-ink: #052e24; --blue: #6ea8ff; --green: #3ddc84; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--txt); margin: 0; padding: 0 16px 48px; }
+        .wrap { max-width: 600px; margin: 0 auto; }
+        header.top { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+        .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--teal); color: var(--teal-ink); font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        .brand { font-weight: 800; }
+        .tag { margin-left: auto; font-size: 12px; color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-top: 14px; }
+        .big { font-size: 17px; font-weight: 700; }
+        .muted { color: var(--mut); font-size: 13px; }
+        .plan { font-size: 22px; font-weight: 800; margin: 6px 0 2px; }
+        input { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--line); background: var(--card2); color: var(--txt); margin-top: 8px; font-size: 16px; }
+        select { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--line); background: var(--card2); color: var(--txt); margin-top: 8px; font-size: 16px; }
+        button { border: none; border-radius: 12px; padding: 13px 14px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        button:disabled { opacity: .55; }
+        .btn-ok { background: var(--teal); color: var(--teal-ink); width: 100%; margin-top: 12px; }
+        .btn-ghost { background: transparent; color: var(--blue); border: 1px solid var(--line); width: 100%; margin-top: 8px; }
+        .btn-warn { background: #3a2e12; color: #ffd97a; width: 100%; margin-top: 8px; }
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .pixbox { margin-top: 10px; background: var(--card2); border: 1px dashed var(--line); border-radius: 11px; padding: 12px; }
+        .pixkey { font-family: ui-monospace, monospace; font-size: 14px; word-break: break-all; }
+        .err { color: #ff8a80; text-align: center; }
+        .skel { border-radius: 16px; padding: 14px; margin-top: 14px; background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%); background-size: 200% 100%; animation: sh 1.2s infinite; min-height: 86px; }
+        @keyframes sh { to { background-position: -200% 0; } }
+        #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 18px; font-size: 14px; opacity: 0; transition: all .25s; pointer-events: none; max-width: 90vw; z-index: 9; }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="top"><div class="mark">N</div><div class="brand">NexoSaúde</div><div class="tag">Minha assinatura</div></header>
+    <div id="content" style="margin-top:6px"></div>
+</div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyD-4NjgWl9qa9wkb1EN-nB9wgWmzK815No",
+        authDomain: "nexosaude.firebaseapp.com",
+        projectId: "nexosaude",
+        storageBucket: "nexosaude.firebasestorage.app",
+        messagingSenderId: "388133875376",
+        appId: "1:388133875376:web:ad058507ea0b0f86cd5575"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const content = document.getElementById('content');
+    const BRL = (v) => 'R$ ' + Number(v || 0).toFixed(2);
+
+    let toastT = null;
+    function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastT);
+        toastT = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+    function esc(s) { return String(s ?? '').replace(/</g, '&lt;'); }
+
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) return loginView();
+        content.innerHTML = '<div class="skel"></div><div class="skel"></div>';
+        try {
+            const u = await db.collection('users').doc(user.uid).get();
+            const udata = u.exists ? u.data() : {};
+            const role = ((udata.role) || '').toLowerCase();
+            if (role !== 'owner' && role !== 'superadmin') {
+                content.innerHTML = '<p class="err">Acesso restrito a owners.</p>';
+                await auth.signOut();
+                return;
+            }
+            if ((udata.status || '') === 'pending_approval') {
+                content.innerHTML = '<div class="card"><div class="big">Cadastro em análise</div>'
+                    + '<p class="muted">Recebemos seu pedido de teste. Retornamos no WhatsApp com a liberação e o link do sistema.</p>'
+                    + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
+                return;
+            }
+            await mainView(user.uid);
+        } catch (e) {
+            content.innerHTML = '<p class="err">Falha ao carregar. Tente de novo.</p>';
+        }
+    });
+
+    function loginView() {
+        content.innerHTML = '<div class="card"><div class="big">Entrar</div>'
+            + '<p class="muted">Use o mesmo e-mail e senha do sistema.</p>'
+            + '<input id="em" type="email" placeholder="E-mail" autocomplete="username">'
+            + '<input id="pw" type="password" placeholder="Senha" autocomplete="current-password">'
+            + '<button class="btn-ok" onclick="doLogin()">Acessar</button>'
+            + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="signupView()">Quero testar 7 dias grátis</button></div>';
+    }
+
+    async function doLogin() {
+        const em = document.getElementById('em').value.trim();
+        const pw = document.getElementById('pw').value;
+        if (!em || !pw) { toast('Informe e-mail e senha.'); return; }
+        try {
+            await auth.signInWithEmailAndPassword(em, pw);
+        } catch (e) { toast('Login inválido. Confira os dados.'); }
+    }
+
+    function signupView() {
+        content.innerHTML = '<div class="card"><div class="big">Testar 7 dias grátis</div>'
+            + '<p class="muted">Cadastre-se e aguarde nossa liberação no WhatsApp.</p>'
+            + '<input id="s-nome" placeholder="Seu nome">'
+            + '<input id="s-email" type="email" placeholder="E-mail (login)" autocomplete="username">'
+            + '<input id="s-senha" type="password" placeholder="Senha (mín. 6)" autocomplete="new-password">'
+            + '<input id="s-wa" type="tel" placeholder="WhatsApp (DDD+número)">'
+            + '<input id="s-clinica" placeholder="Nome da clínica">'
+            + '<select id="s-tipo"><option value="dental">Odontologia</option><option value="psychology">Psicologia</option><option value="multi">Multidisciplinar</option></select>'
+            + '<button class="btn-ok" id="s-btn" onclick="doSignup()">Pedir meu teste</button>'
+            + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="loginView()">Já tenho conta</button></div>';
+    }
+
+    async function doSignup() {
+        const v = (id) => document.getElementById(id).value.trim();
+        if (!v('s-nome') || !v('s-email') || v('s-senha').length < 6 || !v('s-wa') || !v('s-clinica')) {
+            toast('Preencha tudo (senha mín. 6).');
+            return;
+        }
+        const btn = document.getElementById('s-btn');
+        btn.disabled = true;
+        try {
+            const cred = await auth.createUserWithEmailAndPassword(v('s-email'), v('s-senha'));
+            const uid = cred.user.uid;
+            await db.collection('users').doc(uid).set({
+                email: v('s-email'), name: v('s-nome'), role: 'owner',
+                allowedClinics: [], status: 'pending_approval',
+                whatsapp: v('s-wa'), createdAt: new Date(),
+            });
+            await db.collection('trial_requests').add({
+                nome: v('s-nome'), whatsapp: v('s-wa'), email: v('s-email'),
+                clinicName: v('s-clinica'),
+                type: document.getElementById('s-tipo').value,
+                uid: uid, status: 'solicitado', createdAt: new Date(),
+            });
+            toast('Pedido enviado! Aguarde nosso contato.');
+        } catch (e) {
+            toast(e.code === 'auth/email-already-in-use' ? 'E-mail já cadastrado. Entre.' : 'Falha. Tente de novo.');
+            btn.disabled = false;
+        }
+    }
+
+    async function mainView(uid) {
+        const clinics = await db.collection('clinics').where('ownerId', '==', uid).get();
+        const cids = clinics.docs.map((d) => d.id);
+        if (!cids.length) {
+            content.innerHTML = '<div class="card"><p class="muted">Nenhuma clínica vinculada.</p></div>';
+            return;
+        }
+        const cfg = await db.collection('platform_config').doc('geral').get().catch(() => null);
+        const base = Number((cfg && cfg.data().basePrice) || 40);
+        const extra = Number((cfg && cfg.data().extraPrice) || 15);
+        const pixKey = (cfg && cfg.data().pixKey) || '';
+        const staff = new Set();
+        for (const cid of cids) {
+            const us = await db.collection('users').where('allowedClinics', 'array-contains', cid).get();
+            us.forEach((d) => { if ((d.data().role || '') !== 'owner') staff.add(d.id); });
+        }
+        const n = staff.size;
+        const amount = n <= 0 ? 0 : base + extra * (n - 1);
+        let html = '<div class="card"><div class="big">Meu plano</div>'
+            + '<div class="plan">' + n + ' usuário(s) • ' + BRL(amount) + '/mês</div>'
+            + '<p class="muted">R$ ' + base.toFixed(0) + ' o primeiro + R$ ' + extra.toFixed(0) + ' por adicional</p></div>';
+        const debits = await db.collection('platform_debits').where('ownerId', '==', uid).orderBy('dueDate', 'desc').limit(50).get();
+        html += '<div class="card"><div class="big">Débitos</div>';
+        if (debits.empty) html += '<p class="muted">Nenhum débito.</p>';
+        debits.forEach((d) => {
+            const m = d.data();
+            const paid = String(m.status || '').toLowerCase() === 'pago';
+            const noticed = m.avisoPagamento && m.avisoPagamento.ids && m.avisoPagamento.ids.length;
+            html += '<div class="card"><div class="row"><div><b>' + esc(m.clinicName || '') + ' • ' + (m.users || 0) + ' usuários</b>'
+                + '<div class="muted">' + (paid ? 'Pago' : 'Pendente') + (noticed && !paid ? ' • Avisei que paguei' : '') + '</div></div>'
+                + '<div class="big">' + BRL(m.amount) + '</div></div>';
+            if (!paid) {
+                html += '<button class="btn-ghost" onclick="togglePix(\'' + d.id + '\')">Pagar com Pix</button>'
+                    + '<div id="pix-' + d.id + '" style="display:none;"><div class="pixbox">'
+                    + (pixKey ? '<div class="muted">Chave Pix</div><div class="pixkey">' + esc(pixKey) + '</div>'
+                      + '<div class="row" style="margin-top:8px"><button class="btn-ghost" style="flex:1" onclick="copiarPix()">Copiar chave</button></div>'
+                      : '<p class="muted" style="margin:0">Pix não cadastrado. Fale com o suporte.</p>')
+                    + '<button class="btn-warn" id="av-' + d.id + '" onclick="avisar(\'' + d.id + '\')"'
+                    + (noticed ? ' disabled' : '') + '>' + (noticed ? 'Avisado ✓' : 'Avisei que paguei') + '</button>'
+                    + '</div></div>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+        html += '<button class="btn-ghost" onclick="firebase.auth().signOut()">Sair</button>';
+        content.innerHTML = html;
+    }
+
+    function togglePix(id) {
+        const el = document.getElementById('pix-' + id);
+        if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function copiarPix() {
+        const key = document.querySelector('.pixkey');
+        const t = key ? key.textContent : '';
+        if (navigator.clipboard && t) navigator.clipboard.writeText(t).then(() => toast('Chave copiada.'));
+    }
+
+    async function avisar(id) {
+        try {
+            const ref = db.collection('platform_debits').doc(id);
+            const snap = await ref.get();
+            const prev = (snap.data().avisoPagamento && snap.data().avisoPagamento.ids) || [];
+            const ids = prev.includes(id) ? prev : prev.concat([id]);
+            await ref.update({avisoPagamento: {ids: ids, at: new Date()}, updatedAt: new Date()});
+            const b = document.getElementById('av-' + id);
+            if (b) { b.textContent = 'Avisado ✓'; b.disabled = true; }
+            toast('Avisado! Confirmamos a baixa.');
+        } catch (e) { toast('Falha ao avisar. Tente de novo.'); }
+    }
+</script>
+</body>
+</html>

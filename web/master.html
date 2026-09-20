@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexoSaúde — Master da Plataforma</title>
+    <style>
+        :root { --bg: #0f1113; --card: #1a1e22; --card2: #22272d; --line: #2e343b; --txt: #e9ecef; --mut: #9aa1a9; --teal: #00c897; --teal-ink: #052e24; --red: #ff8a80; --green: #3ddc84; --orange: #ffb35c; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--txt); margin: 0; padding: 0 16px 48px; }
+        .wrap { max-width: 860px; margin: 0 auto; }
+        header.top { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+        .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--teal); color: var(--teal-ink); font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        .brand { font-weight: 800; }
+        .tag { margin-left: auto; font-size: 12px; color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+        .tabs { display: flex; gap: 6px; margin: 14px 0 4px; flex-wrap: wrap; }
+        .tabs button { flex: 1; background: var(--card); color: var(--mut); border: 1px solid var(--line); min-width: 100px; }
+        .tabs button.sel { background: var(--teal); color: var(--teal-ink); border-color: var(--teal); }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-top: 10px; }
+        .big { font-size: 16px; font-weight: 700; }
+        .muted { color: var(--mut); font-size: 13px; }
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        input, select { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--line); background: var(--card2); color: var(--txt); margin-top: 8px; font-size: 16px; }
+        button { border: none; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        button:disabled { opacity: .55; }
+        .btn-ok { background: var(--teal); color: var(--teal-ink); width: 100%; margin-top: 12px; }
+        .btn-ghost { background: transparent; color: #6ea8ff; border: 1px solid var(--line); }
+        .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--line); }
+        .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-row button { flex: 1; }
+        .pill { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+        .p-ok { background: rgba(61,220,132,.13); color: var(--green); }
+        .p-bad { background: rgba(255,138,128,.13); color: var(--red); }
+        .p-warn { background: rgba(255,179,92,.14); color: var(--orange); }
+        .err { color: var(--red); text-align: center; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+        .skel { border-radius: 16px; padding: 14px; margin-top: 10px; background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%); background-size: 200% 100%; animation: sh 1.2s infinite; min-height: 70px; }
+        @keyframes sh { to { background-position: -200% 0; } }
+        #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 18px; font-size: 14px; opacity: 0; transition: all .25s; pointer-events: none; max-width: 90vw; z-index: 9; }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="top"><div class="mark">N</div><div class="brand">NexoSaúde</div><div class="tag">Master da plataforma</div></header>
+    <div id="content" style="margin-top:6px"></div>
+</div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyD-4NjgWl9qa9wkb1EN-nB9wgWmzK815No",
+        authDomain: "nexosaude.firebaseapp.com",
+        projectId: "nexosaude",
+        storageBucket: "nexosaude.firebasestorage.app",
+        messagingSenderId: "388133875376",
+        appId: "1:388133875376:web:ad058507ea0b0f86cd5575"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const content = document.getElementById('content');
+    const BRL = (v) => 'R$ ' + Number(v || 0).toFixed(2);
+    const fmtD = (d) => d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+
+    let toastT = null;
+    function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastT);
+        toastT = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+    function esc(s) { return String(s ?? '').replace(/</g, '&lt;'); }
+    function ts2d(ts) { return ts && ts.toDate ? ts.toDate() : (ts ? new Date(ts) : null); }
+
+    let tab = 'owners';
+
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) return loginView();
+        content.innerHTML = '<div class="skel"></div>';
+        try {
+            const u = await db.collection('users').doc(user.uid).get();
+            if (!u.exists || u.data().role !== 'superadmin') {
+                content.innerHTML = '<p class="err">Acesso restrito ao dono da plataforma.</p>';
+                await auth.signOut();
+                return;
+            }
+            renderTabs();
+        } catch (e) {
+            content.innerHTML = '<p class="err">Falha ao carregar. Tente de novo.</p>';
+        }
+    });
+
+    function loginView() {
+        content.innerHTML = '<div class="card"><div class="big">Entrar</div>'
+            + '<p class="muted">Acesso do dono da plataforma.</p>'
+            + '<input id="em" type="email" placeholder="E-mail" autocomplete="username">'
+            + '<input id="pw" type="password" placeholder="Senha" autocomplete="current-password">'
+            + '<button class="btn-ok" onclick="doLogin()">Acessar</button></div>';
+    }
+
+    async function doLogin() {
+        const em = document.getElementById('em').value.trim();
+        const pw = document.getElementById('pw').value;
+        if (!em || !pw) { toast('Informe e-mail e senha.'); return; }
+        try { await auth.signInWithEmailAndPassword(em, pw); }
+        catch (e) { toast('Login inválido.'); }
+    }
+
+    function renderTabs() {
+        content.innerHTML = '<div class="tabs">'
+            + ['owners|Owners', 'pedidos|Pedidos', 'new|Novo owner', 'debits|Débitos', 'trials|Trials'].map((t) => {
+                const parts = t.split('|');
+                return '<button class="' + (tab === parts[0] ? 'sel' : '') + '" onclick="goTab(\'' + parts[0] + '\')">' + parts[1] + '</button>';
+            }).join('')
+            + '</div><div id="tabbody"></div>'
+            + '<button class="btn-ghost" style="width:100%;margin-top:12px" onclick="firebase.auth().signOut()">Sair</button>';
+        loadTab();
+    }
+
+    function goTab(t) { tab = t; renderTabs(); }
+
+    async function loadTab() {
+        const body = document.getElementById('tabbody');
+        body.innerHTML = '<div class="skel"></div><div class="skel"></div>';
+        try {
+            if (tab === 'owners') await ownersTab(body);
+            else if (tab === 'pedidos') await pedidosTab(body);
+            else if (tab === 'new') newOwnerTab(body);
+            else if (tab === 'debits') await debitsTab(body);
+            else await trialsTab(body);
+        } catch (e) { body.innerHTML = '<p class="err">Falha ao carregar.</p>'; }
+    }
+
+    async function staffCount(cid) {
+        const us = await db.collection('users').where('allowedClinics', 'array-contains', cid).get();
+        let n = 0;
+        us.forEach((d) => { if ((d.data().role || '') !== 'owner') n++; });
+        return n;
+    }
+
+    function trialInfo(m) {
+        const t = ts2d(m.trialEndsAt);
+        const blocked = m.blockedByAdmin === true;
+        const over = t ? t < new Date() : false;
+        const txt = !t ? 'sem trial' : over ? 'expirado' : 'trial até ' + fmtD(t);
+        const cls = (blocked || over) ? 'p-bad' : 'p-ok';
+        return {txt: txt + (blocked ? ' • BLOQUEADA' : ''), cls: cls, blocked: blocked, over: over};
+    }
+
+    async function ownersTab(body) {
+        const cs = await db.collection('clinics').get();
+        if (cs.empty) { body.innerHTML = '<div class="card"><p class="muted">Nenhuma clínica. Crie o primeiro owner na aba Novo owner.</p></div>'; return; }
+        let html = '';
+        for (const c of cs.docs) {
+            const m = c.data();
+            const n = await staffCount(c.id);
+            const tr = trialInfo(m);
+            html += '<div class="card"><div class="row"><div><div class="big">' + esc(m.name || '') + '</div>'
+                + '<div class="muted">' + esc(m.type || '') + ' • ' + n + ' usuário(s) • ' + tr.txt + '</div></div>'
+                + '<span class="pill ' + tr.cls + '">' + (tr.blocked || tr.over ? 'ATENÇÃO' : 'OK') + '</span></div>'
+                + '<div class="btn-row"><button class="btn-ghost" onclick="toggleBlock(\'' + c.id + '\',' + (!tr.blocked) + ')">' + (tr.blocked ? 'Liberar' : 'Bloquear') + '</button>'
+                + '<button class="btn-ghost" onclick="genDebit(\'' + c.id + '\')">Gerar mensalidade</button></div></div>';
+        }
+        body.innerHTML = html;
+    }
+
+    async function toggleBlock(cid, blocked) {
+        try {
+            await db.collection('clinics').doc(cid).update({blockedByAdmin: blocked});
+            toast(blocked ? 'Clínica bloqueada.' : 'Clínica liberada.');
+            loadTab();
+        } catch (e) { toast('Falha. Tente de novo.'); }
+    }
+
+    // --- PEDIDOS DE TRIAL (porteira): aprovar cria clínica + trial 7d ---
+    async function pedidosTab(body) {
+        const rs = await db.collection('trial_requests').where('status', '==', 'solicitado').limit(50).get();
+        if (rs.empty) { body.innerHTML = '<div class="card"><p class="muted">Nenhum pedido pendente.</p></div>'; return; }
+        let html = '';
+        rs.forEach((r) => {
+            const m = r.data();
+            html += '<div class="card"><div class="big">' + esc(m.nome || '') + '</div>'
+                + '<div class="muted">' + esc(m.email || '') + ' • ' + esc(m.whatsapp || '') + '<br>'
+                + esc(m.clinicName || '') + ' (' + esc(m.type || '') + ')</div>'
+                + '<div class="btn-row"><button class="btn-ghost" onclick="chamarZap(\'' + esc(m.whatsapp || '') + '\')">WhatsApp</button>'
+                + '<button class="btn-ghost" onclick="aprovarPedido(\'' + r.id + '\')">Aprovar + criar</button>'
+                + '<button class="btn-ghost" onclick="recusarPedido(\'' + r.id + '\')">Recusar</button></div></div>';
+        });
+        body.innerHTML = html;
+    }
+
+    function chamarZap(phone) {
+        const clean = String(phone || '').replace(/\D/g, '');
+        if (!clean) { toast('Sem WhatsApp no pedido.'); return; }
+        window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent('Olá! Aqui é do NexoSaúde sobre seu teste grátis.'), '_blank');
+    }
+
+    async function aprovarPedido(rid) {
+        try {
+            const r = await db.collection('trial_requests').doc(rid).get();
+            const m = r.data() || {};
+            if (!m.uid) { toast('Pedido sem uid. Crie pelo Novo owner.'); return; }
+            const clinicRef = db.collection('clinics').doc();
+            await clinicRef.set({
+                name: m.clinicName || 'Clínica', type: m.type || 'dental',
+                ownerId: m.uid, createdAt: new Date(),
+                trialEndsAt: new Date(Date.now() + 7 * 86400000), blockedByAdmin: false,
+            });
+            await db.collection('users').doc(m.uid).update({
+                allowedClinics: [clinicRef.id], status: 'Ativo',
+            });
+            await db.collection('trial_requests').doc(rid).update({status: 'aprovado', clinicId: clinicRef.id});
+            toast('Trial liberado por 7 dias.');
+            loadTab();
+        } catch (e) { toast('Falha. Tente de novo.'); }
+    }
+
+    async function recusarPedido(rid) {
+        try {
+            const r = await db.collection('trial_requests').doc(rid).get();
+            const m = r.data() || {};
+            if (m.uid) {
+                try { await db.collection('users').doc(m.uid).delete(); } catch (e) {}
+            }
+            await db.collection('trial_requests').doc(rid).update({status: 'recusado'});
+            toast('Pedido recusado.');
+            loadTab();
+        } catch (e) { toast('Falha. Tente de novo.'); }
+    }
+
+    async function genDebit(cid) {
+        try {
+            const cfg = await db.collection('platform_config').doc('geral').get().catch(() => null);
+            const base = Number((cfg && cfg.data().basePrice) || 40);
+            const extra = Number((cfg && cfg.data().extraPrice) || 15);
+            const n = await staffCount(cid);
+            const amount = n <= 0 ? 0 : base + extra * (n - 1);
+            if (amount <= 0) { toast('Sem usuários: nada a gerar.'); return; }
+            const c = await db.collection('clinics').doc(cid).get();
+            const m = c.data() || {};
+            let ownerEmail = '';
+            try {
+                const o = await db.collection('users').doc(m.ownerId || '').get();
+                ownerEmail = (o.exists && o.data().email) || '';
+            } catch (e) {}
+            await db.collection('platform_debits').add({
+                ownerId: m.ownerId || '', ownerEmail: ownerEmail, clinicId: cid,
+                clinicName: m.name || '', users: n, amount: amount, paidAmount: 0,
+                date: new Date(), dueDate: new Date(Date.now() + 30 * 86400000),
+                status: 'pendente', type: 'assinatura',
+            });
+            toast('Mensalidade ' + BRL(amount) + ' gerada (' + n + ' usuários).');
+        } catch (e) { toast('Falha. Tente de novo.'); }
+    }
+
+    function newOwnerTab(body) {
+        body.innerHTML = '<div class="card"><div class="big">Novo owner + clínica (trial 7 dias)</div>'
+            + '<input id="n-nome" placeholder="Nome">'
+            + '<input id="n-email" type="email" placeholder="E-mail (login)">'
+            + '<input id="n-senha" type="password" placeholder="Senha inicial">'
+            + '<input id="n-clinica" placeholder="Nome da clínica">'
+            + '<select id="n-tipo"><option value="dental">Odonto</option><option value="psychology">Psicologia</option></select>'
+            + '<button class="btn-ok" id="n-btn" onclick="createOwner()">Criar</button></div>';
+    }
+
+    async function createOwner() {
+        const v = (id) => document.getElementById(id).value.trim();
+        if (!v('n-nome') || !v('n-email') || !v('n-senha') || !v('n-clinica')) { toast('Preencha todos os campos.'); return; }
+        const btn = document.getElementById('n-btn');
+        btn.disabled = true;
+        let secondary = null;
+        try {
+            secondary = firebase.initializeApp(firebaseConfig, 'MasterRegister');
+            const cred = await secondary.auth().createUserWithEmailAndPassword(v('n-email'), v('n-senha'));
+            const uid = cred.user.uid;
+            const clinicRef = db.collection('clinics').doc();
+            await clinicRef.set({
+                name: v('n-clinica'), type: document.getElementById('n-tipo').value,
+                ownerId: uid, createdAt: new Date(),
+                trialEndsAt: new Date(Date.now() + 7 * 86400000), blockedByAdmin: false,
+            });
+            await db.collection('users').doc(uid).set({
+                email: v('n-email'), name: v('n-nome'), role: 'owner',
+                allowedClinics: [clinicRef.id], status: 'Ativo', createdAt: new Date(),
+            });
+            toast('Owner + clínica criados (trial 7 dias).');
+            goTab('owners');
+        } catch (e) {
+            toast(e.code === 'auth/email-already-in-use' ? 'E-mail já em uso.' : 'Falha. Tente de novo.');
+            btn.disabled = false;
+        } finally {
+            if (secondary) { try { await secondary.delete(); } catch (e) {} }
+        }
+    }
+
+    async function debitsTab(body) {
+        const ds = await db.collection('platform_debits').orderBy('dueDate', 'desc').limit(100).get();
+        if (ds.empty) { body.innerHTML = '<div class="card"><p class="muted">Nenhum débito gerado.</p></div>'; return; }
+        let html = '';
+        ds.forEach((d) => {
+            const m = d.data();
+            const paid = String(m.status || '').toLowerCase() === 'pago';
+            const noticed = m.avisoPagamento && m.avisoPagamento.ids && m.avisoPagamento.ids.length;
+            html += '<div class="card"><div class="row"><div><div class="big">' + esc(m.clinicName || '') + ' — ' + (m.users || 0) + ' usuários</div>'
+                + '<div class="muted">' + esc(m.ownerEmail || '') + ' • ' + (paid ? 'Pago' : 'Pendente') + (noticed && !paid ? ' • Avisei que paguei' : '') + '</div></div>'
+                + '<div class="big">' + BRL(m.amount) + '</div></div>';
+            if (!paid) {
+                html += '<div class="btn-row"><button class="btn-ghost" onclick="settle(\'' + d.id + '\',' + Number(m.amount || 0) + ')">Dar baixa</button>';
+                if (noticed) html += '<button class="btn-ghost" onclick="dismissNotice(\'' + d.id + '\')">Dispensar aviso</button>';
+                html += '</div>';
+            }
+            html += '</div>';
+        });
+        body.innerHTML = html;
+    }
+
+    async function settle(id, amount) {
+        try {
+            await db.collection('platform_debits').doc(id).update({status: 'pago', paidAmount: amount, paymentDate: new Date()});
+            toast('Baixa dada.');
+            loadTab();
+        } catch (e) { toast('Falha. Tente de novo.'); }
+    }
+
+    async function dismissNotice(id) {
+        try {
+            await db.collection('platform_debits').doc(id).update({avisoPagamento: firebase.firestore.FieldValue.delete()});
+            loadTab();
+        } catch (e) { toast('Falha. Tente de novo.'); }
+    }
+
+    async function trialsTab(body) {
+        const limit = new Date(Date.now() + 3 * 86400000);
+        const cs = await db.collection('clinics').get();
+        let html = '';
+        cs.forEach((c) => {
+            const m = c.data();
+            const t = ts2d(m.trialEndsAt);
+            if (!t || (t >= limit && m.blockedByAdmin !== true)) return;
+            const over = t < new Date();
+            html += '<div class="card"><div class="row"><div><div class="big">' + esc(m.name || '') + '</div>'
+                + '<div class="muted">' + (over ? 'trial expirado' : 'vence ' + fmtD(t)) + (m.blockedByAdmin === true ? ' • BLOQUEADA' : '') + '</div></div>'
+                + '<button class="btn-ghost" onclick="toggleBlock(\'' + c.id + '\',' + (m.blockedByAdmin !== true) + ')">' + (m.blockedByAdmin === true ? 'Liberar' : 'Bloquear') + '</button>'
+                + '</div></div>';
+        });
+        body.innerHTML = html || '<div class="card"><p class="muted">Nenhum trial vencendo.</p></div>';
+    }
+</script>
+</body>
+</html>
