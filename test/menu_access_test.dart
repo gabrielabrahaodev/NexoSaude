@@ -3,25 +3,92 @@ import 'package:odonto_controle/services/menu_access.dart';
 
 void main() {
   group('MenuAccess.canShow', () {
-    test('owner vê tudo mesmo com mapa restritivo', () {
+    test('owner vê tudo, menos Master (só superadmin)', () {
       final access = {for (final k in MenuAccess.keys) k: false};
       for (final k in MenuAccess.keys) {
         expect(
-          MenuAccess.canShow(isOwner: true, menuKey: k, access: access),
-          isTrue,
+          MenuAccess.canShow(
+              isOwner: true, role: 'owner', menuKey: k, access: access),
+          k == 'master' ? isFalse : isTrue,
           reason: k,
         );
       }
     });
 
-    test('sem mapa, tudo visível (default)', () {
-      for (final k in MenuAccess.keys) {
+    test('sem mapa, defaults espelham os cadeados antigos', () {
+      const operacionais = [
+        'dashboard',
+        'agenda',
+        'atendimento',
+        'pacientes',
+        'laboratorio',
+        'financeiro',
+        'relatorios',
+        'noticias',
+        'cobrancas',
+        'fluxo',
+      ];
+      for (final k in operacionais) {
         expect(
-          MenuAccess.canShow(isOwner: false, menuKey: k, access: null),
+          MenuAccess.canShow(isOwner: false, role: 'dentista', menuKey: k),
           isTrue,
           reason: k,
         );
       }
+      // Gestão: recepção via (como hoje), dentista não.
+      expect(
+        MenuAccess.canShow(
+            isOwner: false, role: 'recepcionista', menuKey: 'gestao'),
+        isTrue,
+      );
+      expect(
+        MenuAccess.canShow(
+            isOwner: false, role: 'dentista', menuKey: 'gestao'),
+        isFalse,
+      );
+      // Sensíveis: ninguém sem cargo.
+      for (final k in ['clinicas', 'funcionarios', 'master']) {
+        expect(
+          MenuAccess.canShow(
+              isOwner: false, role: 'recepcionista', menuKey: k),
+          isFalse,
+          reason: k,
+        );
+      }
+      // Master: só superadmin.
+      expect(
+        MenuAccess.canShow(
+            isOwner: false, role: 'superadmin', menuKey: 'master'),
+        isTrue,
+      );
+    });
+
+    test('mapa explícito vence o default (dentista liberável)', () {
+      expect(
+        MenuAccess.canShow(
+            isOwner: false,
+            role: 'dentista',
+            menuKey: 'gestao',
+            access: {'gestao': true}),
+        isTrue,
+      );
+      expect(
+        MenuAccess.canShow(
+            isOwner: false,
+            role: 'recepcionista',
+            menuKey: 'gestao',
+            access: {'gestao': false}),
+        isFalse,
+      );
+      // Master com opt-out.
+      expect(
+        MenuAccess.canShow(
+            isOwner: false,
+            role: 'superadmin',
+            menuKey: 'master',
+            access: {'master': false}),
+        isFalse,
+      );
     });
 
     test('chave ausente no mapa = visível', () {
@@ -85,6 +152,60 @@ void main() {
     test('tipo desconhecido cai em dental', () {
       expect(MenuAccess.keysForClinicType('fisio'), MenuAccess.keysForClinicType('dental'));
       expect(MenuAccess.keysForClinicType(null), MenuAccess.keysForClinicType('dental'));
+    });
+  });
+
+  group('MenuAccess sub-chaves da Gestão', () {
+    test('abas visíveis por padrão; seções sensíveis só owner', () {
+      for (final k in MenuAccess.gestaoTabKeys) {
+        expect(
+          MenuAccess.canShow(isOwner: false, role: 'dentista', menuKey: k),
+          isTrue,
+          reason: k,
+        );
+      }
+      for (final k in MenuAccess.gestaoSectionKeys) {
+        expect(
+          MenuAccess.canShow(isOwner: false, role: 'dentista', menuKey: k),
+          isFalse,
+          reason: k,
+        );
+        expect(
+          MenuAccess.canShow(isOwner: false, role: 'recepcionista', menuKey: k),
+          isFalse,
+          reason: k,
+        );
+      }
+    });
+
+    test('mapa libera seção e esconde aba', () {
+      expect(
+        MenuAccess.canShow(
+            isOwner: false,
+            role: 'dentista',
+            menuKey: 'g_pix',
+            access: {'g_pix': true}),
+        isTrue,
+      );
+      expect(
+        MenuAccess.canShow(
+            isOwner: false,
+            role: 'recepcionista',
+            menuKey: 'g_estoque',
+            access: {'g_estoque': false}),
+        isFalse,
+      );
+    });
+
+    test('8 sub-chaves com rótulo', () {
+      final all = [
+        ...MenuAccess.gestaoTabKeys,
+        ...MenuAccess.gestaoSectionKeys
+      ];
+      expect(all.length, 8);
+      for (final k in all) {
+        expect(MenuAccess.labels[k]?.isNotEmpty, isTrue, reason: k);
+      }
     });
   });
 }

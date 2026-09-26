@@ -94,6 +94,9 @@ class KpiDashboardScreen extends StatelessWidget {
               stream: FirebaseFirestore.instance
                   .collection('patients')
                   .where('clinicId', isEqualTo: clinicId)
+                  .where('birthMonth',
+                      isEqualTo:
+                          DateTime.now().month.toString().padLeft(2, '0'))
                   .snapshots(),
               builder: (context, patSnap) {
                 if (finSnap.connectionState == ConnectionState.waiting ||

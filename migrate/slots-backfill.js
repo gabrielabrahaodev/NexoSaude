@@ -29,9 +29,11 @@ const dayKey = (d) =>
   d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const slotTime = (d) =>
   String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-const isDentist = (r) => {
+const isDentist = (r, clinicType) => {
   r = String(r || '').toLowerCase();
-  return r.includes('dentist') || r === 'dentista' || r === 'psicologo';
+  if (r.includes('dentist') || r === 'dentista' || r === 'psicologo') return true;
+  // Owner de clínica psicológica é psicólogo atuante (portal espelha ele).
+  return clinicType === 'psychology' && r === 'owner';
 };
 
 (async () => {
@@ -45,7 +47,7 @@ const isDentist = (r) => {
       .collection('users')
       .where('allowedClinics', 'array-contains', c.id)
       .get();
-    const dentists = users.docs.filter((d) => isDentist(d.data().role)).map((d) => d.id);
+    const dentists = users.docs.filter((d) => isDentist(d.data().role, c.data().type)).map((d) => d.id);
     if (!dentists.length) {
       console.log('- ' + c.id + ': sem dentistas, pulei');
       continue;

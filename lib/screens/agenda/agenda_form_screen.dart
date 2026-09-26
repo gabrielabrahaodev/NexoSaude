@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:intl/intl.dart';
@@ -9,6 +11,7 @@ import '../../services/appointment_service.dart';
 import '../../services/patient_service.dart'; 
 import '../../models/appointment_model.dart';
 import '../../models/patient_model.dart';
+import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
 
 class AgendaFormScreen extends StatefulWidget {
@@ -49,6 +52,49 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   final maskPhone = MaskTextInputFormatter(mask: '(##) #####-####', filter: {"#": RegExp(r'[0-9]')});
   final maskCPF = MaskTextInputFormatter(mask: '###.###.###-##', filter: {"#": RegExp(r'[0-9]')});
   final maskDate = MaskTextInputFormatter(mask: '##/##/####', filter: {"#": RegExp(r'[0-9]')});
+
+  // Busca de paciente com debounce (1 query por pausa, não por tecla).
+  Timer? _searchDebounce;
+
+  Future<Iterable<Map<String, dynamic>>> _searchPatients(
+      TextEditingValue value, String? clinicId) {
+    _searchDebounce?.cancel();
+    final q = value.text.trim().toLowerCase();
+    if (q.length < 2 || clinicId == null) {
+      return Future.value(const Iterable.empty());
+    }
+    final completer = Completer<Iterable<Map<String, dynamic>>>();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      try {
+        var snapshot = await FirebaseFirestore.instance.collection('patients')
+            .where('clinicId', isEqualTo: clinicId)
+            .where('searchKey', isGreaterThanOrEqualTo: q)
+            .where('searchKey', isLessThan: '${q}z')
+            .limit(10)
+            .get();
+        if (!completer.isCompleted) {
+          completer.complete(snapshot.docs
+              .map((doc) => {'name': doc['name'], 'id': doc.id}));
+        }
+      } catch (e) {
+        if (!completer.isCompleted) completer.completeError(e);
+      }
+    });
+    return completer.future;
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _procedureCtrl.dispose();
+    _nameNewCtrl.dispose();
+    _phoneNewCtrl.dispose();
+    _cpfNewCtrl.dispose();
+    _rgNewCtrl.dispose();
+    _birthNewCtrl.dispose();
+    _addressNewCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -281,23 +327,17 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                   child: isEditing 
                     ? Container(
                         padding: const EdgeInsets.all(15), 
-                        decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10)), 
-                        child: Text(_selectedPatientName ?? "", style: const TextStyle(fontWeight: FontWeight.bold))
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.borderSoft),
+                        ), 
+                        child: Text(_selectedPatientName ?? "", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary))
                       )
-                    : Autocomplete<Map<String, dynamic>>(
+                      : Autocomplete<Map<String, dynamic>>(
                         displayStringForOption: (option) => option['name'],
-                        optionsBuilder: (textEditingValue) async {
-                          if (textEditingValue.text.isEmpty) return const Iterable.empty();
-                          
-                          var snapshot = await FirebaseFirestore.instance.collection('patients')
-                              .where('clinicId', isEqualTo: clinicId)
-                              .where('searchKey', isGreaterThanOrEqualTo: textEditingValue.text.toLowerCase())
-                              .where('searchKey', isLessThan: '${textEditingValue.text.toLowerCase()}z')
-                              .limit(10)
-                              .get();
-                              
-                          return snapshot.docs.map((doc) => {'name': doc['name'], 'id': doc.id});
-                        },
+                        optionsBuilder: (textEditingValue) =>
+                            _searchPatients(textEditingValue, clinicId),
                         onSelected: (selection) => setState(() { 
                           _selectedPatientName = selection['name']; 
                           _selectedPatientId = selection['id']; 
@@ -325,7 +365,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     height: 55,
                     child: ElevatedButton(
                       onPressed: _showNewPatientModal,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[50], foregroundColor: Colors.blue),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primarySoft, foregroundColor: AppColors.primary),
                       child: const Icon(Icons.person_add),
                     ),
                   )
@@ -343,7 +383,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     margin: const EdgeInsets.only(top: 10),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
+                      color: Colors.red.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.red.withValues(alpha: 0.3))
                     ),
@@ -429,7 +469,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                   label: Text(time), 
                   selected: isSelected, 
                   selectedColor: Colors.greenAccent, 
-                  disabledColor: Colors.grey[300],
+                  disabledColor: AppColors.borderSoft,
                   labelStyle: TextStyle(
                     color: slotCardColor(
                         isOccupied: isOccupied, isSelected: isSelected)

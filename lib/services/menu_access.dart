@@ -70,18 +70,82 @@ class MenuAccess {
     'gestao': 'Gestão',
     'fluxo': 'Fluxo Terapêutico',
     'master': 'Master',
+    // Sub-chaves: abas e seções da Gestão (sem índice de menu).
+    'g_proc': 'Gestão: Procedimentos',
+    'g_estoque': 'Gestão: Estoque',
+    'g_forn': 'Gestão: Fornecedores',
+    'g_cart': 'Gestão: Cartões',
+    'g_config': 'Gestão: Configurações',
+    'g_pix': 'Gestão: Pix da clínica',
+    'g_grade': 'Gestão: Grade de horários',
+    'g_acesso': 'Gestão: Controle de acesso',
   };
 
+  /// Abas da Gestão filtráveis (ordem = TabBar).
+  static const List<String> gestaoTabKeys = [
+    'g_proc',
+    'g_estoque',
+    'g_forn',
+    'g_cart',
+    'g_config',
+  ];
+
+  /// Seções sensíveis dentro de Configurações.
+  static const List<String> gestaoSectionKeys = [
+    'g_pix',
+    'g_grade',
+    'g_acesso',
+  ];
+
   /// Pode exibir o item? Puro e testado.
+  ///
+  /// Defaults por papel espelham os cadeados antigos do menu lateral:
+  /// sem mapa, cada papel vê exatamente o que via antes — e o owner
+  /// passa a ajustar por usuário. Mapa explícito sempre vence o default.
   static bool canShow({
     required bool isOwner,
+    String? role,
     required String menuKey,
     Map<String, bool>? access,
   }) {
+    // Master é trava dupla: só superadmin, com opt-out no mapa.
+    if (menuKey == 'master') {
+      if (_normRole(role) != 'superadmin') return false;
+      if (access != null && access.containsKey('master')) {
+        return access['master']!;
+      }
+      return true;
+    }
     if (isOwner) return true;
-    if (access == null) return true;
-    return access[menuKey] ?? true;
+    if (access != null && access.containsKey(menuKey)) {
+      return access[menuKey]!;
+    }
+    return defaultFor(role: role, menuKey: menuKey);
   }
+
+  /// Default por papel quando o mapa não diz nada sobre a chave.
+  static bool defaultFor({String? role, required String menuKey}) {
+    switch (menuKey) {
+      case 'master':
+        return _normRole(role) == 'superadmin';
+      case 'gestao':
+        return _normRole(role) == 'recepcionista';
+      case 'clinicas':
+      case 'funcionarios':
+        return false;
+      // Seções sensíveis do Config: só owner por padrão (liberável).
+      case 'g_pix':
+      case 'g_grade':
+      case 'g_acesso':
+        return _normRole(role) == 'owner';
+      default:
+        // Itens operacionais + abas da Gestão: visíveis por padrão.
+        return true;
+    }
+  }
+
+  static String _normRole(String? role) =>
+      (role ?? '').toLowerCase().trim();
 
   /// Normaliza mapa vindo do Firestore (dynamic → bool, só chaves válidas).
   static Map<String, bool> parse(dynamic raw) {

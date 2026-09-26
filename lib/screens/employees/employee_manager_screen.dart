@@ -119,8 +119,6 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
     _passwordController.clear();
   }
 
-  bool get _isOwner => SessionManager().userRole == 'owner';
-
   String _fmtDate(dynamic ts) {
     if (ts is! Timestamp) return '—';
     final d = ts.toDate();
@@ -129,8 +127,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
   }
 
   /// Dispensar pedido já atendido (apaga o doc, some da lista).
-  Future<void> _dismissRequest(String docId) async {
-    try {
+  Future<void> _dismissRequest(String docId) async {    try {
       await FirebaseFirestore.instance
           .collection('password_reset_requests')
           .doc(docId)
@@ -148,6 +145,73 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
     Clipboard.setData(ClipboardData(text: temp));
     ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Senha temporária copiada.")));
+  }
+
+  /// Ações do funcionário: gerar nova senha (cria pedido pendente;
+  /// o reset-senha.bat efetiva e a temporária aparece em Pedidos).
+  void _showEmployeeActions(String email, String name) {
+    if (email.isEmpty) {
+      toast(context, "Funcionário sem e-mail cadastrado.", error: true);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const CircleAvatar(child: Text('?')),
+            title: Text(name,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(email),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.lock_reset, color: Colors.orange),
+            title: const Text("Gerar nova senha"),
+            subtitle: const Text(
+                "Cria pedido; rode o reset-senha.bat e informe a temporária"),
+            onTap: () async {
+              Navigator.pop(ctx);
+              await _requestPasswordReset(email);
+            },
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  /// Cria pedido pendente (só se ainda não houver um para o e-mail).
+  /// Campos exatos exigidos pelas rules A3: email/createdAt/status.
+  Future<void> _requestPasswordReset(String email) async {
+    try {
+      final col =
+          FirebaseFirestore.instance.collection('password_reset_requests');
+      final existing = await col
+          .where('email', isEqualTo: email)
+          .where('status', isEqualTo: 'pending')
+          .limit(1)
+          .get();
+      if (existing.docs.isNotEmpty) {
+        if (mounted) {
+          toast(context,
+              "Já há pedido pendente para este e-mail. Rode o reset-senha.bat.");
+        }
+        return;
+      }
+      await col.add({
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      });
+      if (mounted) {
+        toast(context,
+            "Pedido criado. Rode o reset-senha.bat e informe a temporária.");
+      }
+    } catch (e) {
+      if (mounted) toast(context, "Falha ao criar pedido: $e", error: true);
+    }
   }
 
   void _showRegisterModal() {
@@ -278,9 +342,9 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
             ),
             const SizedBox(height: 20),
 
-            // PEDIDOS DE SENHA (só owner). Sem e-mail automático: gere a
-            // nova senha com o reset-senha.bat e informe à pessoa.
-            if (_isOwner) ...[
+            // PEDIDOS DE SENHA (segue o item Funcionários). Sem e-mail
+            // automático: gere a nova senha com o reset-senha.bat e informe.
+            ...[
               const Text("Pedidos de senha",
                   style: TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold)),
@@ -406,6 +470,11 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                           title: Text(data['name'] ?? 'Sem Nome', style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text("${data['role'].toString().toUpperCase()} • ${data['email']}"),
                           trailing: isOwner ? const Chip(label: Text("Dono")) : const Icon(Icons.more_vert),
+                          onTap: isOwner
+                              ? null
+                              : () => _showEmployeeActions(
+                                  (data['email'] ?? '').toString(),
+                                  (data['name'] ?? 'Funcionário').toString()),
                         ),
                       );
                     },

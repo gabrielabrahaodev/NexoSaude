@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/display.dart';
+
 class PatientModel {
   final String id;
   final String name;
@@ -34,6 +36,7 @@ class PatientModel {
       'cpf': cpf,
       'rg': rg,
       'birthDate': birthDate,
+      'birthMonth': birthMonthOf(birthDate), // query de aniversariantes (KPI)
       'address': address, // Gravamos sempre como String
       'createdAt': Timestamp.fromDate(createdAt),
       'clinicId': clinicId, 

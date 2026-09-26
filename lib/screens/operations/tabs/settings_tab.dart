@@ -18,7 +18,11 @@ import '../../../ui/app_theme.dart';
 ///   (campo `menuAccess` no doc do usuário; ausente = tudo visível;
 ///   owner ignora restrições). Escrita em `users` exige owner (rules).
 class SettingsTab extends StatefulWidget {
-  const SettingsTab({super.key});
+  /// Mapa de acesso do usuário atual (carregado pela Gestão) p/ portas
+  /// por aba/seção. Nulo + owner = tudo (comportamento antigo).
+  final Map<String, bool>? tabAccess;
+
+  const SettingsTab({super.key, this.tabAccess});
 
   @override
   State<SettingsTab> createState() => _SettingsTabState();
@@ -53,6 +57,15 @@ class _SettingsTabState extends State<SettingsTab> {
 
   bool get _isOwner => SessionManager().isOwner;
 
+  /// Porta por aba/seção da Gestão (chaves `g_*`). Owner passa direto;
+  /// demais obedecem ao mapa, com defaults por papel.
+  bool _canSection(String key) => MenuAccess.canShow(
+        isOwner: _isOwner,
+        role: SessionManager().userRole,
+        menuKey: key,
+        access: widget.tabAccess,
+      );
+
   /// Chaves que fazem sentido p/ o tipo da clínica atual (espelha o menu:
   /// psico esconde laboratório; dental esconde fluxo terapêutico).
   List<String> get _visibleKeys =>
@@ -62,8 +75,20 @@ class _SettingsTabState extends State<SettingsTab> {
     final saved = _edits[user['id'] as String];
     if (saved != null) return saved;
     final stored = MenuAccess.parse(user['menuAccess']);
-    return {for (final k in _visibleKeys) k: stored[k] ?? true};
+    final role = '${user['role'] ?? ''}';
+    return {
+      for (final k in _visibleKeys)
+        k: stored[k] ?? MenuAccess.defaultFor(role: role, menuKey: k),
+      for (final k in _gestaoKeys)
+        k: stored[k] ?? MenuAccess.defaultFor(role: role, menuKey: k),
+    };
   }
+
+  /// Abas + seções da Gestão editáveis no controle de acesso.
+  List<String> get _gestaoKeys => [
+        ...MenuAccess.gestaoTabKeys,
+        ...MenuAccess.gestaoSectionKeys,
+      ];
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
@@ -215,15 +240,16 @@ class _SettingsTabState extends State<SettingsTab> {
                   Text("Controle de acesso", style: AppTextStyles.h2),
                   const SizedBox(height: 4),
                   const Text(
-                      "O que cada usuário vê no menu da clínica. Sem restrição = tudo visível. O proprietário sempre vê tudo."),
+                      "O que cada usuário vê no menu da clínica. Sem marcação vale o padrão do papel (ex.: dentista não vê Gestão). O proprietário sempre vê tudo."),
                   const SizedBox(height: 12),
-                  if (!_isOwner)
+                  if (!_canSection('g_acesso'))
                     const Text(
                         "Disponível apenas para o proprietário da clínica.",
                         style: TextStyle(fontStyle: FontStyle.italic)),
-                  if (_isOwner && (clinicId == null || clinicId.isEmpty))
+                  if (_canSection('g_acesso') &&
+                      (clinicId == null || clinicId.isEmpty))
                     const Text("Selecione uma clínica."),
-                  if (_isOwner &&
+                  if (_canSection('g_acesso') &&
                       clinicId != null &&
                       clinicId.isNotEmpty)
                     StreamBuilder<List<Map<String, dynamic>>>(
@@ -364,13 +390,13 @@ class _SettingsTabState extends State<SettingsTab> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _pixCtrl,
-                  enabled: _isOwner && !_savingPix,
+                  enabled: _canSection('g_pix') && !_savingPix,
                   decoration: InputDecoration(
                       labelText: "Chave Pix",
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12))),
                 ),
-                if (_isOwner) ...[
+                if (_canSection('g_pix')) ...[
                   const SizedBox(height: 12),
                   _savingPix
                       ? const Center(child: CircularProgressIndicator())
@@ -456,7 +482,7 @@ class _SettingsTabState extends State<SettingsTab> {
                     Expanded(
                       child: TextField(
                         controller: _gradeStartCtrl,
-                        enabled: _isOwner && !_savingGrade,
+                        enabled: _canSection('g_grade') && !_savingGrade,
                         decoration: InputDecoration(
                             labelText: "Início (HH:mm)",
                             border: OutlineInputBorder(
@@ -468,7 +494,7 @@ class _SettingsTabState extends State<SettingsTab> {
                     Expanded(
                       child: TextField(
                         controller: _gradeEndCtrl,
-                        enabled: _isOwner && !_savingGrade,
+                        enabled: _canSection('g_grade') && !_savingGrade,
                         decoration: InputDecoration(
                             labelText: "Fim (HH:mm)",
                             border: OutlineInputBorder(
@@ -493,7 +519,7 @@ class _SettingsTabState extends State<SettingsTab> {
                           DropdownMenuItem(
                               value: 60, child: Text("60min")),
                         ],
-                        onChanged: !_isOwner
+                        onChanged: !_canSection('g_grade')
                             ? null
                             : (v) => setState(
                                 () => _gradeSlot = v ?? 30),
@@ -501,7 +527,7 @@ class _SettingsTabState extends State<SettingsTab> {
                     ),
                   ],
                 ),
-                if (_isOwner) ...[
+                if (_canSection('g_grade')) ...[
                   const SizedBox(height: 12),
                   _savingGrade
                       ? const Center(
@@ -593,6 +619,25 @@ class _SettingsTabState extends State<SettingsTab> {
               dense: true,
               title: Text(MenuAccess.labels[k] ?? k),
               value: access[k] ?? true,
+              onChanged: (v) => setState(() {
+                final map = Map<String, bool>.from(access);
+                map[k] = v ?? true;
+                _edits[uid] = map;
+              }),
+            ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Text("Abas e seções da Gestão",
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          ),
+          for (final k in _gestaoKeys)
+            CheckboxListTile(
+              dense: true,
+              title: Text(MenuAccess.labels[k] ?? k),
+              value: access[k] ??
+                  MenuAccess.defaultFor(
+                      role: '${user['role'] ?? ''}', menuKey: k),
               onChanged: (v) => setState(() {
                 final map = Map<String, bool>.from(access);
                 map[k] = v ?? true;

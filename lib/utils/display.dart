@@ -70,6 +70,24 @@ Color slotCardColor({required bool isOccupied, required bool isSelected}) {
   return Colors.black87;
 }
 
+/// Mês de nascimento ("MM") p/ query de aniversariantes do KPI.
+/// Aceita String dd/MM/yyyy e DateTime; nulo quando não derivável.
+String? birthMonthOf(dynamic birthDate) {
+  if (birthDate == null) return null;
+  if (birthDate is DateTime) {
+    return birthDate.month.toString().padLeft(2, '0');
+  }
+  if (birthDate is String) {
+    final m = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{2,4})$')
+        .firstMatch(birthDate.trim());
+    if (m == null) return null;
+    final month = int.tryParse(m.group(2)!);
+    if (month == null || month < 1 || month > 12) return null;
+    return month.toString().padLeft(2, '0');
+  }
+  return null;
+}
+
 /// Cor do selo do lançamento: pago > pendente > demais (cancelado).
 Color chargeBadgeColor({required bool isPaid, required bool isPending}) {
   if (isPaid) return Colors.green;

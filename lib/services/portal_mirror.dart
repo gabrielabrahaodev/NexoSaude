@@ -10,6 +10,20 @@ import 'package:flutter/foundation.dart';
 const _tokenChars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
+/// Quem tem agenda no portal: papéis clínicos + owner de clínica
+/// psicológica (psicólogo atuante). Puro e testado; usado pelo rebuild
+/// da janela (`ensureWindow`) e replicado em `migrate/slots-backfill.js`.
+bool isPortalProfessional({
+  required String role,
+  required String clinicType,
+}) {
+  final r = role.toLowerCase();
+  if (r.contains('dentist') || r == 'dentista' || r == 'psicologo') {
+    return true;
+  }
+  return clinicType == 'psychology' && r == 'owner';
+}
+
 /// Token opaco de 32 chars (URL-safe). Quem tem o link, vê o espelho.
 String newPortalToken() {
   final rnd = Random.secure();
@@ -148,8 +162,7 @@ List<String> dailyGrade({String start = '08:30', String end = '20:00', int slot 
 }
 
 /// Lê a grade da clínica (com fallback para o default).
-Future<List<String>> clinicGrade(String clinicId) async {
-  try {
+Future<List<String>> clinicGrade(String clinicId) async {  try {
     final doc = await FirebaseFirestore.instance
         .collection('clinics')
         .doc(clinicId)
@@ -160,8 +173,22 @@ Future<List<String>> clinicGrade(String clinicId) async {
       end: '${cfg['end'] ?? '20:00'}',
       slot: (cfg['slot'] as num?)?.toInt() ?? 30,
     );
+    } catch (_) {
+      return dailyGrade();
+    }
+}
+
+/// Tipo da clínica (`dental` por fallback). Usado para incluir o
+/// owner-psicólogo nos profissionais do portal (1 leitura).
+Future<String> clinicTypeOf(String clinicId) async {
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('clinics')
+        .doc(clinicId)
+        .get();
+    return '${doc.data()?['type'] ?? 'dental'}';
   } catch (_) {
-    return dailyGrade();
+    return 'dental';
   }
 }
 
@@ -432,17 +459,16 @@ class PortalMirrorSync {
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 14));
     final grade = await clinicGrade(clinicId);
+    final clinicType = await clinicTypeOf(clinicId);
     final users = await _db
         .collection('users')
         .where('allowedClinics', arrayContains: clinicId)
         .get();
     final dentists = users.docs
-        .where((d) {
-          final r = '${(d.data())['role'] ?? ''}'.toLowerCase();
-          return r.contains('dentist') ||
-              r == 'dentista' ||
-              r == 'psicologo';
-        })
+        .where((d) => isPortalProfessional(
+              role: '${(d.data())['role'] ?? ''}',
+              clinicType: clinicType,
+            ))
         .map((d) => d.id)
         .toList();
     if (dentists.isEmpty) return;

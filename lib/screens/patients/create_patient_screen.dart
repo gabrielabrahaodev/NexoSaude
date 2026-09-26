@@ -122,6 +122,7 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
         'cpf': _cpfController.text.trim(),
         'rg': _rgController.text.trim(),
         'birthDate': _birthController.text.trim(),
+        'birthMonth': birthMonthOf(_birthController.text.trim()),
         'address': _addressController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'status': isPsy ? _therapeuticStatus.storage : 'Ativo',

@@ -38,5 +38,6 @@ Sem Functions, o portal lê espelhos: `portal/{token}` (3 sessões + top-3 atras
 
 - Form psico grava em batch fora do `AppointmentService`: `_generateAppointments` e `_cancelSchedule` fazem rebuild via `PortalMirrorSync.patient()` (sem isso o portal não recebe psicologia).
 - Rebuild exclui `Cancelado` das próximas (igual ao delta `removeSession`); query com limit 100 p/ cobrir pacote anual (~52 sessões).
+- Profissionais do espelho (`isPortalProfessional`, testado): papéis clínicos + owner em clínica psicológica (psicólogo atuante).
 
 Ver [[portal-page]], [[remarcar-dialog]], [[atendimento]].

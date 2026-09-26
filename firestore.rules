@@ -103,9 +103,24 @@ service cloud.firestore {
     }
 
     // B. CLÍNICAS (trialEndsAt + blockedByAdmin: só superadmin escreve)
+    // Operacional (pixKey/gradeConfig): staff da clínica COM a flag
+    // g_pix/g_grade no mapa (controle de acesso); resto segue owner.
     match /clinics/{clinicId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner() || isSuperAdmin();
+      allow create, delete: if isOwner() || isSuperAdmin();
+      allow update: if isOwner() || isSuperAdmin() ||
+        (hasClinicAccess(clinicId) && _clinicOpAllowed());
+    }
+
+    function _clinicOpAllowed() {
+      let affected =
+        request.resource.data.diff(resource.data).affectedKeys();
+      let u = get(
+        /databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let flags = 'menuAccess' in u ? u.menuAccess : {};
+      return affected.hasOnly(['pixKey', 'gradeConfig', 'updatedAt']) &&
+        (!('pixKey' in affected) || flags['g_pix'] == true) &&
+        (!('gradeConfig' in affected) || flags['g_grade'] == true);
     }
 
     // B2. ASSINATURA DA PLATAFORMA (cobrança por usuário do owner).

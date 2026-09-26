@@ -171,4 +171,31 @@ void main() {
       expect(out.length, 1);
     });
   });
+
+  group('isPortalProfessional (owner-psicólogo)', () {
+    test('papeis clínicos passam nos dois tipos', () {
+      for (final t in ['dental', 'psychology']) {
+        expect(isPortalProfessional(role: 'dentista', clinicType: t), isTrue);
+        expect(isPortalProfessional(role: 'psicologo', clinicType: t), isTrue);
+        expect(isPortalProfessional(role: 'Dentist', clinicType: t), isTrue);
+      }
+    });
+
+    test('owner entra só na psicologia', () {
+      expect(
+          isPortalProfessional(role: 'owner', clinicType: 'psychology'),
+          isTrue);
+      expect(isPortalProfessional(role: 'owner', clinicType: 'dental'),
+          isFalse);
+    });
+
+    test('recepção e afins nunca entram', () {
+      for (final t in ['dental', 'psychology']) {
+        expect(
+            isPortalProfessional(role: 'receptionist', clinicType: t),
+            isFalse);
+        expect(isPortalProfessional(role: 'owner ', clinicType: t), isFalse);
+      }
+    });
+  });
 }

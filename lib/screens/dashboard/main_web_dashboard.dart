@@ -114,9 +114,10 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   }
 
   /// Visibilidade do item de menu p/ o usuário atual (aba Configurações).
-  /// Owner ignora restrições (ver `MenuAccess`).
+  /// Owner vê tudo (menos Master); defaults por papel em `MenuAccess`.
   bool _canShow(String menuKey) => MenuAccess.canShow(
         isOwner: _userRole == 'owner',
+        role: _userRole,
         menuKey: menuKey,
         access: _menuAccess,
       );
@@ -168,6 +169,12 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     SessionManager().clear();
     ThemeController().clearUser(); // volta ao tema do aparelho
     await FirebaseAuth.instance.signOut();
+    // PC compartilhado: limpa o cache local para o próximo login não
+    // ver resquício do usuário anterior. Best-effort, nunca trava o logout.
+    try {
+      await FirebaseFirestore.instance.terminate();
+      await FirebaseFirestore.instance.clearPersistence();
+    } catch (_) {}
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const AuthWrapper()),
@@ -416,21 +423,23 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact, badge: _avisoStream),
                 ],
 
-                // DONO
-                if (_userRole == 'owner') ...[
+                // DONO (configurável por item; defaults: só owner).
+                if (_canShow('clinicas') || _canShow('funcionarios')) ...[
                   const Divider(height: 30, thickness: 1),
-                  _buildMenuItem(8, "Clínicas", Icons.store_mall_directory, highlightColor, primaryColor, isCompact),
-                  _buildMenuItem(9, "Funcionários", Icons.badge_outlined, highlightColor, primaryColor, isCompact),
+                  if (_canShow('clinicas'))
+                    _buildMenuItem(8, "Clínicas", Icons.store_mall_directory, highlightColor, primaryColor, isCompact),
+                  if (_canShow('funcionarios'))
+                    _buildMenuItem(9, "Funcionários", Icons.badge_outlined, highlightColor, primaryColor, isCompact),
                 ],
 
-                // MASTER (dono da plataforma)
-                if (_userRole == 'superadmin') ...[
+                // MASTER (dono da plataforma; opt-out no mapa).
+                if (_canShow('master')) ...[
                   const Divider(height: 30, thickness: 1),
                   _buildMenuItem(13, "Master", Icons.admin_panel_settings_outlined, highlightColor, primaryColor, isCompact),
                 ],
 
-                // GESTÃO
-                if ((_userRole == 'owner' || _userRole == 'recepcionista') && _canShow('gestao')) ...[
+                // GESTÃO (liberável por usuário, inclusive dentista).
+                if (_canShow('gestao')) ...[
                   if (_userRole != 'owner') const Divider(height: 30, thickness: 1),
                   _buildMenuItem(10, "Gestão", Icons.settings_applications, highlightColor, primaryColor, isCompact),
                 ],

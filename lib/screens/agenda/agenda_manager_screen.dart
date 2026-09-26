@@ -316,10 +316,11 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => StatefulBuilder(
         builder: (context, setStateModal) {
-          return Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          return SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -418,6 +419,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   },
                 ),
               ],
+            ),
             ),
           );
         }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'ui/app_theme.dart';
@@ -17,6 +18,13 @@ void main() async {
   
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Cache local (IndexedDB no web): streams passam a custar só o delta
+  // após a 1ª carga. Leituras críticas (ex.: getBusySlots) seguem no
+  // servidor. Configurar antes de qualquer uso do Firestore.
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
   );
 
   await initializeDateFormatting('pt_BR', null); 

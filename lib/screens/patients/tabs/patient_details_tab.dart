@@ -94,6 +94,7 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
           'cpf': _cpfCtrl.text.trim(),
           'rg': _rgCtrl.text.trim(),
           'birthDate': _birthCtrl.text.trim(),
+          'birthMonth': birthMonthOf(_birthCtrl.text.trim()),
           'address': _addressCtrl.text.trim(),
           'searchKey': _nameCtrl.text.trim().toLowerCase(),
         });

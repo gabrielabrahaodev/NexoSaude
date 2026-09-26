@@ -89,4 +89,20 @@ void main() {
       );
     });
   });
+
+  group('birthMonthOf', () {
+    test('dd/MM/yyyy vira MM', () {
+      expect(birthMonthOf('22/09/1990'), '09');
+      expect(birthMonthOf('5/3/2000'), '03');
+      expect(birthMonthOf(DateTime(2000, 1, 15)), '01');
+    });
+
+    test('nulo e inválido dão null', () {
+      expect(birthMonthOf(null), isNull);
+      expect(birthMonthOf(''), isNull);
+      expect(birthMonthOf('abc'), isNull);
+      expect(birthMonthOf('13/13/2000'), isNull);
+      expect(birthMonthOf(123), isNull);
+    });
+  });
 }
