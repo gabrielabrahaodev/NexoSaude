@@ -1,13 +1,14 @@
 // ⚠️ PERIGO (LGPD linha dura, pós sweep 09/2026): este script AUTOCRIA
 // token para quem não tem — rodar full RESSUSCITA os 415 links apagados.
-// Uso normal: Temp/opencode/portal-rebuild-scoped.js (só quem já tem token).
+// Uso normal: node migrate/portal-backfill.js --scoped (SÓ quem já tem token).
 // Para rodar este mesmo assim: node migrate/portal-backfill.js --full --yes
 const admin = require('firebase-admin');
 const sa = require('./new-key.json');
 
-if (!(process.argv.includes('--full') && process.argv.includes('--yes'))) {
+const scoped = process.argv.includes('--scoped');
+if (!scoped && !(process.argv.includes('--full') && process.argv.includes('--yes'))) {
   console.error('BLOQUEADO: backfill full autocria tokens sem aceite.');
-  console.error('Use Temp/opencode/portal-rebuild-scoped.js (mirado).');
+  console.error('Use: node migrate/portal-backfill.js --scoped (só quem já tem token).');
   console.error('Se tem certeza: node migrate/portal-backfill.js --full --yes');
   process.exit(2);
 }
@@ -27,6 +28,7 @@ const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const pdata = p.data();
     let token = pdata.portalToken || '';
     if (!token) {
+      if (scoped) continue; // mirado: nunca cria token
       token = [...Array(32)]
         .map(() => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 62)])
         .join('');
@@ -64,7 +66,9 @@ const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const amount = Number(m.amount || 0);
       const paid = Number(m.paidAmount || 0);
       const due = m.dueDate ? m.dueDate.toDate() : null;
-      if (paid < amount && due && due < today) {
+      const st = String(m.status || '').toLowerCase();
+      if (st === 'cancelado' || st === 'cancelled' || st.includes('substitu')) return;
+      if (paid < amount && due) {
         open.push({
           id: d.id,
           title: String(m.title || 'Lançamento'),

@@ -203,31 +203,32 @@
             html += '</div>';
         }
 
-        // Só atrasos (vencimento < hoje), ordenado, top 3. Vale com espelho antigo.
+        // 3 mais antigas em aberto (vencidas ou não), ordenado, top 3.
         const now0 = new Date(); now0.setHours(0, 0, 0, 0);
         const dueOf = (x) => x.dueDate && x.dueDate.toDate ? x.dueDate.toDate() : (x.dueDate ? new Date(x.dueDate) : null);
         const debts = (mirror.debts || [])
             .filter((x) => {
                 const d = dueOf(x);
-                if (!d || !(d < now0)) return false;
+                if (!d) return false;
                 const st = String(x.status || '').toLowerCase();
-                if (st === 'cancelado' || st === 'cancelled' || st === 'pago' || st === 'paid' || st === 'quitado') return false;
+                if (st === 'cancelado' || st === 'cancelled' || st.includes('substitu') || st === 'pago' || st === 'paid' || st === 'quitado') return false;
                 const paid = Number(x.paidAmount || 0), amount = Number(x.amount || 0);
                 return !(amount > 0 && paid >= amount);
             })
             .sort((a, b) => dueOf(a) - dueOf(b))
             .slice(0, 3);
-        html += '<h2 class="sec">Em atraso <span class="n">' + debts.length + '</span></h2>';
-        if (!debts.length) html += '<div class="card"><p style="color:var(--mut);font-size:13px;margin:0">Nenhum pagamento em atraso. 🎉</p></div>';
+        html += '<h2 class="sec">A receber <span class="n">' + debts.length + '</span></h2>';
+        if (!debts.length) html += '<div class="card"><p style="color:var(--mut);font-size:13px;margin:0">Nenhum pagamento em aberto. 🎉</p></div>';
         let total = 0;
         for (const x of debts) {
             total += Number(x.amount || 0);
             const dd = dueOf(x);
+            const isLate = dd < now0;
             const lateDays = Math.floor((now0 - dd) / 86400000);
             const due = dd.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
             html += '<div class="card"><div class="debt"><div class="info"><div style="font-weight:700">' + esc(x.title)
-                + '<span class="late">há ' + lateDays + 'd</span></div>'
-                + '<div style="font-size:12px;color:var(--mut)">venceu ' + due + '</div></div>'
+                + (isLate ? '<span class="late">há ' + lateDays + 'd</span>' : '') + '</div>'
+                + '<div style="font-size:12px;color:var(--mut)">' + (isLate ? 'venceu ' : 'vence ') + due + '</div></div>'
                 + '<div class="val">' + fmtBRL(x.amount) + '</div></div>'
                 + '<div class="actions"><button class="btn-ghost" onclick="togglePix(\'' + x.id + '\')">Pagar com Pix</button></div>'
                 + '<div id="pix-' + x.id + '" style="display:none;">'
@@ -243,9 +244,9 @@
         if (debts.length) {
             const fresh = mirror && ('debtsTotal' in mirror);
             const grand = fresh ? Number(mirror.debtsTotal || total) : total;
-            html += '<p style="font-size:13px;color:var(--mut)">Total em atraso: <b style="color:var(--txt)">' + fmtBRL(grand) + '</b></p>';
+            html += '<p style="font-size:13px;color:var(--mut)">Total em aberto: <b style="color:var(--txt)">' + fmtBRL(grand) + '</b></p>';
             const count = Number(mirror.debtsCount || debts.length);
-            if (fresh && count > debts.length) html += '<p style="font-size:13px;color:var(--mut)">+ mais ' + (count - debts.length) + ' em atraso. Fale com a recepção.</p>';
+            if (fresh && count > debts.length) html += '<p style="font-size:13px;color:var(--mut)">+ mais ' + (count - debts.length) + ' em aberto. Fale com a recepção.</p>';
         }
         content.innerHTML = html;
         const warned = ((mirror.avisoPagamento && mirror.avisoPagamento.ids) || []).concat(avisoLocal);

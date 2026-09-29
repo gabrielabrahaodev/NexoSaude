@@ -49,7 +49,7 @@ void main() {
       expect(ids, ['s1', 's2']);
     });
 
-    test('sem vencimento ou futuro não aparece (só atrasos)', () {
+    test('sem vencimento não aparece; futuro aparece (3 mais antigas)', () {
       final debts = [
         {'id': 'd1', 'title': 'Sessão', 'amount': 300.0, 'paidAmount': 0.0},
         {'id': 'd2', 'title': 'Futuro', 'amount': 200.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 25)},
@@ -57,8 +57,10 @@ void main() {
       final m = buildPortalMirror(
           clinicId: 'cid1',
           sessions: [], debts: debts, pixKey: 'pix@clinica', now: now);
-      expect((m['debts'] as List), isEmpty);
-      expect(m['debtsCount'], 0);
+      final ids =
+          (m['debts'] as List).map((d) => (d as Map)['id']).toList();
+      expect(ids, ['d2']);
+      expect(m['debtsCount'], 1);
     });
 
     test('espelho leva clinicName p/ QR do Pix', () {
@@ -72,13 +74,15 @@ void main() {
       expect(m['clinicName'], 'Clínica Léo');
     });
 
-    test('top 3 atrasos por vencimento + totais', () {
+    test('top 3 em aberto por vencimento + totais', () {
       final debts = [
         {'id': 'o1', 'title': 'A', 'amount': 300.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 10)},
         {'id': 'o2', 'title': 'B', 'amount': 100.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 15)},
         {'id': 'q1', 'title': 'Q', 'amount': 200.0, 'paidAmount': 200.0, 'dueDate': DateTime(2026, 9, 5)},
         {'id': 'o3', 'title': 'C', 'amount': 300.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 5)},
         {'id': 'f1', 'title': 'F', 'amount': 300.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 25)},
+        {'id': 'c1', 'title': 'X', 'amount': 500.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 1), 'status': 'cancelado'},
+        {'id': 's1', 'title': 'Y', 'amount': 500.0, 'paidAmount': 500.0, 'dueDate': DateTime(2026, 9, 1), 'status': 'substituido (parcelado)'},
       ];
       final m = buildPortalMirror(
           clinicId: 'cid1',
@@ -86,8 +90,8 @@ void main() {
       final ids =
           (m['debts'] as List).map((d) => (d as Map)['id']).toList();
       expect(ids, ['o3', 'o1', 'o2']);
-      expect(m['debtsTotal'], 700.0);
-      expect(m['debtsCount'], 3);
+      expect(m['debtsTotal'], 1000.0);
+      expect(m['debtsCount'], 4);
     });
   });
 

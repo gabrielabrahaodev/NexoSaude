@@ -53,14 +53,18 @@ Map<String, dynamic> buildPortalMirror({
       .toList()
     ..sort((a, b) =>
         (a['date'] as DateTime).compareTo(b['date'] as DateTime));
-  // Portal mostra SÓ atrasos (vencimento < hoje), igual ao combinado:
-  // sem data ou futuro não entra; quitado também não.
-  final today = DateTime(now.year, now.month, now.day);
+  // Portal mostra as 3 mais antigas EM ABERTO (vencidas ou não),
+  // ordenadas por vencimento: sem data, quitada, cancelada ou
+  // substituída não entra.
   final open = debts.where((d) {
     final amount = (d['amount'] as num).toDouble();
     final paid = (d['paidAmount'] as num?)?.toDouble() ?? 0.0;
     final due = d['dueDate'] as DateTime?;
-    return paid < amount && due != null && due.isBefore(today);
+    final st = '${d['status'] ?? ''}'.toLowerCase();
+    if (st == 'cancelado' ||
+        st == 'cancelled' ||
+        st.contains('substitu')) return false;
+    return paid < amount && due != null;
   }).toList();
   // Igual à aba Pagamentos: próximos vencimentos primeiro (sem data por último).
   open.sort((a, b) {
