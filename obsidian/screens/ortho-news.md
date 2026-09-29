@@ -1,4 +1,4 @@
----
+﻿---
 title: Ortho News
 tags:
   - nexosaude
@@ -14,7 +14,7 @@ description: Feed de notícias de ortodontia com tradução e cache.
 
 ## O que é
 
-Lista `OrthoArticle` via `NewsService.getLatestOrthoNews` (Google Alerts + backup, traduzido, cache 15min).
+Lista `OrthoArticle` via `NewsService.getLatestOrthoNews` (Europe PMC + Semantic Scholar por tema da clínica, traduzido, cache 60min).
 
 ## Quando usar
 
