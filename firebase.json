@@ -1,16 +1,16 @@
-{
+﻿{
   "flutter": {
     "platforms": {
       "android": {
         "default": {
-          "projectId": "odontocontrole-1c701",
+          "projectId": "nexosaude",
           "appId": "1:698345542344:android:26c162f16d8768a93d8bfd",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "odontocontrole-1c701",
+          "projectId": "nexosaude",
           "configurations": {
             "android": "1:698345542344:android:26c162f16d8768a93d8bfd",
             "ios": "1:698345542344:ios:77c6a6228e2eac3e3d8bfd",

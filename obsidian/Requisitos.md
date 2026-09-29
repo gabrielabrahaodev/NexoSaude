@@ -1,4 +1,4 @@
----
+﻿---
 title: Requisitos e Regras de Negócio
 tags:
   - nexosaude
@@ -132,7 +132,7 @@ Bloqueado (agendamento sintético)
 - Referência: `agenda_manager_screen.dart` (`_showFinishAppointmentDialog`).
 
 ### RN-15 - Confirmação via WhatsApp
-- Link público `https://odontocontrole-1c701.web.app/confirmar.html?id=<apptId>` permite update de status para `'Confirmado'`.
+- Link público `https://nexosaude.web.app/confirmar.html?id=<apptId>` permite update de status para `'Confirmado'`.
 - Pré-requisito: telefone do paciente com ≥10 dígitos e prefixo DDI `55`.
 - Referência: `agenda_manager_screen.dart:277-306,546-554`, `firestore.rules`.
 

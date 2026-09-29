@@ -1,4 +1,4 @@
-# OdontoControle
+# NexoSaúde
 
 Sistema multi-clínica (odontologia, psicologia) em Flutter + Firebase:
 agenda, pacientes, prontuário, financeiro, cobrança via WhatsApp e relatórios.
