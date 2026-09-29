@@ -70,7 +70,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           elevation: 0,
           iconTheme: IconThemeData(color: AppColors.textPrimary),
           title: Text(widget.patientName, style: AppTextStyles.h2),
-          bottom: TabBar(
+          centerTitle: true,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(kTextTabBarHeight),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: TabBar(
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
@@ -87,33 +93,41 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               const Tab(text: "PAGAMENTOS"),
             ],
           ),
-        ),
-        body: Column(
-          children: [
-            _HeaderSummaryRow(patientId: widget.patientId),
-            
-            PatientSmartContextCard(patientId: widget.patientId),
-
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            
-            Expanded(
-              child: TabBarView(
-                children: [
-                  PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
-                  AnamnesisTab(patientId: widget.patientId),
-                  if (caps.canShowBudgets)
-                    BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
-                  TreatmentsTab(patientName: widget.patientName, patientId: widget.patientId),
-                  ClinicalRecordTab(patientName: widget.patientName, patientId: widget.patientId),
-                  if (caps.canShowOdontogram) _buildVisualTab(),
-                  if (caps.canShowLab) PatientLabTab(patientId: widget.patientId),
-                  PatientDocsTab(patientId: widget.patientId),
-                  PatientFinancialTab(patientId: widget.patientId),
-                ],
+                ),
               ),
             ),
-          ],
+          ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Column(
+              children: [
+                _HeaderSummaryRow(patientId: widget.patientId),
+
+                PatientSmartContextCard(patientId: widget.patientId),
+
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
+                      AnamnesisTab(patientId: widget.patientId),
+                      if (caps.canShowBudgets)
+                        BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
+                      TreatmentsTab(patientName: widget.patientName, patientId: widget.patientId),
+                      ClinicalRecordTab(patientName: widget.patientName, patientId: widget.patientId),
+                      if (caps.canShowOdontogram) _buildVisualTab(),
+                      if (caps.canShowLab) PatientLabTab(patientId: widget.patientId),
+                      PatientDocsTab(patientId: widget.patientId),
+                      PatientFinancialTab(patientId: widget.patientId),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
