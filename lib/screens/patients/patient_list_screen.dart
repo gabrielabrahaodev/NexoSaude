@@ -41,11 +41,12 @@ class _PatientListScreenState extends State<PatientListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background, 
       appBar: AppBar(
-        title: const Text("Meus Pacientes"),
+        title: const Text("Meus Pacientes",
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

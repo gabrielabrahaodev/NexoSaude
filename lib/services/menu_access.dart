@@ -79,6 +79,7 @@ class MenuAccess {
     'g_pix': 'Gestão: Pix da clínica',
     'g_grade': 'Gestão: Grade de horários',
     'g_acesso': 'Gestão: Controle de acesso',
+    'g_clinica': 'Gestão: Dados da clínica',
   };
 
   /// Abas da Gestão filtráveis (ordem = TabBar).
@@ -95,6 +96,7 @@ class MenuAccess {
     'g_pix',
     'g_grade',
     'g_acesso',
+    'g_clinica',
   ];
 
   /// Pode exibir o item? Puro e testado.
@@ -137,6 +139,7 @@ class MenuAccess {
       case 'g_pix':
       case 'g_grade':
       case 'g_acesso':
+      case 'g_clinica':
         return _normRole(role) == 'owner';
       default:
         // Itens operacionais + abas da Gestão: visíveis por padrão.

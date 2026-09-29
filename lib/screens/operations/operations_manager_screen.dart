@@ -110,7 +110,7 @@ class _OperationsManagerScreenState extends State<OperationsManagerScreen>
             style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.surface,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         bottom: tabs.isEmpty
             ? null
             : TabBar(

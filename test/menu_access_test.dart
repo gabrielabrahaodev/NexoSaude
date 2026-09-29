@@ -197,12 +197,12 @@ void main() {
       );
     });
 
-    test('8 sub-chaves com rótulo', () {
+    test('9 sub-chaves com rótulo', () {
       final all = [
         ...MenuAccess.gestaoTabKeys,
         ...MenuAccess.gestaoSectionKeys
       ];
-      expect(all.length, 8);
+      expect(all.length, 9);
       for (final k in all) {
         expect(MenuAccess.labels[k]?.isNotEmpty, isTrue, reason: k);
       }

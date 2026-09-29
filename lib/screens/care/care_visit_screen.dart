@@ -16,15 +16,32 @@ import '../../utils/display.dart';
 /// Ficha de atendimento em 3 blocos (spec 3.1): evolução rápida,
 /// cobrança e próxima sessão. Glue fino: regras puras vivem em
 /// `care_day.dart` (testado); escritas usam os services existentes.
-class CareVisitScreen extends StatefulWidget {
+///
+/// `CareVisitScreen` = rota push (compat). `CareVisitPanel` = mesmo
+/// conteúdo embutível (modal do Meu dia, sem nova tela).
+class CareVisitScreen extends StatelessWidget {
   final AppointmentModel appointment;
   const CareVisitScreen({super.key, required this.appointment});
 
   @override
-  State<CareVisitScreen> createState() => _CareVisitScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: Text(appointment.patientName)),
+      body: CareVisitPanel(appointment: appointment),
+    );
+  }
 }
 
-class _CareVisitScreenState extends State<CareVisitScreen> {
+class CareVisitPanel extends StatefulWidget {
+  final AppointmentModel appointment;
+  const CareVisitPanel({super.key, required this.appointment});
+
+  @override
+  State<CareVisitPanel> createState() => _CareVisitPanelState();
+}
+
+class _CareVisitPanelState extends State<CareVisitPanel> {
   final _detailsCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   String? _template;
@@ -299,12 +316,10 @@ class _CareVisitScreenState extends State<CareVisitScreen> {
     final a = widget.appointment;
     final templates =
         attendanceTemplates(SessionManager().clinicType);
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(a.patientName)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+          16, 4, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+      children: [
           Text(
             "${formatDateTimeShort(a.date)} • ${a.procedure} • ${a.status}",
             style: AppTextStyles.subtitle,
@@ -545,7 +560,6 @@ class _CareVisitScreenState extends State<CareVisitScreen> {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 }

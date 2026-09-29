@@ -8,6 +8,7 @@ import '../../services/care_day.dart';
 import '../../services/session_manager.dart';
 import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
+import '../../widgets/status_chip.dart';
 import 'care_visit_screen.dart';
 import 'remarcar_dialog.dart';
 
@@ -67,8 +68,7 @@ class _CareDayScreenState extends State<CareDayScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final clinicId = SessionManager().currentClinicId;
+  Widget build(BuildContext context) {    final clinicId = SessionManager().currentClinicId;
     if (clinicId == null) {
       return const Center(child: Text("Erro: Sessão inválida"));
     }
@@ -79,7 +79,11 @@ class _CareDayScreenState extends State<CareDayScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-            "Meu dia — Hoje, ${formatDateShort(bounds.start)}"),
+            "Meu dia • Hoje, ${formatDateShort(bounds.start)}",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -150,49 +154,168 @@ class _CareDayScreenState extends State<CareDayScreen> {
                   final isRemarcar =
                       a.status.toLowerCase() == 'remarcar' &&
                           a.proposedDate != null;
-                  return Card(
-                    color: isRemarcar
-                        ? Colors.orange.withValues(alpha: 0.08)
-                        : null,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: AppColors.primarySoft,
-                        child: Text(
-                          DateFormat('HH:mm').format(a.date),
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary),
-                        ),
-                      ),
-                      title: Text(a.patientName,
-                          style:
-                              const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(
-                          "${a.procedure}$dentistLabel • ${a.status}${paid ? ' • Pago' : ''}${isRemarcar ? ' • ${formatDateTimeShort(a.proposedDate!)}' : ''}"),
-                      trailing: Icon(Icons.chevron_right,
-                          color: isRemarcar
-                              ? Colors.orange
-                              : _statusColor(a)),
-                      onTap: () {
-                        if (isRemarcar) {
-                          showRemarcarDialog(context, a);
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    CareVisitScreen(appointment: a)),
-                          );
-                        }
-                      },
-                    ),
+                  return _VisitCard(
+                    appt: a,
+                    paid: paid,
+                    dentistLabel: dentistLabel,
+                    isRemarcar: isRemarcar,
+                    accent: isRemarcar ? Colors.orange : _statusColor(a),
+                    onOpen: () {
+                      if (isRemarcar) {
+                        showRemarcarDialog(context, a);
+                      } else {
+                        _openVisitSheet(context, a);
+                      }
+                    },
                   );
                 },
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+/// Ficha em modal (sem nova tela): 92% da altura, com alça e fechar.
+void _openVisitSheet(BuildContext context, AppointmentModel a) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (ctx) => SizedBox(
+      height: MediaQuery.of(ctx).size.height * 0.92,
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(2))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                      "${a.patientName} • ${DateFormat('HH:mm').format(a.date)}",
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: "Fechar",
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(child: CareVisitPanel(appointment: a)),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Card translúcido do atendimento: vidro fosco leve (sem BackdropFilter
+/// por custo em lista), acento na cor do status + selo.
+class _VisitCard extends StatelessWidget {
+  final AppointmentModel appt;
+  final bool paid;
+  final String dentistLabel;
+  final bool isRemarcar;
+  final Color accent;
+  final VoidCallback onOpen;
+
+  const _VisitCard({
+    required this.appt,
+    required this.paid,
+    required this.dentistLabel,
+    required this.isRemarcar,
+    required this.accent,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final a = appt;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface
+            .withValues(alpha: AppColors.isDark ? 0.72 : 0.92),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+              color: accent.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        DateFormat('HH:mm').format(a.date),
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(a.patientName,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    StatusChip(label: a.status, color: accent),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                          "${a.procedure}$dentistLabel${paid ? ' • Pago' : ''}${isRemarcar ? ' • ${formatDateTimeShort(a.proposedDate!)}' : ''}",
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    Icon(Icons.open_in_full,
+                        size: 16, color: AppColors.textSecondary),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

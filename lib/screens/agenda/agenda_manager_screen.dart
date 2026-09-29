@@ -1088,7 +1088,13 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text("Agenda Semanal")),
+      appBar: AppBar(
+        title: const Text("Agenda Semanal",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: true,
+      ),
       
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showManagementMenu,
@@ -1102,12 +1108,13 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           if (_shouldShowFilter)
             Container(
               width: double.infinity, margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
               child: _isLoadingDentists 
                 ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
                 : DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
+                      isDense: true,
                       isExpanded: true, value: _selectedDentistId,
                       items: _dentistItems,
                       onChanged: (val) => setState(() => _selectedDentistId = val),
@@ -1120,7 +1127,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 6))]),
+              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 6))]),
               child: Row(children: [
                 IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeWeek(-7)), 
                 Expanded(child: Column(children: [
@@ -1218,6 +1225,36 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     );
   }
 
+  /// Nome do paciente na célula: até 2 linhas; se nem assim couber,
+  /// reduz proporcionalmente (nunca estoura a célula/linha de 32px).
+  Widget _buildCellLabel(
+      IconData? icon, Color mainColor, String name, double maxWidth) {
+    final w = maxWidth > 24 ? maxWidth - 8 : maxWidth;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+        width: w,
+        child: RichText(
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          text: TextSpan(
+              style: const TextStyle(fontSize: 12, fontFamily: 'Roboto'),
+              children: [
+                if (icon != null)
+                  WidgetSpan(child: Icon(icon, size: 12, color: mainColor)),
+                TextSpan(
+                    text: " $name",
+                    // Negrito adaptativo: branco no escuro, escuro no claro.
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+              ]),
+        ),
+      ),
+    );
+  }
+
   // --- LÓGICA DE VISUALIZAÇÃO DA CÉLULA (COM ORDENAÇÃO E DIVISÃO) ---
   Widget _buildCell(BuildContext context, DateTime date, String time, List<AppointmentModel> slotAppts, double rowHeight) {
     
@@ -1265,7 +1302,11 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
               mainColor = AppColors.primary;
             }
 
-            final bgColor = isBlocked ? Colors.grey[300] : mainColor.withValues(alpha: 0.10);
+            final bgColor = isBlocked
+                ? (AppColors.isDark
+                    ? Colors.grey.withValues(alpha: 0.35)
+                    : Colors.grey[300])
+                : mainColor.withValues(alpha: 0.10);
 
             // Verifica se é o bloco inicial do horário para exibir o nome
             String startKey = "${appt.date.year}-${appt.date.month}-${appt.date.day}-${appt.date.hour.toString().padLeft(2, '0')}:${appt.date.minute.toString().padLeft(2, '0')}";
@@ -1274,7 +1315,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
             // Expanded divide o espaço igualmente (2 eventos = 50% cada)
             return Expanded(
-              child: InkWell(
+              child: LayoutBuilder(
+                builder: (ctx, c) => InkWell(
                 onTap: () => _showAppointmentOptions(appt, activeCount),
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 1), 
@@ -1285,17 +1327,10 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   alignment: Alignment.centerLeft,
-                  child: isStart ? RichText(
-                    maxLines: 1, 
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(style: const TextStyle(fontSize: 10, fontFamily: 'Roboto'), children: [
-                      if (icon != null) WidgetSpan(child: Icon(icon, size: 10, color: mainColor)),
-                      TextSpan(
-                        text: " ${appt.patientName}", 
-                        style: TextStyle(fontWeight: FontWeight.w700, color: mainColor)
-                      ),
-                    ]),
-                  ) : null,
+                  child: isStart
+                      ? _buildCellLabel(icon, mainColor, appt.patientName, c.maxWidth)
+                      : null,
+                ),
                 ),
               ),
             );
@@ -1351,11 +1386,26 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 2),
           alignment: Alignment.centerLeft,
-          child: isStart ? Text(
-            "${cancelledAppt.patientName}", 
-            style: const TextStyle(fontSize: 9, color: Colors.red, decoration: TextDecoration.lineThrough),
-            overflow: TextOverflow.ellipsis,
-          ) : null,
+          child: isStart
+              ? LayoutBuilder(
+                  builder: (ctx, c) => FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: c.maxWidth > 8 ? c.maxWidth - 4 : c.maxWidth,
+                      child: Text(
+                        cancelledAppt!.patientName,
+                        style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.red,
+                            decoration: TextDecoration.lineThrough),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                )
+              : null,
         ),
       );
     }

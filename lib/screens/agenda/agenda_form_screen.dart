@@ -8,7 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/session_manager.dart';
 import '../../services/appointment_service.dart';
-import '../../services/patient_service.dart'; 
+import '../../services/patient_service.dart';
+import '../../services/portal_mirror.dart'; 
 import '../../models/appointment_model.dart';
 import '../../models/patient_model.dart';
 import '../../ui/app_theme.dart';
@@ -34,6 +35,9 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   
   // Lista de horários forçados (clicados na tela anterior)
   List<String> _forcedAvailableTimes = [];
+
+  // Aceite LGPD no cadastro rápido (default desmarcado).
+  bool _lgpdQuickConsent = false;
 
   final _procedureCtrl = TextEditingController();
   
@@ -205,103 +209,128 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   void _showNewPatientModal() {
     _nameNewCtrl.clear(); _phoneNewCtrl.clear(); _cpfNewCtrl.clear();
     _rgNewCtrl.clear(); _birthNewCtrl.clear(); _addressNewCtrl.clear();
+    _lgpdQuickConsent = false;
 
     final formKeyModal = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("Novo Paciente Rápido"),
-        content: SizedBox(
-          width: 500,
-          child: SingleChildScrollView(
-            child: Form(
-              key: formKeyModal,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: _nameNewCtrl,
-                    decoration: const InputDecoration(labelText: "Nome *", border: OutlineInputBorder()),
-                    validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _phoneNewCtrl,
-                    inputFormatters: [maskPhone],
-                    decoration: const InputDecoration(labelText: "Telefone", border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
+      builder: (context) => StatefulBuilder(
+        builder: (ctx, setModal) {
+          return AlertDialog(
+            title: const Text("Novo Paciente Rápido"),
+            content: SizedBox(
+              width: 500,
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKeyModal,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(child: TextFormField(controller: _rgNewCtrl, decoration: const InputDecoration(labelText: "RG", border: OutlineInputBorder()))),
-                      const SizedBox(width: 10),
-                      Expanded(child: TextFormField(controller: _cpfNewCtrl, inputFormatters: [maskCPF], decoration: const InputDecoration(labelText: "CPF", border: OutlineInputBorder()))),
+                      TextFormField(
+                        controller: _nameNewCtrl,
+                        decoration: const InputDecoration(labelText: "Nome *", border: OutlineInputBorder()),
+                        validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                        textCapitalization: TextCapitalization.words,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _phoneNewCtrl,
+                        inputFormatters: [maskPhone],
+                        decoration: const InputDecoration(labelText: "Telefone", border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: TextFormField(controller: _rgNewCtrl, decoration: const InputDecoration(labelText: "RG", border: OutlineInputBorder()))),
+                          const SizedBox(width: 10),
+                          Expanded(child: TextFormField(controller: _cpfNewCtrl, inputFormatters: [maskCPF], decoration: const InputDecoration(labelText: "CPF", border: OutlineInputBorder()))),
+                        ],
+                      ),
+                       const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _birthNewCtrl,
+                        inputFormatters: [maskDate],
+                        decoration: const InputDecoration(labelText: "Nascimento", border: OutlineInputBorder()),
+                      ),
+                       const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _addressNewCtrl,
+                        decoration: const InputDecoration(labelText: "Endereço", border: OutlineInputBorder()),
+                      ),
+                      CheckboxListTile(
+                        value: _lgpdQuickConsent,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: const Text(
+                            "Autorização LGPD — portal/WhatsApp",
+                            style: TextStyle(fontSize: 13)),
+                        onChanged: (v) =>
+                            setModal(() => _lgpdQuickConsent = v ?? false),
+                      ),
                     ],
                   ),
-                   const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _birthNewCtrl,
-                    inputFormatters: [maskDate],
-                    decoration: const InputDecoration(labelText: "Nascimento", border: OutlineInputBorder()),
-                  ),
-                   const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _addressNewCtrl,
-                    decoration: const InputDecoration(labelText: "Endereço", border: OutlineInputBorder()),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-          ElevatedButton(
-            onPressed: () async {
-              if (!formKeyModal.currentState!.validate()) return;
-              
-              final currentClinicId = SessionManager().currentClinicId;
-              if (currentClinicId == null) {
-                toast(context, "Erro: Sessão de clínica inválida.");
-                return;
-              }
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+              ElevatedButton(
+                onPressed: () async {
+                  if (!formKeyModal.currentState!.validate()) return;
 
-              try {
-                // CORREÇÃO AQUI: Adicionados campos rg, birthDate e status
-                final newPatient = PatientModel(
-                  id: '', 
-                  name: _nameNewCtrl.text.trim(),
-                  phone: _phoneNewCtrl.text.trim(),
-                  cpf: _cpfNewCtrl.text.trim(),
-                  rg: _rgNewCtrl.text.trim(), // Adicionado
-                  birthDate: _birthNewCtrl.text.trim(), // Adicionado
-                  address: _addressNewCtrl.text.trim(), 
-                  createdAt: DateTime.now(),
-                  clinicId: currentClinicId,
-                  searchKey: _nameNewCtrl.text.trim().toLowerCase(),
-                  status: 'Ativo', // Adicionado para seguir o padrão
-                );
+                  final currentClinicId = SessionManager().currentClinicId;
+                  if (currentClinicId == null) {
+                    toast(context, "Erro: Sessão de clínica inválida.");
+                    return;
+                  }
 
-                await _patientService.add(newPatient);
-                
-                setState(() {
-                  _selectedPatientName = newPatient.name;
-                });
+                  try {
+                    final consent = _lgpdQuickConsent;
+                    final data = PatientModel(
+                      id: '',
+                      name: _nameNewCtrl.text.trim(),
+                      phone: _phoneNewCtrl.text.trim(),
+                      cpf: _cpfNewCtrl.text.trim(),
+                      rg: _rgNewCtrl.text.trim(),
+                      birthDate: _birthNewCtrl.text.trim(),
+                      address: _addressNewCtrl.text.trim(),
+                      createdAt: DateTime.now(),
+                      clinicId: currentClinicId,
+                      searchKey: _nameNewCtrl.text.trim().toLowerCase(),
+                      status: 'Ativo',
+                    ).toMap()
+                      ..['lgpdPortalConsent'] = {
+                        'accepted': consent,
+                        'at': FieldValue.serverTimestamp(),
+                        'via': 'cadastro-rapido',
+                      }
+                      ..['portalToken'] = consent ? newPortalToken() : '';
 
-                if (mounted) {
-                  Navigator.pop(context);
-                  toast(context, "Paciente cadastrado! Selecione-o na busca.");
-                }
-              } catch (e) {
-                if (mounted) toast(context, "Erro ao salvar: $e");
-              }
-            },
-            child: const Text("Salvar"),
-          )
-        ],
+                    await FirebaseFirestore.instance
+                        .collection('patients')
+                        .add(data);
+
+                    setState(() {
+                      _selectedPatientName = _nameNewCtrl.text.trim();
+                      _lgpdQuickConsent = false;
+                    });
+
+                    if (mounted) {
+                      Navigator.pop(context);
+                      toast(context, "Paciente cadastrado! Selecione-o na busca.");
+                    }
+                  } catch (e) {
+                    if (mounted) toast(context, "Erro ao salvar: $e");
+                  }
+                },
+                child: const Text("Salvar"),
+              )
+            ],
+          );
+        },
       ),
     );
   }

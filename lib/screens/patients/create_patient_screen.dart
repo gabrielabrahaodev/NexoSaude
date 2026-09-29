@@ -264,10 +264,10 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
                 value: _lgpdPortalConsent,
                 controlAffinity: ListTileControlAffinity.leading,
                 title: const Text(
-                    "Paciente autoriza link de acompanhamento (portal/WhatsApp)",
+                    "Autorização LGPD — link de acompanhamento (portal/WhatsApp)",
                     style: TextStyle(fontSize: 13)),
                 subtitle: const Text(
-                    "Sem aceite, o link do portal só é gerado depois, na aba Cadastro.",
+                    "Autoriza contato por WhatsApp e link do portal com agendamentos e pagamentos. Sem aceite, o link só é gerado depois, na aba Cadastro.",
                     style: TextStyle(fontSize: 12)),
                 onChanged: (v) =>
                     setState(() => _lgpdPortalConsent = v ?? false),

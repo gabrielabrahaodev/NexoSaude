@@ -221,10 +221,11 @@ class PortalMirrorSync {
     if (pdata == null) return;
     var token = '${pdata['portalToken'] ?? ''}';
     if (token.isEmpty) {
-      // Sem aceite explícito, sem token automático (LGPD). Ausência do
-      // campo = paciente legado: mantém autocura para não quebrar o portal.
+      // LGPD linha dura: token só nasce com aceite explícito (checkbox,
+      // diálogo do balcão ou cadastro rápido). Sem aceite, sem link —
+      // sem autocura de legados (sweep 09/2026 apagou os sem aceite).
       final consent = (pdata['lgpdPortalConsent'] as Map?)?['accepted'];
-      if (consent == false) return;
+      if (consent != true) return;
       token = newPortalToken();
       await pRef.update({'portalToken': token});
     }

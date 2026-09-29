@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
+import '../../widgets/page_header.dart';
 import '../../services/session_manager.dart';
 import '../../services/lab_service.dart';
 import '../../widgets/lab_kanban_board.dart';
@@ -73,7 +74,7 @@ class _ClinicLabScreenState extends State<ClinicLabScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Gestão de Laboratório (Kanban)", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const PageTitle(title: "Gestão de Laboratório (Kanban)"),
                 const SizedBox(height: 15),
                 
 

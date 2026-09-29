@@ -1,4 +1,6 @@
-# Miscellaneous
+# Obsidian local config (plugin settings, workspace, cache — máquina local)
+.obsidian/
+**/.obsidian/
 *.class
 *.log
 *.pyc

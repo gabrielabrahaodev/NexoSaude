@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
+import '../../widgets/page_header.dart';
 import '../../models/financial_model.dart';
 import 'package:intl/intl.dart';
 
@@ -343,19 +344,9 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Visão geral",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          "$clinicName • $monthLabel",
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-      ],
+    return PageTitle(
+      title: "Visão geral",
+      subtitle: "$clinicName • $monthLabel",
     );
   }
 }

@@ -283,7 +283,10 @@ class _MasterScreenState extends State<MasterScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text("Master"),
+          title: const Text("Master",
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          centerTitle: true,
+          elevation: 0,
           bottom: const TabBar(tabs: [
             Tab(text: "Owners"),
             Tab(text: "Débitos"),

@@ -175,7 +175,7 @@ Psicologia: 0 Dashboard, 1 Agenda, 2 Pacientes, 7 Cobranças, 11 Fluxo Terapêut
 
 ---
 
-## Psychology Package Billing (implemented — see PSYCHOLOGY_PACKAGES.md + `brain/modules/psychology-packages.md`)
+## Psychology Package Billing (implemented — see obsidian/PSYCHOLOGY_PACKAGES.md + `obsidian/modules/psychology-packages.md`)
 
 ---
 
@@ -259,7 +259,7 @@ flutterfire configure
 3. **Test with multiple clinics** (owner + staff accounts)
 4. **Verify Firestore rules** after adding new collections
 5. **Use defensive parsing** in models (see `PatientModel` for pattern)
-6. **Read `brain/00-index.md` first** — one skill-file per module/screen with flows and gotchas; update the skill when behavior changes
+6. **Read `obsidian/00-index.md` first** — one skill-file per module/screen with flows and gotchas; update the skill when behavior changes
 
 ---
 

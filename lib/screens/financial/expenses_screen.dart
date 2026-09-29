@@ -4,6 +4,7 @@ import 'package:odonto_controle/services/session_manager.dart';
 import '../../models/expense_model.dart';
 import '../../services/expense_service.dart';
 import '../../ui/app_theme.dart';
+import '../../widgets/page_header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:odonto_controle/utils/display.dart';
 
@@ -140,7 +141,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         title: const Text("Contas a Pagar", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.surface,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list ),
@@ -163,21 +164,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            color: AppColors.surface,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeMonth(-1)),
-                Column(
-                  children: [
-                    Text("COMPETÊNCIA", style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                    Text(DateFormat('MMMM yyyy', 'pt_BR').format(_currentMonth).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  ],
-                ),
-                IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeMonth(1)),
-              ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: MonthSelectorPill(
+              date: _currentMonth,
+              labelAbove: "COMPETÊNCIA",
+              onPrev: () => _changeMonth(-1),
+              onNext: () => _changeMonth(1),
             ),
           ),
           

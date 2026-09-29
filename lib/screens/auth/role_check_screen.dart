@@ -54,6 +54,8 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
             SessionManager().setUser(
               id: user.uid,
               role: role,
+              name: (data['name'] ?? '').toString(),
+              email: (data['email'] ?? user.email ?? '').toString(),
               clinicId: clinicId,
               clinicName: clinicName,
               clinicType: clinicType,

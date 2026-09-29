@@ -9,6 +9,7 @@ import '../financial/financial_report_screen.dart';
 import '../financial/expenses_screen.dart';
 import '../../utils/display.dart';
 import '../../widgets/status_chip.dart';
+import '../../widgets/page_header.dart';
 import '../../services/oracle_report_service.dart'
     show StreamCombiner; 
 
@@ -918,7 +919,7 @@ class _MonthSelector extends StatelessWidget {
   const _MonthSelector({required this.date, required this.onPrev, required this.onNext});
   @override
   Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(30)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(icon: const Icon(Icons.chevron_left), onPressed: onPrev), Text(DateFormat('MMMM yyyy', 'pt_BR').format(date).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), IconButton(icon: const Icon(Icons.chevron_right), onPressed: onNext)]));
+    return MonthSelectorPill(date: date, onPrev: onPrev, onNext: onNext);
   }
 }
 /// Fundo da faixa de resultado do DRE (lucro/prejuizo, claro/escuro).

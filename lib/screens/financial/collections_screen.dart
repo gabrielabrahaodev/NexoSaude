@@ -12,6 +12,7 @@ import 'widgets/charge_confirm_dialog.dart';
 import 'widgets/monthly_package_card.dart';
 import 'widgets/session_charge_card.dart';
 import '../../utils/display.dart';
+import '../../widgets/page_header.dart';
 
 class CollectionsScreen extends StatefulWidget {
   const CollectionsScreen({super.key});
@@ -493,6 +494,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
         title: const Text("Cobrança Manual Inteligente", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.surface,
         elevation: 0,
+        centerTitle: true,
         iconTheme: const IconThemeData(),
         actions: [
           if (isPsychology)
@@ -513,17 +515,13 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
       ),
       body: Column(
         children: [
-          // Filtros de Mês
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.surface,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeMonth(-1)),
-                Text(DateFormat('MMMM yyyy', 'pt_BR').format(_currentMonth).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeMonth(1)),
-              ],
+          // Filtros de Mês (pílula padrão)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: MonthSelectorPill(
+              date: _currentMonth,
+              onPrev: () => _changeMonth(-1),
+              onNext: () => _changeMonth(1),
             ),
           ),
           

@@ -144,16 +144,21 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
     }
   }
 
-  // 4. Redireciona para o WhatsApp
+  // 4. Redireciona para o WhatsApp DA CLÍNICA (whatsappNumber canônico;
+  // legados phone/whatsapp como fallback; sem número, avisa em vez de
+  // mandar para um placeholder morto).
   Future<void> _launchWhatsAppRedirect() async {
-    // CORREÇÃO: Busca o campo 'phone' conforme seu print (ou 'whatsapp' como fallback)
-    final rawPhone = clinicData?['phone'] ?? clinicData?['whatsapp'] ?? '5511999999999';
-    
-    // Limpeza: garante que só tem números
-    final cleanPhone = rawPhone.toString().replaceAll(RegExp(r'[^\d]'), '');
-    
-    // Se o número do banco já tiver 55 (DDI), não adiciona. Se não tiver, adiciona.
-    final finalPhone = cleanPhone.startsWith('55') ? cleanPhone : "55$cleanPhone";
+    final fromField =
+        normalizeWhatsApp(clinicData?['whatsappNumber']?.toString());
+    final legacy = normalizeWhatsApp(
+        (clinicData?['phone'] ?? clinicData?['whatsapp'])?.toString());
+    final finalPhone = fromField ?? legacy;
+    if (finalPhone == null) {
+      setState(() => _isSaving = false);
+      toast(context, "WhatsApp da clínica não cadastrado. Fale com a recepção.",
+          error: true);
+      return;
+    }
 
     final message = "Olá! Vim pela Avaliação Online. Meu Score foi: $_score pontos.";
     

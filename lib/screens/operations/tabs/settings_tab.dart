@@ -7,6 +7,7 @@ import '../../../services/session_manager.dart';
 import '../../../services/theme_controller.dart';
 import '../../../services/user_service.dart';
 import '../../../ui/app_theme.dart';
+import '../../../utils/display.dart';
 
 /// Aba CONFIGURAÇÕES (Gestão): conta + aparência + controle de acesso.
 ///
@@ -38,6 +39,8 @@ class _SettingsTabState extends State<SettingsTab> {
   final _confirmPass = TextEditingController();
   final _pixCtrl = TextEditingController();
   bool _savingPix = false;
+  final _waCtrl = TextEditingController();
+  bool _savingWa = false;
   final _gradeStartCtrl = TextEditingController();
   final _gradeEndCtrl = TextEditingController();
   int _gradeSlot = 30;
@@ -50,6 +53,7 @@ class _SettingsTabState extends State<SettingsTab> {
     _newPass.dispose();
     _confirmPass.dispose();
     _pixCtrl.dispose();
+    _waCtrl.dispose();
     _gradeStartCtrl.dispose();
     _gradeEndCtrl.dispose();
     super.dispose();
@@ -176,6 +180,10 @@ class _SettingsTabState extends State<SettingsTab> {
         children: [
           // ---------- MINHA CONTA ----------
           _accountCard(),
+          const SizedBox(height: 16),
+
+          // ---------- DADOS DA CLÍNICA (WhatsApp p/ n8n/Evolution) ----------
+          _clinicCard(clinicId),
           const SizedBox(height: 16),
 
           // ---------- PIX DA CLÍNICA (vai p/ o portal) ----------
@@ -349,8 +357,104 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 
-  /// Pix da clínica (exibido no portal do paciente). Escrita só owner
-  /// (rules de `clinics`); demais veem somente leitura.
+  /// Dados da clínica (WhatsApp canônico p/ disparos n8n/Evolution).
+  /// Leitura aberta; escrita exige g_clinica (rules de `clinics`).
+  Widget _clinicCard(String? clinicId) {
+    if (clinicId == null || clinicId.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("Selecione uma clínica."),
+        ),
+      );
+    }
+    final canEdit = _canSection('g_clinica');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('clinics')
+              .doc(clinicId)
+              .get(),
+          builder: (context, snap) {
+            if (!snap.hasData) {
+              return const Center(
+                  child: SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2)));
+            }
+            final data = snap.data!.data() as Map?;
+            if (_waCtrl.text.isEmpty) {
+              _waCtrl.text = '${data?['whatsappNumber'] ?? ''}';
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Dados da clínica", style: AppTextStyles.h2),
+                const SizedBox(height: 4),
+                Text('${data?['name'] ?? 'Clínica'}',
+                    style: const TextStyle(
+                        fontSize: 13, fontStyle: FontStyle.italic)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _waCtrl,
+                  enabled: canEdit && !_savingWa,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                      labelText: "WhatsApp do consultório",
+                      hintText: "(11) 98765-4321",
+                      helperText: canEdit
+                          ? "Salvo em formato E.164 para o n8n."
+                          : "Somente leitura para seu usuário.",
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                ),
+                if (canEdit) ...[
+                  const SizedBox(height: 12),
+                  _savingWa
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton.icon(
+                          onPressed: () async {
+                            final norm =
+                                normalizeWhatsApp(_waCtrl.text);
+                            if (norm == null) {
+                              _snack("Número inválido. Use DDD + número.",
+                                  error: true);
+                              return;
+                            }
+                            setState(() => _savingWa = true);
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('clinics')
+                                  .doc(clinicId)
+                                  .update({'whatsappNumber': norm});
+                              _waCtrl.text = norm;
+                              _snack("WhatsApp salvo.");
+                            } catch (e) {
+                              _snack("Falha ao salvar: $e",
+                                  error: true);
+                            } finally {
+                              if (mounted) {
+                                setState(() => _savingWa = false);
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.chat_outlined),
+                          label: const Text("Salvar WhatsApp"),
+                        ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Pix da clínica (exibido no portal do paciente). Escrita exige
+  /// g_pix (rules de `clinics`); demais veem somente leitura.
   Widget _pixCard(String? clinicId) {
     if (clinicId == null || clinicId.isEmpty) {
       return const Card(

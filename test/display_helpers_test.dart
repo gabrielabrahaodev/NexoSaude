@@ -105,4 +105,21 @@ void main() {
       expect(birthMonthOf(123), isNull);
     });
   });
+
+  group('normalizeWhatsApp', () {
+    test('formatos BR viram E.164', () {
+      expect(normalizeWhatsApp('(11) 98765-4321'), '5511987654321');
+      expect(normalizeWhatsApp('11987654321'), '5511987654321');
+      expect(normalizeWhatsApp('+5511987654321'), '5511987654321');
+      expect(normalizeWhatsApp('551134567890'), '551134567890');
+      expect(normalizeWhatsApp('(11) 3456-7890'), '551134567890');
+    });
+
+    test('inválido dá null', () {
+      expect(normalizeWhatsApp(null), isNull);
+      expect(normalizeWhatsApp(''), isNull);
+      expect(normalizeWhatsApp('12345'), isNull);
+      expect(normalizeWhatsApp('abc'), isNull);
+    });
+  });
 }

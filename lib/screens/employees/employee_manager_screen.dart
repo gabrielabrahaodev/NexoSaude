@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../ui/app_theme.dart';
+import '../../widgets/page_header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart'; // Necessário para criar App Secundário
@@ -149,37 +150,155 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
 
   /// Ações do funcionário: gerar nova senha (cria pedido pendente;
   /// o reset-senha.bat efetiva e a temporária aparece em Pedidos).
-  void _showEmployeeActions(String email, String name) {
+  void _showEmployeeActions(String uid, String email, String name,
+      List<String> allowed,
+      {bool canAdmin = true}) {
     if (email.isEmpty) {
       toast(context, "Funcionário sem e-mail cadastrado.", error: true);
       return;
     }
+    final ownerUid = FirebaseAuth.instance.currentUser?.uid;
+    final selected = Set<String>.from(allowed);
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const CircleAvatar(child: Text('?')),
-            title: Text(name,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(email),
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const CircleAvatar(child: Text('?')),
+                title: Text(name,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(email),
+              ),
+              if (canAdmin) ...[
+                const Divider(),
+                ListTile(
+                  leading:
+                      const Icon(Icons.lock_reset, color: Colors.orange),
+                  title: const Text("Gerar nova senha"),
+                  subtitle: const Text(
+                      "Cria pedido; rode o reset-senha.bat e informe a temporária"),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await _requestPasswordReset(email);
+                  },
+                ),
+              ],
+              if (canAdmin) ...[
+                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Clínicas liberadas",
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13)),
+                  ),
+                ),
+              ],
+              if (canAdmin)
+                StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('clinics')
+                    .where('ownerId', isEqualTo: ownerUid)
+                    .snapshots(),
+                builder: (context, snap) {
+                  if (!snap.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    );
+                  }
+                  final clinics = snap.data!.docs;
+                  if (clinics.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text("Nenhuma clínica.",
+                          style: TextStyle(color: Colors.grey)),
+                    );
+                  }
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final c in clinics)
+                        CheckboxListTile(
+                          dense: true,
+                          title: Text(
+                              '${(c.data() as Map)['name'] ?? 'Clínica'}'),
+                          value: selected.contains(c.id),
+                          onChanged: (v) => setSheet(() {
+                            if (v == true) {
+                              selected.add(c.id);
+                            } else {
+                              selected.remove(c.id);
+                            }
+                          }),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              await _saveEmployeeClinics(
+                                  uid, name, selected.toList());
+                            },
+                            icon: const Icon(Icons.save_outlined),
+                            label: const Text("Salvar clínicas"),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
           ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.lock_reset, color: Colors.orange),
-            title: const Text("Gerar nova senha"),
-            subtitle: const Text(
-                "Cria pedido; rode o reset-senha.bat e informe a temporária"),
-            onTap: () async {
-              Navigator.pop(ctx);
-              await _requestPasswordReset(email);
-            },
-          ),
-          const SizedBox(height: 10),
-        ],
+        ),
       ),
     );
+  }
+
+  /// Grava o vínculo clínica↔funcionário (allowedClinics).
+  /// Rules `users`: escrita só owner (tela é owner-only na prática).
+  Future<void> _saveEmployeeClinics(
+      String uid, String name, List<String> clinicIds) async {
+    if (clinicIds.isEmpty) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text("Sem nenhuma clínica?"),
+          content: Text(
+              "$name ficará sem acesso a nenhuma clínica até ser vinculado de novo."),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text("Cancelar")),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text("Confirmar")),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .update({'allowedClinics': clinicIds});
+      if (mounted) toast(context, "Clínicas de $name atualizadas.", ok: true);
+    } catch (e) {
+      if (mounted) toast(context, "Falha ao salvar: $e", error: true);
+    }
   }
 
   /// Cria pedido pendente (só se ainda não houver um para o e-mail).
@@ -321,12 +440,9 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Funcionários", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
-                    Text("Gerencie o acesso da sua equipe", style: TextStyle(color: Colors.grey)),
-                  ],
+                const PageTitle(
+                  title: "Funcionários",
+                  subtitle: "Gerencie o acesso da sua equipe",
                 ),
                 ElevatedButton.icon(
                   onPressed: _showRegisterModal,
@@ -473,8 +589,13 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                           onTap: isOwner
                               ? null
                               : () => _showEmployeeActions(
+                                  docs[index].id,
                                   (data['email'] ?? '').toString(),
-                                  (data['name'] ?? 'Funcionário').toString()),
+                                  (data['name'] ?? 'Funcionário').toString(),
+                                  (data['allowedClinics'] as List?)
+                                          ?.map((e) => e.toString())
+                                          .toList() ??
+                                      const []),
                         ),
                       );
                     },

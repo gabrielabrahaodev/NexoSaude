@@ -18,6 +18,7 @@ import 'package:universal_html/html.dart' as html;
 import '../../services/oracle_report_service.dart';
 import '../../services/payment_service.dart';
 import '../../utils/display.dart';
+import '../../widgets/page_header.dart';
 
 class FinancialReportScreen extends StatefulWidget {
   const FinancialReportScreen({super.key});
@@ -354,25 +355,20 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
             children: [
               Column(
                 children: [
-                  Container(
-                    color: AppColors.surface,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeMonth(-1)),
-                        Column(
-                          children: [
-                            Text(DateFormat('MMMM yyyy', 'pt_BR').format(_currentMonth).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Saldo Realizado: ${formatBRL(data.netProfit)}",
-                              style: TextStyle(color: data.netProfit >= 0 ? Colors.green[700] : Colors.red[700], fontWeight: FontWeight.bold, fontSize: 14),
-                            )
-                          ],
-                        ),
-                        IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeMonth(1)),
-                      ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: MonthSelectorPill(
+                      date: _currentMonth,
+                      labelBelow:
+                          "Saldo Realizado: ${formatBRL(data.netProfit)}",
+                      labelBelowStyle: TextStyle(
+                          color: data.netProfit >= 0
+                              ? Colors.green[700]
+                              : Colors.red[700],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14),
+                      onPrev: () => _changeMonth(-1),
+                      onNext: () => _changeMonth(1),
                     ),
                   ),
                   const Divider(height: 1),

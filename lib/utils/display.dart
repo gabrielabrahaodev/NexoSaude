@@ -94,3 +94,16 @@ Color chargeBadgeColor({required bool isPaid, required bool isPending}) {
   if (isPending) return Colors.red;
   return Colors.orange;
 }
+
+/// WhatsApp canônico E.164 BR (só dígitos, com 55): aceita
+/// "(11) 98765-4321", "11987654321", "+5511987654321", "5511…".
+/// Nulo quando inválido. Usado no cadastro da clínica (n8n/Evolution).
+String? normalizeWhatsApp(String? raw) {
+  if (raw == null) return null;
+  final d = raw.replaceAll(RegExp(r'\D'), '');
+  if (d.startsWith('55') && (d.length == 12 || d.length == 13)) return d;
+  if (!d.startsWith('55') && (d.length == 10 || d.length == 11)) {
+    return '55$d';
+  }
+  return null;
+}

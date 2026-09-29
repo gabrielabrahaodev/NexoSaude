@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
+import '../../widgets/page_header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../utils/display.dart'; 
+import '../../services/session_manager.dart';
+import '../../utils/display.dart';
+import '../dashboard/main_web_dashboard.dart'; 
 
 class ClinicManagementScreen extends StatefulWidget {
   const ClinicManagementScreen({super.key});
@@ -12,6 +15,39 @@ class ClinicManagementScreen extends StatefulWidget {
 }
 
 class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
+  bool _isOwner = false;
+  List<String> _myClinicIds = [];
+  bool _loadingRole = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  /// Owner vê as unidades dele; demais veem as liberadas (troca via Gerenciar).
+  Future<void> _loadRole() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final data = doc.data();
+      if (!mounted) return;
+      setState(() {
+        _isOwner = data?['role'] == 'owner';
+        final allowed = data?['allowedClinics'];
+        _myClinicIds = allowed is List
+            ? allowed.map((e) => e.toString()).take(10).toList()
+            : const [];
+        _loadingRole = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingRole = false);
+    }
+  }
   
   // Função atualizada com StatefulBuilder para o Dropdown funcionar
   void _showAddClinicDialog(BuildContext context) {
@@ -149,35 +185,45 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Gestão de Clínicas", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
-                    Text("Cadastre e visualize suas unidades", style: TextStyle(color: Colors.grey)),
-                  ],
+                const PageTitle(
+                  title: "Gestão de Clínicas",
+                  subtitle: "Cadastre e visualize suas unidades",
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => _showAddClinicDialog(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text("NOVA UNIDADE"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E88E5),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  ),
-                )
+                if (_isOwner)
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddClinicDialog(context),
+                    icon: const Icon(Icons.add),
+                    label: const Text("NOVA UNIDADE"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E88E5),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    ),
+                  )
               ],
             ),
             const SizedBox(height: 20),
 
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('clinics')
-                    .where('ownerId', isEqualTo: user?.uid) 
-                    .orderBy('createdAt', descending: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
+              child: _loadingRole
+                  ? const Center(child: CircularProgressIndicator())
+                  : (!_isOwner && _myClinicIds.isEmpty)
+                      ? const Center(
+                          child: Text("Nenhuma clínica liberada.",
+                              style: TextStyle(color: Colors.grey)))
+                      : StreamBuilder<QuerySnapshot>(
+                      stream: _isOwner
+                          ? FirebaseFirestore.instance
+                              .collection('clinics')
+                              .where('ownerId', isEqualTo: user?.uid)
+                              .orderBy('createdAt', descending: true)
+                              .snapshots()
+                          : FirebaseFirestore.instance
+                              .collection('clinics')
+                              .where(FieldPath.documentId,
+                                  whereIn: _myClinicIds)
+                              .snapshots(),
+                      builder: (context, snapshot) {
                   if (snapshot.hasError) return const Center(child: Text("Erro ao carregar dados."));
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
@@ -259,7 +305,18 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                                 width: double.infinity,
                                 child: OutlinedButton(
                                   onPressed: () {
-                                    toast(context, "Selecionada: ${data['name']}");
+                                    final type =
+                                        '${data['type'] ?? 'dental'}';
+                                    SessionManager().setClinic(docs[index].id,
+                                        '${data['name'] ?? 'Clínica'}', type);
+                                    toast(context,
+                                        "Acessando: ${data['name']}");
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (c) =>
+                                              const MainWebDashboard()),
+                                      (route) => false,
+                                    );
                                   },
                                   child: const Text("Gerenciar"),
                                 ),

@@ -1,8 +1,16 @@
-// Reconstrói TODOS os espelhos portal/{token} com a lógica atual
-// (atrasos top-3, próximas 3 sessões, dentistId, clinicId).
-// Replica PortalMirrorSync.patient. Uso: node migrate/portal-backfill.js
+// ⚠️ PERIGO (LGPD linha dura, pós sweep 09/2026): este script AUTOCRIA
+// token para quem não tem — rodar full RESSUSCITA os 415 links apagados.
+// Uso normal: Temp/opencode/portal-rebuild-scoped.js (só quem já tem token).
+// Para rodar este mesmo assim: node migrate/portal-backfill.js --full --yes
 const admin = require('firebase-admin');
 const sa = require('./new-key.json');
+
+if (!(process.argv.includes('--full') && process.argv.includes('--yes'))) {
+  console.error('BLOQUEADO: backfill full autocria tokens sem aceite.');
+  console.error('Use Temp/opencode/portal-rebuild-scoped.js (mirado).');
+  console.error('Se tem certeza: node migrate/portal-backfill.js --full --yes');
+  process.exit(2);
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(sa),

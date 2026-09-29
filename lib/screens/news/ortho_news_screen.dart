@@ -50,7 +50,7 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
         ),
         backgroundColor: AppColors.surface,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: primaryColor),
