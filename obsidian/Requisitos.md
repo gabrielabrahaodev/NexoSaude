@@ -1,4 +1,4 @@
-﻿---
+---
 title: Requisitos e Regras de Negócio
 tags:
   - nexosaude

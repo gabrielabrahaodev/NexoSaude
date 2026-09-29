@@ -9,6 +9,24 @@ import '../models/patient_document_model.dart';
 /// Resultado do upload: URL pública + identificadores para destroy remoto.
 typedef CloudUpload = ({String url, String? publicId, String resourceType});
 
+/// Validação pré-upload (espelha as travas do preset unsigned).
+/// Pura e testada. Retorna a mensagem de erro ou null se ok.
+String? validateUpload({required String fileName, required int sizeBytes}) {
+  const maxBytes = 10 * 1024 * 1024;
+  const allowed = {'jpg', 'jpeg', 'png', 'webp', 'pdf'};
+  final ext = fileName.contains('.')
+      ? fileName.split('.').last.toLowerCase()
+      : '';
+  if (!allowed.contains(ext)) {
+    return "Tipo não permitido (só JPG, PNG, WEBP ou PDF).";
+  }
+  if (sizeBytes <= 0) return "Arquivo vazio.";
+  if (sizeBytes > maxBytes) {
+    return "Arquivo acima de 10MB.";
+  }
+  return null;
+}
+
 class DocumentService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -25,6 +43,12 @@ class DocumentService {
     Uint8List? bytes,
     required String fileName,
   }) async {
+    final size = kIsWeb
+        ? (bytes?.length ?? 0)
+        : ((file != null && file.existsSync()) ? file.lengthSync() : 0);
+    final blocked = validateUpload(fileName: fileName, sizeBytes: size);
+    if (blocked != null) throw Exception(blocked);
+
     var uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/auto/upload");
     var request = http.MultipartRequest("POST", uri);
 

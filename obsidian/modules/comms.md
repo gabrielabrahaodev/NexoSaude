@@ -33,7 +33,7 @@ Cobrança, documentação do paciente, feed de notícias.
 ## Regras / Gotchas
 
 - `openWhatsApp` pode falhar (sem app) — sempre tratar `success == false` com SnackBar.
-- `cloudName`/`uploadPreset` hardcoded (`dbbh601ay`); preset precisa ser **unsigned** no painel Cloudinary.
+- `cloudName`/`uploadPreset` hardcoded (`dbbh601ay`); preset precisa ser **unsigned** no painel Cloudinary. `validateUpload` (testado) barra tipo/vazio/+10MB antes de enviar; travar também no painel (pasta, tipos, tamanho).
 - Cache de notícias é em memória — restart limpa; `formats` não usado (limpeza pendente).
 
 ## Ver também

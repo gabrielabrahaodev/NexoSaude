@@ -365,8 +365,8 @@ sequenceDiagram
     DS->>F: docs/{docId}.delete()
 ```
 
-## Ver também
+## Ver tambï¿½m
 
-- [[PRD]] — produto e riscos
-- [[Requisitos]] — regras por trás dos fluxos
-- [[CASOS_DE_USO]] — atores de cada fluxo
+- [[PRD]] ï¿½ produto e riscos
+- [[Requisitos]] ï¿½ regras por trï¿½s dos fluxos
+- [[CASOS_DE_USO]] ï¿½ atores de cada fluxo

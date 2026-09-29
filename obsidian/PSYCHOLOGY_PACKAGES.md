@@ -166,8 +166,8 @@ for (final entry in sessionsByMonth.entries) {
 | `lib/models/financial_model.dart` | Add `monthlyPeriod` field if approved |
 | `lib/screens/patients/tabs/treatments_tab.dart:128-172` | Displays grouped by planId + installmentNumber |
 | `lib/screens/financial/collections_screen.dart` | Monthly billing will appear here naturally |
-## Ver também
+## Ver tambï¿½m
 
-- [[psychology-packages]] — regras e billing
-- [[psychology-kanban]] — acompanhamento dos contratos
-- [[financial]] — baixa dos lançamentos
+- [[psychology-packages]] ï¿½ regras e billing
+- [[psychology-kanban]] ï¿½ acompanhamento dos contratos
+- [[financial]] ï¿½ baixa dos lanï¿½amentos

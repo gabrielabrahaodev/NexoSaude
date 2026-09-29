@@ -230,8 +230,8 @@ CatÃ¡logo completo de casos de uso levantados pelo exame do cÃ³digo-fonte. Cada 
 | Pacotes/presenÃ§a (novo) | 4 (UC-80..83) |
 | Dashboard KPI | 1 (UC-84) |
 | **Total** | **81 casos de uso** |
-## Ver também
+## Ver tambï¿½m
 
-- [[PRD]] — produto e riscos
-- [[Requisitos]] — RNs por trás dos UCs
-- [[atendimento]] — mapa do Modo Atendimento
+- [[PRD]] ï¿½ produto e riscos
+- [[Requisitos]] ï¿½ RNs por trï¿½s dos UCs
+- [[atendimento]] ï¿½ mapa do Modo Atendimento
