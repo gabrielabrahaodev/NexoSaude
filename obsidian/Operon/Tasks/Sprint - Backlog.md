@@ -22,7 +22,7 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 ## Depois (prioridade B)
 
 - [ ] Decidir Blaze (US$ 1–3/mês) vs seguir no Spark {{operonId:: nx-105}} {{status:: Paused}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/decisao
-- [ ] Trocar SALES_WHATSAPP placeholder na landing {{operonId:: nx-106}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e1}} #nexosaude #area/site
+- [x] Trocar SALES_WHATSAPP placeholder na landing {{operonId:: nx-106}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e1}} #nexosaude #area/site
 - [ ] Revisar bloqueios fundidos do Yervant com o dono {{operonId:: nx-107}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e3}} #nexosaude #area/dados
 - [x] Deploy de firestore.indexes.json pendente (nunca aceitar delete) {{operonId:: nx-108}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/infra
 - [x] Checagem de CPF duplicado no cadastro (query existe, bloqueio comentado) {{operonId:: nx-109}} {{status:: Finished}} {{priority:: B}} #nexosaude #area/app
