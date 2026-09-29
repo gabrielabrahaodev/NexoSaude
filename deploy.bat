@@ -1,4 +1,6 @@
 @echo off
+echo --- 0. CARIMBANDO VERSAO DO PWA ---
+powershell -ExecutionPolicy Bypass -File tool\bump_version.ps1
 echo --- 1. LIMPANDO E GERANDO BUILD ---
 call flutter clean
 call flutter build web --base-href "/sistema-interno/"
