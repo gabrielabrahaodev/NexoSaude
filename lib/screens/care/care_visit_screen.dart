@@ -224,6 +224,27 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     }
   }
 
+  Future<void> _repeatNextWeek() async {
+    final a = widget.appointment;
+    final candidate = AppointmentService.repeatNextWeek(a.date);
+    final did = (_nextDentistId?.isNotEmpty == true
+            ? _nextDentistId
+            : a.dentistId) ??
+        '';
+    final hhmm =
+        "${candidate.hour.toString().padLeft(2, '0')}:${candidate.minute.toString().padLeft(2, '0')}";
+    final busy = await AppointmentService()
+        .getBusySlots(a.clinicId, candidate, dentistId: did);
+    if (!mounted) return;
+    if (busy.contains(hhmm)) {
+      toast(context, "Horário ocupado na próxima semana.",
+          error: true);
+      return;
+    }
+    setState(() => _nextDate = candidate);
+    await _scheduleNext();
+  }
+
   Future<void> _pickNext() async {
     final date = await showDatePicker(
       context: context,
@@ -525,11 +546,25 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: _saving ? null : _scheduleNext,
-                    icon: const Icon(Icons.send_outlined),
-                    label:
-                        const Text("Agendar e chamar no WhatsApp"),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _saving ? null : _repeatNextWeek,
+                          icon: const Icon(Icons.repeat, size: 18),
+                          label: const Text("Repetir próxima semana"),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _saving ? null : _scheduleNext,
+                          icon: const Icon(Icons.send_outlined),
+                          label: const Text("Agendar e chamar no WhatsApp"),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

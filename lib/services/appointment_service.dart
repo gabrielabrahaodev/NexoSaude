@@ -5,6 +5,10 @@ import 'portal_mirror.dart';
 class AppointmentService {
   final CollectionReference _collection = FirebaseFirestore.instance.collection('appointments');
 
+  /// Repete na próxima semana: +7 dias, mesmo horário (puro e testado).
+  static DateTime repeatNextWeek(DateTime from) =>
+      DateTime(from.year, from.month, from.day + 7, from.hour, from.minute);
+
   // NOVO: Busca por intervalo de datas (Para a Agenda Semanal)
   Stream<List<AppointmentModel>> getByDateRange(String clinicId, DateTime start, DateTime end) {
     return _collection
