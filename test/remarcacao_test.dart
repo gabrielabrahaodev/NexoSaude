@@ -17,14 +17,17 @@ void main() {
   });
 
   group('confirmText', () {
-    test('traz nome, data e hora confirmadas', () {
+    test('traz nome, data, hora e link do portal', () {
       final msg = confirmText(
         patientName: 'Gabriel',
         confirmed: DateTime(2026, 9, 22, 14, 30),
+        portalUrl: 'https://nexosaude.web.app/sistema-interno/portal.html?t=ABC',
       );
       expect(msg.contains('Gabriel'), isTrue);
       expect(msg.contains('22/09'), isTrue);
       expect(msg.contains('14:30'), isTrue);
+      expect(msg.contains('reagendamento'), isTrue);
+      expect(msg.contains('https://'), isTrue);
     });
   });
 }

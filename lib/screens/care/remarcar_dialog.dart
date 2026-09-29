@@ -115,7 +115,12 @@ Future<void> _askConfirmWhatsApp(
     await WhatsAppHelper.openWhatsApp(
       phone: phone,
       message: confirmText(
-          patientName: appt.patientName, confirmed: proposed),
+        patientName: appt.patientName,
+        confirmed: proposed,
+        portalUrl: (appt.portalToken ?? '').isEmpty
+            ? ''
+            : portalUrl(appt.portalToken!),
+      ),
     );
   } catch (e) {
     toast(context, "Falha ao abrir WhatsApp: $e", error: true);

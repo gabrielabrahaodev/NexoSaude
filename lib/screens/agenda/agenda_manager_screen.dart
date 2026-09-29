@@ -607,7 +607,10 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 ListTile(
                   leading: CircleAvatar(child: Text(appt.patientName.isNotEmpty ? appt.patientName.substring(0,1) : '?')),
                   title: Text(appt.patientName, style: TextStyle(fontWeight: FontWeight.bold, decoration: isCancelled ? TextDecoration.lineThrough : null)),
-                  subtitle: Text("${formatDateDash(appt.date)} • ${appt.status}"),
+                  subtitle: Text(appt.status.toLowerCase() == 'remarcar' &&
+                          appt.proposedDate != null
+                      ? "Atual ${formatDateDash(appt.date)} → Proposto ${formatDateTimeShort(appt.proposedDate!)}"
+                      : "${formatDateDash(appt.date)} • ${appt.status}"),
                 ),
 
                 FutureBuilder<Map<String, dynamic>>(
@@ -684,7 +687,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   },
                 ),
 
-                if (!isConfirmed && !isCancelled && !isFinished)
+                if (!isConfirmed && !isCancelled && !isFinished && appt.status.toLowerCase() != 'remarcar')
                 ListTile(
                   leading: const Icon(Icons.thumb_up_alt, color: Colors.teal),
                   title: const Text("Confirmar Presença (Manual)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),

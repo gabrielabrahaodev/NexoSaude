@@ -22,14 +22,17 @@ String refuseText({
   return 'Olá $patientName, a data $when às $hour não está mais disponível.$link';
 }
 
-/// Texto do WhatsApp de confirmação (testado): novo horário aprovado.
+/// Texto do WhatsApp de confirmação (testado): reagendamento aprovado + link.
 String confirmText({
   required String patientName,
   required DateTime confirmed,
+  String portalUrl = '',
 }) {
   final when = formatDateShort(confirmed);
   final hour = DateFormat('HH:mm').format(confirmed);
-  return 'Olá $patientName, sua consulta foi confirmada para $when às $hour. Até lá!';
+  final link =
+      portalUrl.isEmpty ? '' : ' Confira seus dados aqui: $portalUrl';
+  return 'Olá $patientName, seu reagendamento foi confirmado para $when às $hour.$link';
 }
 
 String _isoSlot(DateTime d) =>
