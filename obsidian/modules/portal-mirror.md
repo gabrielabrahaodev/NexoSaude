@@ -19,7 +19,7 @@ Sem Functions, o portal lê espelhos: `portal/{token}` (3 sessões + top-3 atras
 
 ## Quando usar
 
-`PortalMirrorSync.patient()` em todo ponto de escrita; `occupy/releaseSlot` nas mutações de agenda; `ensureWindow()` no login (owner/recepção).
+`PortalMirrorSync.patient()` em todo ponto de escrita; `occupy/releaseSlot` nas mutações de agenda; `ensureWindow()` ao abrir a agenda (throttle 6h via `windowBuiltAt`, 1 leitura) — janela 14 dias com fim de semana; portal lista só dias ≥ hoje.
 
 ## Fluxos
 
@@ -39,7 +39,7 @@ Sem Functions, o portal lê espelhos: `portal/{token}` (3 sessões + top-3 atras
 - Form psico grava em batch fora do `AppointmentService`: `_generateAppointments` e `_cancelSchedule` fazem rebuild via `PortalMirrorSync.patient()` (sem isso o portal não recebe psicologia).
 - Rebuild exclui `Cancelado` das próximas (igual ao delta `removeSession`); query com limit 100 p/ cobrir pacote anual (~52 sessões).
 - Profissionais do espelho (`isPortalProfessional`, testado): papéis clínicos + owner em clínica psicológica (psicólogo atuante). Backfill `slots-backfill.js` com a mesma regra. Rebuild do `ensureWindow` expande `durationMinutes` (blocos por intervalo).
-- Sem autocura LGPD: sync nunca cria token sem `accepted==true`; backfill full de portais bloqueado por padrão (sweep 09/2026: 415 espelhos apagados).
+- Deploy do portal: `flutter build web` NÃO atualiza `build/web/sistema-interno/` (cópia manual) — sincronizar `web/*.html` → lá antes de `firebase deploy --only hosting`. `portal_slots` com chave sem `.` quebra o JS antigo: todo leitor deve pular chaves sem ponto.
 - Profissionais do espelho (`isPortalProfessional`, testado): papéis clínicos + owner em clínica psicológica (psicólogo atuante).
 
 Ver [[portal-page]], [[remarcar-dialog]], [[atendimento]].
