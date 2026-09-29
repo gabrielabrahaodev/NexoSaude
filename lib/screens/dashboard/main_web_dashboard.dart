@@ -493,7 +493,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                       title: const Text("Administração",
                           style:
                               TextStyle(fontWeight: FontWeight.w600)),
-                      initiallyExpanded: true,
+                      initiallyExpanded: false,
                       onExpansionChanged: (open) {
                         if (open) _scrollMenuToEnd();
                       },

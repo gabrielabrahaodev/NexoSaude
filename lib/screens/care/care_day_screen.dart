@@ -10,8 +10,6 @@ import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
 import '../../widgets/status_chip.dart';
 import 'care_visit_screen.dart';
-import 'remarcar_dialog.dart';
-
 /// Modo Atendimento — "Meu dia" (spec 3.1).
 ///
 /// Lista só hoje da clínica; dentista/psicólogo vê só o próprio,
@@ -151,21 +149,13 @@ class _CareDayScreenState extends State<CareDayScreen> {
                   final dentistLabel = _ownOnly
                       ? ''
                       : " • ${_dentists[a.dentistId] ?? 'Profissional'}";
-                  final isRemarcar =
-                      a.status.toLowerCase() == 'remarcar' &&
-                          a.proposedDate != null;
                   return _VisitCard(
                     appt: a,
                     paid: paid,
                     dentistLabel: dentistLabel,
-                    isRemarcar: isRemarcar,
-                    accent: isRemarcar ? Colors.orange : _statusColor(a),
+                    accent: _statusColor(a),
                     onOpen: () {
-                      if (isRemarcar) {
-                        showRemarcarDialog(context, a);
-                      } else {
-                        _openVisitSheet(context, a);
-                      }
+                      _openVisitSheet(context, a);
                     },
                   );
                 },
@@ -230,7 +220,6 @@ class _VisitCard extends StatelessWidget {
   final AppointmentModel appt;
   final bool paid;
   final String dentistLabel;
-  final bool isRemarcar;
   final Color accent;
   final VoidCallback onOpen;
 
@@ -238,7 +227,6 @@ class _VisitCard extends StatelessWidget {
     required this.appt,
     required this.paid,
     required this.dentistLabel,
-    required this.isRemarcar,
     required this.accent,
     required this.onOpen,
   });
@@ -302,7 +290,7 @@ class _VisitCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                          "${a.procedure}$dentistLabel${paid ? ' • Pago' : ''}${isRemarcar ? ' • ${formatDateTimeShort(a.proposedDate!)}' : ''}",
+                          "${a.procedure}$dentistLabel${paid ? ' • Pago' : ''}",
                           style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary),
