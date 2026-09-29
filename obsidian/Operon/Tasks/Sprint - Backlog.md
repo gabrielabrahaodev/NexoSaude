@@ -14,6 +14,7 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [x] Notícias científicas por tema da clínica (Europe PMC + Semantic Scholar) [[ortho-news]] {{operonId:: nx-123}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e7}} #nexosaude #area/app
 - [x] Backup owner: tela Exportar (JSON/CSV, tudo marcado) + CPF duplicado + temp forte [[main-dashboard]] {{operonId:: nx-124}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/app
 - [x] Atendimento sem novo lançamento; próxima sessão com dentista + horários livres [[care-day]] {{operonId:: nx-125}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/atendimento
+- [x] Cobrança via WhatsApp registrada no prontuário (SIM-confirmado) [[collections]] {{operonId:: nx-126}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
 - [x] Deploy da master em produção (build + hosting) e validar login owner {{operonId:: nx-101}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e1}} {{dateDue:: 2026-10-03}} #nexosaude #area/entrega
 - [x] Commitar a fila pendente na master (código + vault já validados: analyze 0, testes verdes) {{operonId:: nx-102}} {{status:: Finished}} {{priority:: A}} {{dateDue:: 2026-10-02}} #nexosaude #area/entrega
 - [ ] Reconsentir os 45 pacientes sem aceite com consulta em 14 dias (filtro Sem aceite na lista + recepção reemite na ficha) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao

@@ -35,6 +35,7 @@ Cobrar, confirmar envio do WhatsApp, baixa de pacote completo/parcial.
 ## Atualizações
 
 - Selo "Avisei que paguei" por lançamento (do portal) com dispensar; baixa no fluxo normal. Ver [[portal-page]], [[remarcar-dialog]].
+- Envio confirmado (SIM) grava `clinical_records` ("Cobrança via WhatsApp", texto exato + operador + data) — NÃO é no-op. Lembrete da aba Pagamentos também confirma antes de registrar.
 
 ## Ver também
 
