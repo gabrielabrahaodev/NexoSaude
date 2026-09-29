@@ -104,8 +104,8 @@ class PatientSmartContextCard extends StatelessWidget {
         if (!snapshot.hasData || snapshot.data == null) return const SizedBox();
 
         return Container(
-          margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             // Gradiente suave para dar ar de "Inteligência Artificial" / Modernidade
             gradient: LinearGradient(
@@ -130,15 +130,15 @@ class PatientSmartContextCard extends StatelessWidget {
             children: [
               // Ícone de "Brilho/IA"
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
                 ),
-                child: const Icon(Icons.auto_awesome, color: Colors.indigo, size: 16),
+                child: const Icon(Icons.auto_awesome, color: Colors.indigo, size: 20),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               
               // Texto do Resumo
               Expanded(
@@ -154,11 +154,11 @@ class PatientSmartContextCard extends StatelessWidget {
                         color: Colors.indigo
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       snapshot.data!,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         height: 1.4,
                         fontWeight: FontWeight.w500
                       ),

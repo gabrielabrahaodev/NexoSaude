@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:odonto_controle/models/financial_model.dart';
 import 'package:odonto_controle/screens/patients/tabs/patient_financial_tab.dart';
@@ -68,21 +68,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         appBar: AppBar(
           backgroundColor: AppColors.surface,
           elevation: 0,
-          toolbarHeight: 40,
           iconTheme: IconThemeData(color: AppColors.textPrimary),
           title: Text(widget.patientName, style: AppTextStyles.h2),
-          centerTitle: true,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(36),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800),
-                child: TabBar(
-            labelPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            labelStyle: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600),
-            unselectedLabelStyle: const TextStyle(fontSize: 12),
+          bottom: TabBar(
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
@@ -99,60 +87,30 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               const Tab(text: "PAGAMENTOS"),
             ],
           ),
-                ),
-              ),
-            ),
-          ),
+        ),
         body: Column(
           children: [
-            // Faixa full-width: cards-resumo (conteúdo centralizado).
-            Container(
-              width: double.infinity,
-              color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
-                  child: _HeaderSummaryRow(patientId: widget.patientId),
-                ),
-              ),
-            ),
-            const Divider(height: 1, thickness: 0.5),
+            _HeaderSummaryRow(patientId: widget.patientId),
+            
+            PatientSmartContextCard(patientId: widget.patientId),
 
-            // Faixa full-width: contexto (conteúdo centralizado).
-            Container(
-              width: double.infinity,
-              color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
-                  child: PatientSmartContextCard(patientId: widget.patientId),
-                ),
-              ),
-            ),
-            const Divider(height: 1, thickness: 0.5),
-
-            // Conteúdo das abas: coluna central estreita.
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            
             Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
-                  child: TabBarView(
-                    children: [
-                      PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
-                      AnamnesisTab(patientId: widget.patientId),
-                      if (caps.canShowBudgets)
-                        BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
-                      TreatmentsTab(patientName: widget.patientName, patientId: widget.patientId),
-                      ClinicalRecordTab(patientName: widget.patientName, patientId: widget.patientId),
-                      if (caps.canShowOdontogram) _buildVisualTab(),
-                      if (caps.canShowLab) PatientLabTab(patientId: widget.patientId),
-                      PatientDocsTab(patientId: widget.patientId),
-                      PatientFinancialTab(patientId: widget.patientId),
-                    ],
-                  ),
-                ),
+              child: TabBarView(
+                children: [
+                  PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
+                  AnamnesisTab(patientId: widget.patientId),
+                  if (caps.canShowBudgets)
+                    BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
+                  TreatmentsTab(patientName: widget.patientName, patientId: widget.patientId),
+                  ClinicalRecordTab(patientName: widget.patientName, patientId: widget.patientId),
+                  if (caps.canShowOdontogram) _buildVisualTab(),
+                  if (caps.canShowLab) PatientLabTab(patientId: widget.patientId),
+                  PatientDocsTab(patientId: widget.patientId),
+                  PatientFinancialTab(patientId: widget.patientId),
+                ],
               ),
             ),
           ],
@@ -174,7 +132,7 @@ class _HeaderSummaryRow extends StatelessWidget {
 
     return Container(
       color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
         children: [
           Expanded(
@@ -292,7 +250,7 @@ class _HeaderSummaryRow extends StatelessWidget {
 
   Widget _buildSummaryItem(String label, String value, Color color, {bool isTextValue = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
@@ -311,14 +269,14 @@ class _HeaderSummaryRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           FittedBox( 
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value, 
               style: TextStyle(
-                fontSize: 14, 
+                fontSize: 16, 
                 fontWeight: FontWeight.bold, 
                 color: color
               )
