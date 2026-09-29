@@ -253,12 +253,12 @@ Bloqueado (agendamento sintético)
 - Referência: `services/financial_service.dart:59-78`.
 
 ### RN-32 - Pagamento parcelado (renegociação)
-- Atualiza original com `status = '<status> (renegociado/parcelado)'` (minúsculo).
-- Cria N lançamentos filhos: `dueDate = now + 30*i` (**blocos de 30 dias corridos, não meses de calendário** — regra mantida), `installmentNumber = 'i/N'`, `parentId` = id da original, `paidAmount` cheio, `description '<título> (i/N) - método'`.
-- **Ajuste de centavos**: diferença entre `payValue` e soma das parcelas vai para a **1ª parcela** (bruto e líquido) — `computeInstallments` puro e testado.
-- Cancelar oferece **só este / família toda** (irmãs pelo `parentId` + original).
-- Cartão parcelado → **deleta o título original** e grava `machineProfileId`.
-- Referência: `financial_service.dart:computeInstallments/processPayment`, `patient_financial_tab.dart:_confirmCancelCharge`.
+- Original vira status terminal `substituido (parcelado)` — **nunca deleta** (histórico fiscal); fora de cobrança/relatórios/risco/portal, mostra "Parcelado" na timeline.
+- Cria N lançamentos filhos: `dueDate = addMonths(hoje, i)` (mês de calendário, editável por parcela no dialog), `installmentNumber = 'i/N'`, `parentId` = id da original, `paidAmount` cheio, `description '<título> (i/N) - método'`.
+- **Ajuste de centavos**: diferença entre `payValue` e soma das parcelas vai para a **1ª parcela** (bruto e líquido) - `computeInstallments` puro e testado.
+- Cancelar oferece **só este / família toda** em **um batch só** (`cancelFamily`); irmãs pelo `parentId` + original.
+- **Parcial** (valor < saldo): trava em 1x, original segue `pendente` com o saldo aberto — sem explodir parcelas.
+- Referência: `financial_service.dart:computeInstallments/addMonths/processPayment/cancelFamily`, `patient_financial_tab.dart:_confirmCancelCharge`.
 
 ### RN-33 - Pagamento parcial (REMOVIDO)
 - ~~`payment_service.receivePayment` ("(Restante)")~~ — método morto, sem chamadores; removido. Parcial se resolve via estorno + relançamento ou valores no wizard.
