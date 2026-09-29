@@ -171,7 +171,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
       String phone = phoneRaw.replaceAll(RegExp(r'[^\d]'), '');
       if (!phone.startsWith('55')) phone = '55$phone';
 
-      String baseUrl = "https://odontocontrole-1c701.web.app/anamnese.html"; 
+      String baseUrl = "https://nexosaude.web.app/anamnese.html"; 
       String link = "$baseUrl?id=${widget.patientId}";
 
       String message = "Olá $patientName, para agilizar seu atendimento, por favor preencha sua ficha de anamnese online clicando neste link: $link";
