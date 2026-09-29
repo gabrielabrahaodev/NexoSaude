@@ -97,19 +97,41 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               ),
             ),
           ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Column(
-              children: [
-                _HeaderSummaryRow(patientId: widget.patientId),
+        body: Column(
+          children: [
+            // Faixa full-width: cards-resumo (conteúdo centralizado).
+            Container(
+              width: double.infinity,
+              color: AppColors.surface,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: _HeaderSummaryRow(patientId: widget.patientId),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
 
-                PatientSmartContextCard(patientId: widget.patientId),
+            // Faixa full-width: contexto (conteúdo centralizado).
+            Container(
+              width: double.infinity,
+              color: AppColors.surface,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: PatientSmartContextCard(patientId: widget.patientId),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
 
-                const SizedBox(height: 8),
-                const Divider(height: 1),
-
-                Expanded(
+            // Conteúdo das abas: coluna central estreita.
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
                   child: TabBarView(
                     children: [
                       PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
@@ -125,9 +147,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
