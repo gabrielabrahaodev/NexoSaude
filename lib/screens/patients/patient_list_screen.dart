@@ -17,6 +17,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final PatientService _patientService = PatientService();
   String _searchText = "";
+  bool _onlyNoConsent = false;
 
   @override
   void dispose() {
@@ -64,7 +65,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             color: AppColors.surface,
-            child: TextField(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
               controller: _searchController,
               style: TextStyle(color: AppColors.textPrimary),
               onChanged: (value) {
@@ -99,6 +103,18 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   borderSide: BorderSide.none,
                 ),
               ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilterChip(
+                    label: const Text("Sem aceite LGPD"),
+                    selected: _onlyNoConsent,
+                    onSelected: (v) =>
+                        setState(() => _onlyNoConsent = v),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -117,6 +133,11 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   final name = (data['name'] ?? '').toString().toLowerCase();
                   final cpf = (data['cpf'] ?? '').toString().toLowerCase();
                   final phone = (data['phone'] ?? '').toString().toLowerCase();
+                  if (_onlyNoConsent) {
+                    final accepted =
+                        (data['lgpdPortalConsent'] as Map?)?['accepted'];
+                    if (accepted == true) return false;
+                  }
 
                   return _searchText.isEmpty ||
                       name.contains(_searchText) ||
