@@ -5,6 +5,7 @@ import '../../../services/session_manager.dart';
 import '../../../services/clinical_record_service.dart';
 import '../../../services/treatment_service.dart';
 import '../../../utils/display.dart'; // Import para buscar tratamentos
+import '../../../widgets/status_chip.dart';
 
 class ClinicalRecordTab extends StatefulWidget {
   final String patientName;
@@ -190,18 +191,27 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
               );
             }
             
-            return ListView.builder(
+              return ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), // Espaço para o FAB
               itemCount: docs.length,
               itemBuilder: (context, index) {
                 final doc = docs[index];
                 final data = doc.data() as Map<String, dynamic>;
                 final date = (data['date'] as Timestamp).toDate();
-                
+                // Cobrança (WhatsApp) vs atendimento: visual distinto.
+                final isCharge =
+                    '${data['procedureName'] ?? ''}' ==
+                        'Cobrança via WhatsApp';
+                final accent =
+                    isCharge ? Colors.green : AppColors.primary;
+
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                          color: accent.withValues(alpha: 0.4))),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -210,10 +220,27 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(child: Text(data['procedureName'] ?? 'Procedimento', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-                            Text(formatDateTimeFull(date), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Expanded(
+                                child: Text(
+                                    data['procedureName'] ??
+                                        'Procedimento',
+                                    style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold))),
+                            StatusChip(
+                              label:
+                                  isCharge ? "Cobrança" : "Atendimento",
+                              color: accent,
+                              horizontal: 8,
+                              vertical: 2,
+                              fontSize: 10,
+                            ),
                           ],
                         ),
+                        const SizedBox(height: 4),
+                        Text(formatDateTimeFull(date),
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey)),
                         const SizedBox(height: 4),
                         Text("Realizado por: ${data['dentistName'] ?? 'Profissional'}", style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
                         const Divider(),
