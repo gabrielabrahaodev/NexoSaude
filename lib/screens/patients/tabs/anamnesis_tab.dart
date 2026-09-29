@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 import '../../../ui/app_theme.dart';
 import '../../../utils/display.dart';
+import '../../../utils/external_link.dart';
 
 class AnamnesisTab extends StatefulWidget {
   final String patientId;
@@ -152,6 +153,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
 
   // --- 3. ENVIAR POR WHATSAPP ---
   Future<void> _sendLinkToWhatsapp() async {
+    final tab = openBlankTab();
     try {
       final doc = await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).get();
       String? phoneRaw;
@@ -164,6 +166,9 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
       }
 
       if (phoneRaw == null || phoneRaw.isEmpty) {
+        try {
+          tab?.close();
+        } catch (_) {}
         if (mounted) toast(context, "Telefone não cadastrado.");
         return;
       }
@@ -176,15 +181,16 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
 
       String message = "Olá $patientName, para agilizar seu atendimento, por favor preencha sua ficha de anamnese online clicando neste link: $link";
 
-      final url = Uri.parse("https://wa.me/$phone?text=${Uri.encodeComponent(message)}");
-      
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) toast(context, "Não foi possível abrir o WhatsApp.");
+      final ok = await openWhatsAppSafe(context, tab,
+          phone: phone, message: message);
+      if (!ok && mounted) {
+        toast(context, "Não foi possível abrir o WhatsApp.");
       }
 
     } catch (e) {
+      try {
+        tab?.close();
+      } catch (_) {}
       if (mounted) toast(context, "Erro: $e");
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:universal_html/html.dart' as html;
 import '../../ui/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,6 +13,7 @@ import 'widgets/charge_confirm_dialog.dart';
 import 'widgets/monthly_package_card.dart';
 import 'widgets/session_charge_card.dart';
 import '../../utils/display.dart';
+import '../../utils/external_link.dart';
 import '../../widgets/page_header.dart';
 
 class CollectionsScreen extends StatefulWidget {
@@ -91,10 +93,14 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
 
   // Ação de Cobrança Individual (Híbrida)
   Future<void> _handleCharge(FinancialModel item) async {
+    final tab = openBlankTab();
     // 1. Busca dados atualizados do paciente (Telefone)
     final phone = await _fetchPatientPhone(item.patientId);
 
     if (phone == null) {
+      try {
+        tab?.close();
+      } catch (_) {}
       if (!mounted) return;
       final isNotFound = await FirebaseFirestore.instance
           .collection('patients')
@@ -113,7 +119,8 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
     final message = WhatsAppHelper.getMessage(item.patientName, item.amount, item.dueDate ?? DateTime.now());
 
     // 3. Abre WhatsApp
-    final success = await WhatsAppHelper.openWhatsApp(phone: phone, message: message);
+    final success = await openWhatsAppSafe(context, tab,
+        phone: phone, message: message);
 
     if (success) {
       // Marca que estamos aguardando retorno deste item
@@ -151,6 +158,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
 
     // Dialog para escolher tipo de pagamento
     if (!mounted) return;
+    html.WindowBase? chargeTab;
     final paymentType = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -177,7 +185,10 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
             child: const Text("Pagamento Parcial", style: TextStyle(color: Colors.orange)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, 'full'),
+            onPressed: () {
+              chargeTab = openBlankTab();
+              Navigator.pop(ctx, 'full');
+            },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             child: const Text("Pagar Pacote Completo"),
           ),
@@ -193,14 +204,15 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
 
     if (paymentType == 'full') {
       // Pagar pacote completo - marca todos os itens como pagos
-      await _payFullMonthlyPackage(items, patientName, phone, periodLabel);
+      await _payFullMonthlyPackage(
+          items, patientName, phone, periodLabel, chargeTab);
     } else if (paymentType == 'partial') {
       // Pagamento parcial - abre dialog para valor
       await _handlePartialMonthlyPackagePayment(items, patientId, patientName, phone, periodLabel, totalAmount);
     }
   }
 
-  Future<void> _payFullMonthlyPackage(List<DocumentSnapshot> items, String patientName, String phone, String periodLabel) async {
+  Future<void> _payFullMonthlyPackage(List<DocumentSnapshot> items, String patientName, String phone, String periodLabel, html.WindowBase? tab) async {
     // Gera mensagem para WhatsApp
     final totalAmount = items.fold<double>(0.0, (total, doc) {
       final data = doc.data() as Map<String, dynamic>;
@@ -208,7 +220,8 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
     });
 
     final message = WhatsAppHelper.getMessage(patientName, totalAmount, DateTime.now());
-    final success = await WhatsAppHelper.openWhatsApp(phone: phone, message: message);
+    final success = await openWhatsAppSafe(context, tab,
+        phone: phone, message: message);
 
     if (success) {
       // Só registra o pendente: a marcação como cobrado acontece
@@ -228,6 +241,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
     final amountCtrl =
         TextEditingController(text: totalAmount.toStringAsFixed(2));
     double? amount;
+    html.WindowBase? partialTab;
     try {
       if (!mounted) return;
       amount = await showDialog<double>(
@@ -258,6 +272,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
             onPressed: () {
               final val = double.tryParse(amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
               if (val > 0 && val <= totalAmount) {
+                partialTab = openBlankTab();
                 Navigator.pop(ctx, val);
               }
             },
@@ -272,8 +287,8 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
       // Abre WhatsApp com valor parcial
       final message =
           WhatsAppHelper.getMessage(patientName, amount, DateTime.now());
-      final success =
-          await WhatsAppHelper.openWhatsApp(phone: phone, message: message);
+      final success = await openWhatsAppSafe(context, partialTab,
+          phone: phone, message: message);
 
       if (success) {
         setState(() {

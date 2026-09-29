@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 import '../../../ui/app_theme.dart';
 import '../../../utils/display.dart';
+import '../../../utils/external_link.dart';
 import '../../../widgets/status_chip.dart';
 import '../../../services/financial_service.dart';
 import '../../../services/user_service.dart'; 
@@ -279,6 +280,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
   // --- FUNÇÃO DE WHATSAPP ---
   Future<void> _sendPaymentReminder(FinancialModel item) async {
+    final tab = openBlankTab();
     try {
       final doc = await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).get();
       if (!doc.exists) return;
@@ -286,6 +288,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       String? phone = data['phone'] ?? data['celular'] ?? data['whatsapp'];
       
       if (phone == null || phone.isEmpty) {
+        try {
+          tab?.close();
+        } catch (_) {}
         if (mounted) toast(context, "Telefone não cadastrado.");
         return;
       }
@@ -294,10 +299,12 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       if (!phone.startsWith('55')) phone = '55$phone';
       
       String msg = "Olá, lembrete da parcela de ${formatBRL(item.amount)} vencendo em ${formatDateShort(item.dueDate ?? DateTime.now())}.";
-      final url = Uri.parse("https://wa.me/$phone?text=${Uri.encodeComponent(msg)}");
-      
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+      final ok = await openWhatsAppSafe(context, tab,
+          phone: phone, message: msg);
+      if (!ok) {
+        try {
+          tab?.close();
+        } catch (_) {}
       }
     } catch (e) { debugPrint("$e"); }
   }

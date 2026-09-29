@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/display.dart';
+import '../../utils/external_link.dart';
 import '../../ui/app_theme.dart';
 // import 'package:flutter_web_plugins/flutter_web_plugins.dart'; // Descomente se configurou web plugins
 
@@ -148,12 +149,16 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
   // legados phone/whatsapp como fallback; sem número, avisa em vez de
   // mandar para um placeholder morto).
   Future<void> _launchWhatsAppRedirect() async {
+    final tab = openBlankTab();
     final fromField =
         normalizeWhatsApp(clinicData?['whatsappNumber']?.toString());
     final legacy = normalizeWhatsApp(
         (clinicData?['phone'] ?? clinicData?['whatsapp'])?.toString());
     final finalPhone = fromField ?? legacy;
     if (finalPhone == null) {
+      try {
+        tab?.close();
+      } catch (_) {}
       setState(() => _isSaving = false);
       toast(context, "WhatsApp da clínica não cadastrado. Fale com a recepção.",
           error: true);
@@ -162,11 +167,9 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
 
     final message = "Olá! Vim pela Avaliação Online. Meu Score foi: $_score pontos.";
     
-    final url = Uri.parse("https://wa.me/$finalPhone?text=${Uri.encodeComponent(message)}");
-    
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
+    final ok = await openWhatsAppSafe(context, tab,
+        phone: finalPhone, message: message);
+    if (!ok) {
       setState(() => _isSaving = false);
       showDialog(
         context: context, 

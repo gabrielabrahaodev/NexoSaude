@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:universal_html/html.dart' as html; 
+import 'package:url_launcher/url_launcher.dart'; 
 
 import 'agenda_cell_factory.dart';
 import 'agenda_form_screen.dart';
@@ -23,6 +21,7 @@ import '../../models/appointment_model.dart';
 import '../../models/user_model.dart';
 import '../../services/block_interval.dart';
 import '../../utils/display.dart';
+import '../../utils/external_link.dart';
 
 class AgendaManagerScreen extends StatefulWidget {
   const AgendaManagerScreen({super.key});
@@ -438,14 +437,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   // --- MÉTODOS ORIGINAIS (MANTIDOS) ---
 
   void _launchWhatsApp(AppointmentModel appt) async {
-    // Web: abre a aba no gesto (síncrono) p/ o bloqueador de pop-up não
-    // matar; preenche a URL após buscar o telefone.
-    html.WindowBase? blankTab;
-    if (kIsWeb) {
-      try {
-        blankTab = html.window.open('', '_blank');
-      } catch (e) { /* ignore */ }
-    }
+    // Aba em branco no gesto (síncrono) p/ o bloqueador de pop-up não
+    // matar; a URL chega após buscar o telefone.
+    final blankTab = openBlankTab();
     String? phoneRaw;
     try {
       toast(context, "Buscando contato...", duration: const Duration(milliseconds: 500));
@@ -455,33 +449,13 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
         phoneRaw = data?['phone'] ?? data?['celular'] ?? data?['whatsapp'];
       }
     } catch (e) { /* ignore */ }
-    
-    if (phoneRaw == null || phoneRaw.isEmpty) {
-      try { blankTab?.close(); } catch (e) { /* ignore */ }
-      if (mounted) toast(context, "Telefone do paciente não encontrado no cadastro.");
-      return;
-    }
-    String phone = phoneRaw.replaceAll(RegExp(r'[^\d]'), '');
-    if (phone.length < 10) {
-       try { blankTab?.close(); } catch (e) { /* ignore */ }
-       if (mounted) toast(context, "Número de telefone inválido.");
-       return;
-    }
-    if (!phone.startsWith('55')) phone = '55$phone'; 
+
     String link = "https://nexosaude.web.app/confirmar.html?id=${appt.id}";
     String message = "Olá ${appt.patientName}, por favor confirme sua consulta para o dia ${formatDateAs(appt.date)} clicando neste link: $link";
-    final waUrl = "https://wa.me/$phone?text=${Uri.encodeComponent(message)}";
-    if (blankTab != null) {
-      try {
-        blankTab.location.href = waUrl;
-        return;
-      } catch (e) { /* cai p/ launchUrl */ }
-    }
-    final url = Uri.parse(waUrl);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) toast(context, "Não foi possível abrir o WhatsApp.");
+    final ok = await openWhatsAppSafe(context, blankTab,
+        phone: phoneRaw ?? '', message: message);
+    if (!ok && mounted) {
+      toast(context, "Não foi possível abrir o WhatsApp.");
     }
   }
 

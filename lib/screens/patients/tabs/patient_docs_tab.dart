@@ -14,6 +14,7 @@ import '../../../services/document_service.dart';
 import '../../../services/session_manager.dart';
 import '../../../models/patient_document_model.dart';
 import '../../../utils/display.dart';
+import '../../../utils/external_link.dart';
 
 class PatientDocsTab extends StatefulWidget {
   final String patientId;
@@ -162,11 +163,10 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
       )));
     } else {
       // Se for PDF ou DOC, abre no navegador/app externo
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uri);
+      final tab = openBlankTab();
+      final ok = await openLinkSafe(tab, url);
+      if (!ok && mounted) {
+        toast(context, "Não foi possível abrir o arquivo.");
       }
     }
   }

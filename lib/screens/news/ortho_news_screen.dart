@@ -1,7 +1,7 @@
 // ortho_news_screen.dart
 import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../utils/external_link.dart';
 import '../../models/news_model.dart';
 import '../../services/news_service.dart';
 
@@ -116,16 +116,12 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
     // ADICIONE ESTE MÉTODO:
   Future<void> _launchURL(String url) async {
     if (url.isEmpty) return;
-    
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o link')),
-        );
-      }
+    final tab = openBlankTab();
+    final ok = await openLinkSafe(tab, url);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível abrir o link')),
+      );
     }
   }
 

@@ -12,6 +12,7 @@ import '../../services/session_manager.dart';
 import '../../services/whatsapp_helper.dart';
 import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
+import '../../utils/external_link.dart';
 
 /// Ficha de atendimento em 3 blocos (spec 3.1): evolução rápida,
 /// cobrança e próxima sessão. Glue fino: regras puras vivem em
@@ -276,7 +277,11 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   }
 
   Future<void> _scheduleNext() async {
+    final tab = openBlankTab();
     if (_nextDate == null) {
+      try {
+        tab?.close();
+      } catch (_) {}
       toast(context, "Escolha a data da próxima sessão.");
       return;
     }
@@ -297,11 +302,14 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
       final msg = nextSessionText(
           patientName: a.patientName, date: _nextDate!);
       if ((_phone ?? '').isEmpty) {
+        try {
+          tab?.close();
+        } catch (_) {}
         if (mounted) {
           toast(context, "Agendado! Telefone não cadastrado p/ WhatsApp.");
         }
       } else {
-        await WhatsAppHelper.openWhatsApp(phone: _phone!, message: msg);
+        await openWhatsAppSafe(context, tab, phone: _phone!, message: msg);
       }
       if (mounted) setState(() => _nextDate = null);
     } catch (e) {
