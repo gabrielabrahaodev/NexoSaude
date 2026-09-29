@@ -148,6 +148,35 @@ class KpiDashboardScreen extends StatelessWidget {
                     .where((d) => d.data()['status'] == 'Confirmado')
                     .length;
 
+                // --- Exceções do dia (3 regras, mesmos streams) ---
+                final overdueIds = <String>{};
+                var oldOverdueCount = 0;
+                final weekAgo = startOfDay.subtract(const Duration(days: 7));
+                for (final doc in finSnap.data?.docs ?? []) {
+                  final data = doc.data();
+                  if (_isPaid(data)) continue;
+                  final due = _toDate(data['dueDate']);
+                  if (due != null && due.isBefore(startOfDay)) {
+                    overdueIds.add('${data['patientId'] ?? ''}');
+                    if (!due.isAfter(weekAgo)) oldOverdueCount++;
+                  }
+                }
+                final todayAppts = (apptSnap.data?.docs ?? []).where((d) {
+                  final st = '${d.data()['status'] ?? ''}';
+                  return st != 'Cancelado' && st != 'Bloqueado';
+                }).toList();
+                final noConfirm = todayAppts
+                    .where((d) =>
+                        '${d.data()['status'] ?? ''}' ==
+                        'Aguardando Confirmação')
+                    .toList();
+                final debtorsToday = todayAppts
+                    .where((d) =>
+                        '${d.data()['status'] ?? ''}' == 'Confirmado' &&
+                        overdueIds
+                            .contains('${d.data()['patientId'] ?? ''}'))
+                    .toList();
+
                 // --- Aniversariantes do mês ---
                 final birthdays = <Map<String, dynamic>>[];
                 for (final doc in patSnap.data?.docs ?? []) {
@@ -252,6 +281,94 @@ class KpiDashboardScreen extends StatelessWidget {
                             },
                           ),
                           const SizedBox(height: 16),
+                          if (noConfirm.isNotEmpty ||
+                              debtorsToday.isNotEmpty ||
+                              oldOverdueCount > 0) ...[
+                            _SectionTitle(
+                              icon: Icons.priority_high,
+                              title: "Exceções de hoje",
+                            ),
+                            const SizedBox(height: 8),
+                            _Panel(
+                              child: Column(
+                                children: [
+                                  if (debtorsToday.isNotEmpty)
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const Icon(
+                                          Icons.warning_amber_rounded,
+                                          color: Colors.red),
+                                      title: Text(
+                                          "${debtorsToday.length} paciente(s) de hoje com conta vencida",
+                                          style: const TextStyle(
+                                              fontWeight:
+                                                  FontWeight.w600,
+                                              fontSize: 13)),
+                                      subtitle: Text(
+                                          debtorsToday
+                                              .take(3)
+                                              .map((d) =>
+                                                  '${d.data()['patientName'] ?? 'Paciente'}')
+                                              .join(', '),
+                                          style: const TextStyle(
+                                              fontSize: 12)),
+                                      trailing: TextButton(
+                                        onPressed: onNavigate == null
+                                            ? null
+                                            : () => onNavigate!(7),
+                                        child: const Text("Cobranças"),
+                                      ),
+                                    ),
+                                  if (noConfirm.isNotEmpty)
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const Icon(
+                                          Icons.mark_email_unread_outlined,
+                                          color: Colors.orange),
+                                      title: Text(
+                                          "${noConfirm.length} agendamento(s) sem confirmação hoje",
+                                          style: const TextStyle(
+                                              fontWeight:
+                                                  FontWeight.w600,
+                                              fontSize: 13)),
+                                      subtitle: Text(
+                                          noConfirm
+                                              .take(3)
+                                              .map((d) =>
+                                                  '${d.data()['patientName'] ?? 'Paciente'}')
+                                              .join(', '),
+                                          style: const TextStyle(
+                                              fontSize: 12)),
+                                      trailing: TextButton(
+                                        onPressed: onNavigate == null
+                                            ? null
+                                            : () => onNavigate!(1),
+                                        child: const Text("Agenda"),
+                                      ),
+                                    ),
+                                  if (oldOverdueCount > 0)
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const Icon(Icons.schedule,
+                                          color: Colors.red),
+                                      title: Text(
+                                          "$oldOverdueCount conta(s) vencida(s) há 7+ dias",
+                                          style: const TextStyle(
+                                              fontWeight:
+                                                  FontWeight.w600,
+                                              fontSize: 13)),
+                                      trailing: TextButton(
+                                        onPressed: onNavigate == null
+                                            ? null
+                                            : () => onNavigate!(7),
+                                        child: const Text("Cobranças"),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           _SectionTitle(
                             icon: Icons.schedule,
                             title: "Próximos vencimentos",
