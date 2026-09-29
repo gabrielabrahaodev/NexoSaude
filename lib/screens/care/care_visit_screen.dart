@@ -73,9 +73,12 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   void initState() {
     super.initState();
     _nextDentistId = widget.appointment.dentistId;
-    _loadPhone();
-    _loadOpenCharges();
-    _loadNextDentists();
+    // Cargas em paralelo: tempo da mais lenta, não soma das 3.
+    Future.wait([
+      _loadPhone(),
+      _loadOpenCharges(),
+      _loadNextDentists(),
+    ]);
   }
 
   @override
@@ -93,11 +96,8 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
       setState(() {
         _nextDentists = list;
         // Padrão = dentista do agendamento atual (se ainda atender).
-        if ((_nextDentistId ?? '').isEmpty ||
-            !list.any((d) => d.id == _nextDentistId)) {
-          _nextDentistId =
-              list.isNotEmpty ? list.first.id : widget.appointment.dentistId;
-        }
+        _nextDentistId = resolveNextDentist(
+            _nextDentistId ?? widget.appointment.dentistId, list);
       });
     } catch (_) {}
   }

@@ -3,6 +3,17 @@ import '../models/user_model.dart';
 import 'clinic_capabilities.dart';
 import 'session_manager.dart';
 
+/// Dentista padrão da próxima sessão (puro e testado): mantém o atual
+/// se ainda atende; senão o primeiro da lista; sem lista, o atual.
+String? resolveNextDentist(String? currentId, List<UserModel> dentists) {
+  if ((currentId ?? '').isNotEmpty &&
+      dentists.any((d) => d.id == currentId)) {
+    return currentId;
+  }
+  if (dentists.isNotEmpty) return dentists.first.id;
+  return currentId;
+}
+
 class UserService {
   // Tipagem explícita para evitar erros
   final CollectionReference<Map<String, dynamic>> _users = 
