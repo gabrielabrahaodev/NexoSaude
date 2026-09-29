@@ -123,14 +123,15 @@ void main() {
       );
     });
 
-    test('14 chaves cobrem todos os índices do menu (inclui master)', () {
-      expect(MenuAccess.indexKey.length, 14);
-      for (var i = 0; i < 14; i++) {
+    test('15 chaves cobrem todos os índices do menu (inclui master e exportar)', () {
+      expect(MenuAccess.indexKey.length, 15);
+      for (var i = 0; i < 15; i++) {
         expect(MenuAccess.indexKey.containsKey(i), isTrue, reason: 'índice $i');
       }
-      expect(MenuAccess.keys.toSet().length, 14);
+      expect(MenuAccess.keys.toSet().length, 15);
       expect(MenuAccess.keyIndex['atendimento'], 12);
       expect(MenuAccess.keyIndex['master'], 13);
+      expect(MenuAccess.keyIndex['exportar'], 14);
     });
 
     test('psico esconde laboratorio; dental esconde fluxo; atendimento/master nos dois', () {
@@ -139,14 +140,16 @@ void main() {
       expect(psy.contains('fluxo'), isTrue);
       expect(psy.contains('atendimento'), isTrue);
       expect(psy.contains('master'), isTrue);
-      expect(psy.length, 13);
+      expect(psy.contains('exportar'), isTrue);
+      expect(psy.length, 14);
 
       final dental = MenuAccess.keysForClinicType('dental');
       expect(dental.contains('fluxo'), isFalse);
       expect(dental.contains('laboratorio'), isTrue);
       expect(dental.contains('atendimento'), isTrue);
       expect(dental.contains('master'), isTrue);
-      expect(dental.length, 13);
+      expect(dental.contains('exportar'), isTrue);
+      expect(dental.length, 14);
     });
 
     test('tipo desconhecido cai em dental', () {

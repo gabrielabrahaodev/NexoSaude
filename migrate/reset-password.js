@@ -21,7 +21,9 @@ const db = admin.firestore();
     process.exit(1);
   }
   const temp =
-    process.argv[3] || 'Nexo' + Math.floor(1000 + Math.random() * 9000);
+    process.argv[3] ||
+    'Nx-' +
+      Math.random().toString(36).slice(2, 8).replace(/[^a-z0-9]/gi, 'x');
 
   const user = await admin.auth().getUserByEmail(email);
   await admin.auth().updateUser(user.uid, { password: temp });

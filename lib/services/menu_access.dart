@@ -20,6 +20,7 @@ class MenuAccess {
     'gestao',
     'fluxo',
     'master',
+    'exportar',
   ];
 
   /// Índice em `MainWebDashboard._screens` por chave.
@@ -38,6 +39,7 @@ class MenuAccess {
     'fluxo': 11,
     'atendimento': 12,
     'master': 13,
+    'exportar': 14,
   };
 
   /// Índice → chave (inverso de [keyIndex]).
@@ -70,6 +72,7 @@ class MenuAccess {
     'gestao': 'Gestão',
     'fluxo': 'Fluxo Terapêutico',
     'master': 'Master',
+    'exportar': 'Exportar backup',
     // Sub-chaves: abas e seções da Gestão (sem índice de menu).
     'g_proc': 'Gestão: Procedimentos',
     'g_estoque': 'Gestão: Estoque',
@@ -130,6 +133,9 @@ class MenuAccess {
     switch (menuKey) {
       case 'master':
         return _normRole(role) == 'superadmin';
+      case 'exportar':
+        // Backup: somente owner (a tela também guarda sozinha).
+        return false;
       case 'gestao':
         return _normRole(role) == 'recepcionista';
       case 'clinicas':

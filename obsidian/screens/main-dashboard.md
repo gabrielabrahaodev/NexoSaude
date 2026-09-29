@@ -38,7 +38,7 @@ Ordem visual: Agenda, Pacientes, Dashboard…; abre na Agenda (`_selectedIndex =
 - Menu usa `ClinicCapabilities.ofType(_currentClinicType).isPsychology`.
 - Visibilidade 100% via `MenuAccess` (`_canShow`): sem `if (role)` hardcoded — DONO/MASTER/GESTÃO passam pelo mapa com defaults por papel (ver `test/menu_access_test.dart`).
 - Seletor de clínica: owner OU `allowedClinics.length > 1` (ex.: recepção em 2 clínicas); some sozinho com 1 só. Staff lista por `documentId whereIn` (máx 10, sem índice novo).
-- Administração (Clínicas/Funcionários/Master/Gestão) em `ExpansionTile` que inicia **fechado** (rail compacto: ícones avulsos); ao expandir, o scroll acompanha (`_menuScroll`).
+- Administração (Clínicas/Funcionários/Master/Gestão/**Exportar**) em `ExpansionTile` que inicia **fechado** (rail compacto: ícones avulsos); ao expandir, o scroll acompanha (`_menuScroll`). Exportar (índice 14, chave `exportar` owner-only) baixa backup JSON/CSV.
 - Rodapé em linha única: card do usuário (avatar + nome + papel • clínica) + botão sair quadrado ao lado; `role_check` grava `name/email` na sessão.
 - `withOpacity` aqui já migrado para `withValues`.
 

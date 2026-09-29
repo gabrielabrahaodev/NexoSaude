@@ -32,6 +32,9 @@ import '../care/care_day_screen.dart';
 // --- MASTER (dono da plataforma) ---
 import '../master/master_screen.dart';
 
+// --- BACKUP (dono da clínica) ---
+import '../admin/export_screen.dart';
+
 import '../../main.dart';
 import '../../utils/display.dart'; 
 
@@ -191,6 +194,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
     // --- MASTER (dono da plataforma) ---
     MasterScreen(key: const ValueKey('master')), // 13
+
+    // --- BACKUP (dono da clínica) ---
+    const ExportScreen(), // 14
   ];
 
   void _onMenuSelect(int index) {
@@ -483,6 +489,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                 if (_canShow('clinicas') ||
                     _canShow('funcionarios') ||
                     _canShow('master') ||
+                    _canShow('exportar') ||
                     _canShow('gestao')) ...[
                   const Divider(height: 30, thickness: 1),
                   if (!isCompact)
@@ -532,6 +539,14 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                               highlightColor,
                               primaryColor,
                               false),
+                        if (_canShow('exportar'))
+                          _buildMenuItem(
+                              14,
+                              "Exportar",
+                              Icons.download_outlined,
+                              highlightColor,
+                              primaryColor,
+                              false),
                       ],
                     ),
                   if (isCompact) ...[
@@ -564,6 +579,14 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                           10,
                           "Gestão",
                           Icons.settings_applications,
+                          highlightColor,
+                          primaryColor,
+                          true),
+                    if (_canShow('exportar'))
+                      _buildMenuItem(
+                          14,
+                          "Exportar",
+                          Icons.download_outlined,
                           highlightColor,
                           primaryColor,
                           true),

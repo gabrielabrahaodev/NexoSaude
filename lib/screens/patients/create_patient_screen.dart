@@ -89,22 +89,24 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
 
   
     try {
-      // Verifica duplicidade de CPF (APENAS NA CLÍNICA ATUAL)
-      final cpfQuery = await FirebaseFirestore.instance
-          .collection('patients')
-          .where('clinicId', isEqualTo: clinicId) // Só importa se já existe AQUI
-          .where('cpf', isEqualTo: _cpfController.text.trim())
-          .get();
-      /*
-      if (cpfQuery.docs.isNotEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Erro: Este CPF já está cadastrado nesta clínica."), backgroundColor: Colors.red),
-          );
+      // Bloqueio de CPF duplicado (APENAS NA CLÍNICA ATUAL; vazio não conta).
+      final cpfDigits = _cpfController.text.replaceAll(RegExp(r'[^\d]'), '');
+      if (cpfDigits.isNotEmpty) {
+        final cpfQuery = await FirebaseFirestore.instance
+            .collection('patients')
+            .where('clinicId', isEqualTo: clinicId) // Só importa se já existe AQUI
+            .where('cpf', isEqualTo: _cpfController.text.trim())
+            .get();
+        if (cpfQuery.docs.isNotEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Erro: Este CPF já está cadastrado nesta clínica."), backgroundColor: Colors.red),
+            );
+          }
+          setState(() => _isLoading = false);
+          return;
         }
-        setState(() => _isLoading = false);
-        return;
-      }*/
+      }
 
       // Salva com o carimbo da clínica.
       // Psicologia: grava o estágio terapêutico escolhido (kanban lê direto).
