@@ -15,4 +15,16 @@ void main() {
       expect(msg.contains('https://'), isTrue);
     });
   });
+
+  group('confirmText', () {
+    test('traz nome, data e hora confirmadas', () {
+      final msg = confirmText(
+        patientName: 'Gabriel',
+        confirmed: DateTime(2026, 9, 22, 14, 30),
+      );
+      expect(msg.contains('Gabriel'), isTrue);
+      expect(msg.contains('22/09'), isTrue);
+      expect(msg.contains('14:30'), isTrue);
+    });
+  });
 }

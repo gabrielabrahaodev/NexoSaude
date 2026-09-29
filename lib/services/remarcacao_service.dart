@@ -22,6 +22,16 @@ String refuseText({
   return 'Olá $patientName, a data $when às $hour não está mais disponível.$link';
 }
 
+/// Texto do WhatsApp de confirmação (testado): novo horário aprovado.
+String confirmText({
+  required String patientName,
+  required DateTime confirmed,
+}) {
+  final when = formatDateShort(confirmed);
+  final hour = DateFormat('HH:mm').format(confirmed);
+  return 'Olá $patientName, sua consulta foi confirmada para $when às $hour. Até lá!';
+}
+
 String _isoSlot(DateTime d) =>
     "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}T${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
 

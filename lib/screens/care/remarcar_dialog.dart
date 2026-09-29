@@ -60,15 +60,64 @@ Future<void> showRemarcarDialog(
                         await RemarcacaoService.approve(appt);
                     if (ctx.mounted) Navigator.pop(ctx);
                     if (msg == null) {
-                      toast(context, "Remarcação aprovada.", ok: true);
+                      toast(context, "Agendamento aceito e confirmado.",
+                          ok: true);
+                      if (context.mounted) {
+                        await _askConfirmWhatsApp(context, appt);
+                      }
                     } else {
                       toast(context, msg, error: true);
                     }
                   },
-            child: const Text("Aprovar"),
+            child: const Text("Aceitar agendamento"),
           ),
         ],
       ),
     ),
   );
+}
+
+/// Após aceitar: pergunta se quer avisar o paciente no WhatsApp.
+/// O horário confirmado já foi refletido no portal pelo approve.
+Future<void> _askConfirmWhatsApp(
+    BuildContext context, AppointmentModel appt) async {
+  final proposed = appt.proposedDate;
+  if (proposed == null) return;
+  final send = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text("Avisar paciente?"),
+      content: Text(
+          "Enviar WhatsApp confirmando ${formatDateTimeShort(proposed)} para ${appt.patientName}?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text("Agora não"),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text("Enviar"),
+        ),
+      ],
+    ),
+  );
+  if (send != true || !context.mounted) return;
+  try {
+    final pdoc = await FirebaseFirestore.instance
+        .collection('patients')
+        .doc(appt.patientId)
+        .get();
+    final phone = '${pdoc.data()?['phone'] ?? ''}';
+    if (phone.isEmpty) {
+      toast(context, "Aceito. Telefone não cadastrado p/ avisar.");
+      return;
+    }
+    await WhatsAppHelper.openWhatsApp(
+      phone: phone,
+      message: confirmText(
+          patientName: appt.patientName, confirmed: proposed),
+    );
+  } catch (e) {
+    toast(context, "Falha ao abrir WhatsApp: $e", error: true);
+  }
 }

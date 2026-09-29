@@ -1286,6 +1286,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             bool isBlocked = appt.status == 'Bloqueado'; 
             bool isConfirmed = appt.status == 'Confirmado';
             bool isFinished = appt.status == 'Finalizado';
+            bool isRemarcar = appt.status.toLowerCase() == 'remarcar' &&
+                appt.proposedDate != null;
             
             Color mainColor;
             IconData? icon;
@@ -1296,6 +1298,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             } else if (isFinished) {
               mainColor = Colors.grey; 
               icon = Icons.lock_clock;
+            } else if (isRemarcar) {
+              mainColor = Colors.orange;
+              icon = Icons.event_repeat;
             } else if (isConfirmed) {
               mainColor = Colors.green;
               icon = Icons.check_circle;
