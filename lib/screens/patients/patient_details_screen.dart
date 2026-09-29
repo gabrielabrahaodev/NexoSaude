@@ -68,15 +68,21 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         appBar: AppBar(
           backgroundColor: AppColors.surface,
           elevation: 0,
+          toolbarHeight: 40,
           iconTheme: IconThemeData(color: AppColors.textPrimary),
           title: Text(widget.patientName, style: AppTextStyles.h2),
           centerTitle: true,
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(kTextTabBarHeight),
+            preferredSize: const Size.fromHeight(36),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 800),
                 child: TabBar(
+            labelPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            labelStyle: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
@@ -103,7 +109,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             Container(
               width: double.infinity,
               color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 800),
@@ -117,7 +123,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             Container(
               width: double.infinity,
               color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 800),
@@ -168,7 +174,7 @@ class _HeaderSummaryRow extends StatelessWidget {
 
     return Container(
       color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
           Expanded(
@@ -286,7 +292,7 @@ class _HeaderSummaryRow extends StatelessWidget {
 
   Widget _buildSummaryItem(String label, String value, Color color, {bool isTextValue = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
@@ -305,14 +311,14 @@ class _HeaderSummaryRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           FittedBox( 
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value, 
               style: TextStyle(
-                fontSize: 16, 
+                fontSize: 14, 
                 fontWeight: FontWeight.bold, 
                 color: color
               )
