@@ -24,7 +24,7 @@ Contratar, trocar papel, dar/remover acesso a clínica.
 
 - Criar: `createUserWithEmailAndPassword` + `users.set({role, allowedClinics})`.
 - Filtro por clínica via dropdown (`clinics` do owner).
-- Tile → sheet: gerar nova senha (cria `password_reset_requests` pendente; `.bat` efetiva, temporária aparece em Pedidos) + **Clínicas liberadas** (checkboxes das unidades, salva `allowedClinics`; desmarcar tudo pede confirmação).
+- Tile → sheet: gerar nova senha (cria `password_reset_requests` pendente; `.bat` efetiva com temporária `Nx-xxxxxx`, aparece em Pedidos; dispensar apaga o doc) + **Clínicas liberadas** (checkboxes das unidades, salva `allowedClinics`; desmarcar tudo pede confirmação).
 - Seção Pedidos segue o item (sem `if owner`); dono não abre sheet.
 
 ## Gotchas

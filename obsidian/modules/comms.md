@@ -21,8 +21,9 @@ Cobrança, documentação do paciente, feed de notícias.
 ## Arquivos-chave
 
 - `lib/services/whatsapp_helper.dart` — `getMessage` (rotativa), `openWhatsApp`
+- `lib/utils/external_link.dart` — `openBlankTab` + `openWhatsAppSafe`/`openLinkSafe`: aba em branco no gesto p/ o bloqueador de pop-up não matar (usar em TODO abrir externo após `await`)
 - `lib/services/document_service.dart` — `uploadFile` (retorna url+`publicId`), `saveMetadata`, `getDocs`, `deleteDocument` (só Firestore no Spark), `purgePatientFiles` (só log, após commit)
-- `lib/services/news_service.dart` — `getLatestOrthoNews` (Google Alerts + backup, cache 15min, tradução)
+- `lib/services/news_service.dart` — `getLatestOrthoNews(clinicType)` (Europe PMC + Semantic Scholar por tema, traduzido, cache 60min)
 
 ## Fluxos
 

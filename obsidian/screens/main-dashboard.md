@@ -40,6 +40,7 @@ Ordem visual: Agenda, Pacientes, Dashboard…; abre na Agenda (`_selectedIndex =
 - Seletor de clínica: owner OU `allowedClinics.length > 1` (ex.: recepção em 2 clínicas); some sozinho com 1 só. Staff lista por `documentId whereIn` (máx 10, sem índice novo).
 - Administração (Clínicas/Funcionários/Master/Gestão/**Exportar**) em `ExpansionTile` que inicia **fechado** (rail compacto: ícones avulsos); ao expandir, o scroll acompanha (`_menuScroll`). Exportar (índice 14, chave `exportar` owner-only) baixa backup JSON/CSV.
 - Rodapé em linha única: card do usuário (avatar + nome + papel • clínica) + botão sair quadrado ao lado; `role_check` grava `name/email` na sessão.
+- PWA: `_checkAppVersion` compara `version.json` publicado com localStorage e oferece "Atualizar agora" (`tool/bump_version.ps1` carimba no deploy via `deploy.bat`).
 - `withOpacity` aqui já migrado para `withValues`.
 
 ## Ver também

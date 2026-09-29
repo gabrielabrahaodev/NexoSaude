@@ -15,7 +15,7 @@ tags:
 
 ## O que é
 
-Regra: cor só via `AppColors` (fundo, superfície, texto, borda); selos via `StatusChip` (pixel-idêntico na migração); moeda `formatBRL`, datas `formatDate*` (8 padrões), avisos `toast` — tudo com teste em `display_helpers_test.dart`.
+Regra: cor só via `AppColors` (fundo, superfície, texto, borda); selos via `StatusChip` (pixel-idêntico na migração) e `chargeBadgeColor` (`isReplaced` = original parcelado, azul-cinza); moeda `formatBRL`, datas `formatDate*` (8 padrões), avisos `toast` — tudo com teste em `display_helpers_test.dart`.
 Cabeçalhos padrão: AppBar global 44px (`AppBarTheme`: título 17 bold centralizado) + no corpo `PageTitle` (17 bold + subtítulo 12) e `MonthSelectorPill` (pílula radius 30 da tela de Relatórios; `labelAbove`/`labelBelow` p/ Competência/Saldo).
 Densidade compacta (branch `teste-de-campos-novos`): tokens `AppTextStyles` reduzidos (h1 19, h2 16, subtitle/body 13, caption 11, chip 10); corpos 16→12, gaps 20/24→12/16. Exceções preservadas: agenda e pagamentos (AppBar 56 + fontes pinadas).
 

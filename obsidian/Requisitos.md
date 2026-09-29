@@ -155,7 +155,7 @@ Bloqueado (agendamento sintético)
 ### RN-18 - Campos obrigatórios e validações (cadastro)
 - Nome obrigatório; telefone com máscara `(##) #####-####` e ≥14 dígitos; CPF obrigatório.
 - Psicologia: dropdown de Status Terapêutico (default Prospecto; grava `lead/active/discharged`). Dental: sem campo, grava `status='Ativo'` (lista não depende do campo).
-- Verificação de CPF duplicado por clínica (query existe; **bloqueio está comentado no código**).
+- Verificação de CPF duplicado por clínica **bloqueia o cadastro** (CPF vazio não conta).
 - Referência: `screens/patients/create_patient_screen.dart:82-127,148-191`.
 
 ### RN-19 - Dados derivados
@@ -598,7 +598,7 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 | 4 | ~~`/avaliacao` com fallback de teste~~ ✅ corrigido (sem cid = erro) | RN-55 |
 | 5 | `product_service` legado diverge de `inventory` (`currentQuantity` vs `currentQty`) e não filtra por clínica | RN-04/RN-51 |
 | 6 | ~~`treatment_model.dart` documentado mas inexistente~~ ✅ corrigido (removido do AGENTS.md; planos são `Map` crus) | RN-28 |
-| 7 | CPF duplicado: query existe mas bloqueio está comentado | RN-18 |
+| 7 | ~~CPF duplicado: query existe mas bloqueio está comentado~~ → bloqueia o cadastro (vazio não conta) | RN-18 |
 | 8 | ~~Código morto: `_showMonthlyValueDialog`, `_checkForGroupPayment`, `_createNewProfile`, `_buildMinimalistCard`, `_getInitials`, `_isLoadingData`, `receivePayment`, `app_constants.dart`, rules `plans/anticipations`~~ ✅ removido (analyzer) | — |
 | 9 | Registro de funcionário pode deslogar o admin (FirebaseApp temporário) | RN-49 |
 | 10 | ~~Rules amplas (`financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`) liberavam qualquer autenticado~~ ✅ corrigido (redundância removida / blocos escopados; `procedures`/`inventory`/`suppliers` mantidos amplos de propósito) | RN-58 |

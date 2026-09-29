@@ -23,7 +23,7 @@ Novo paciente, campos obrigatórios, duplicidade de CPF.
 
 ## Gotchas
 
-- Variável `cpfQuery` não usada — remover ou implementar checagem de duplicado.
+- CPF duplicado bloqueia o cadastro na clínica atual (CPF vazio não conta).
 
 ## Atualizações
 
