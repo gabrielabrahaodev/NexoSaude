@@ -24,6 +24,30 @@ class ClinicalRecordService {
     await _collection.doc(id).update(data);
   }
 
+  /// Registro puro de cobrança via WhatsApp p/ o prontuário (testado).
+  /// Grava o texto exato enviado + quem enviou + quando.
+  static Map<String, dynamic> whatsappChargeRecord({
+    required String clinicId,
+    required String patientId,
+    required String patientName,
+    required String message,
+    required String operatorName,
+    required DateTime at,
+  }) {
+    final when =
+        "${at.day.toString().padLeft(2, '0')}/${at.month.toString().padLeft(2, '0')}/${at.year} ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}";
+    return {
+      'clinicId': clinicId,
+      'treatmentId': null,
+      'patientId': patientId,
+      'patientName': patientName,
+      'procedureName': 'Cobrança via WhatsApp',
+      'description': 'Enviado em $when por $operatorName: $message',
+      'dentistName': operatorName,
+      'date': Timestamp.fromDate(at),
+    };
+  }
+
   Future<void> delete(String id) async {
     await _collection.doc(id).delete();
   }

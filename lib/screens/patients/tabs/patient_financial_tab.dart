@@ -6,6 +6,7 @@ import '../../../utils/display.dart';
 import '../../../utils/external_link.dart';
 import '../../../widgets/status_chip.dart';
 import '../../../services/financial_service.dart';
+import '../../../services/clinical_record_service.dart';
 import '../../../services/user_service.dart'; 
 import '../../../services/session_manager.dart'; 
 import '../../../services/supplier_service.dart'; 
@@ -305,6 +306,49 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
         try {
           tab?.close();
         } catch (_) {}
+        return;
+      }
+      // Mesmo padrão probatório da Cobrança: só registra no SIM.
+      if (!mounted) return;
+      final sent = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Mensagem enviada?"),
+          content: const Text(
+              "Você enviou o lembrete no WhatsApp?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Não"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("SIM"),
+            ),
+          ],
+        ),
+      );
+      if (sent == true && mounted) {
+        final clinicId = SessionManager().currentClinicId;
+        if (clinicId != null) {
+          try {
+            await ClinicalRecordService().add(
+              ClinicalRecordService.whatsappChargeRecord(
+                clinicId: clinicId,
+                patientId: widget.patientId,
+                patientName: item.patientName,
+                message: msg,
+                operatorName:
+                    SessionManager().userName ?? 'Operador',
+                at: DateTime.now(),
+              ),
+            );
+            toast(context, "Lembrete registrado no prontuário.",
+                ok: true);
+          } catch (e) {
+            debugPrint('Registro WhatsApp falhou: $e');
+          }
+        }
       }
     } catch (e) { debugPrint("$e"); }
   }

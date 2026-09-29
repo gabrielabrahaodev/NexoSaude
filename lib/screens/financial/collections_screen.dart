@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:universal_html/html.dart' as html;
 import '../../ui/app_theme.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +8,7 @@ import '../../models/financial_model.dart';
 import '../../services/clinic_capabilities.dart';
 import '../../services/package_billing.dart';
 import '../../services/session_manager.dart';
+import '../../services/clinical_record_service.dart';
 import '../../services/whatsapp_helper.dart';
 import 'widgets/charge_confirm_dialog.dart';
 import 'widgets/monthly_package_card.dart';
@@ -30,6 +31,10 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
   
   // Controle de quem está sendo cobrado no momento para exibir o Dialog ao voltar
   String? _currentProcessingId;  String? _currentProcessingName;
+  // Mensagem exata + paciente p/ registrar no prontuário no SIM.
+  // Sobrevive ao dialog (limpo só no .then); NÃO = no-op puro.
+  String? _pendingRecordMessage;  String? _pendingRecordPatientId;
+  String? _pendingRecordPatientName;
   // Docs do pacote mensal aguardando confirmação (SIM marca; NÃO é no-op puro)
   List<DocumentSnapshot>? _pendingPackageDocs;
 
@@ -127,6 +132,9 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
       setState(() {
         _currentProcessingId = item.id;
         _currentProcessingName = item.patientName;
+        _pendingRecordMessage = message;
+        _pendingRecordPatientId = item.patientId;
+        _pendingRecordPatientName = item.patientName;
       });
     } else {
       toast(context, "Não foi possível abrir o WhatsApp.");
@@ -230,6 +238,12 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
       setState(() {
         _currentProcessingId = '${_monthlyPackagePrefix}_${items.first.id}';
         _currentProcessingName = "$patientName - Pacote $periodLabel";
+        _pendingRecordMessage = message;
+        _pendingRecordPatientName = patientName;
+        _pendingRecordPatientId =
+            (items.first.data() as Map<String, dynamic>)['patientId']
+                    ?.toString() ??
+                '';
         _pendingPackageDocs = items;
       });
     } else {
@@ -295,6 +309,9 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
           _currentProcessingId =
               '${_monthlyPackagePrefix}_partial_${items.first.id}';
           _currentProcessingName = "$patientName - Parcial $periodLabel";
+          _pendingRecordMessage = message;
+          _pendingRecordPatientId = patientId;
+          _pendingRecordPatientName = patientName;
         });
         // Para pagamento parcial, apenas registra o contato, não muda status
         final batch = FirebaseFirestore.instance.batch();
@@ -326,7 +343,8 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
     final id = _currentProcessingId;
     final name = _currentProcessingName;
 
-    // Limpa estado para não abrir de novo
+    // Limpa estado para não abrir de novo (o registro do SIM usa
+    // _pendingRecord*, limpo só no .then)
     setState(() {
       _currentProcessingId = null;
       _currentProcessingName = null;
@@ -342,11 +360,39 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
     ).then((_) {
       // Segurança: não vaza pendência entre cobranças (NÃO = no-op puro)
       _pendingPackageDocs = null;
+      _pendingRecordMessage = null;
+      _pendingRecordPatientId = null;
+      _pendingRecordPatientName = null;
     });
+  }
+
+  /// Grava o envio confirmado no prontuário (verificação futura).
+  Future<void> _recordWhatsappSent() async {
+    final msg = _pendingRecordMessage;
+    final pid = _pendingRecordPatientId;
+    final clinicId = SessionManager().currentClinicId;
+    if (msg == null || pid == null || pid.isEmpty || clinicId == null) {
+      return;
+    }
+    try {
+      await ClinicalRecordService().add(
+        ClinicalRecordService.whatsappChargeRecord(
+          clinicId: clinicId,
+          patientId: pid,
+          patientName: _pendingRecordPatientName ?? 'Paciente',
+          message: msg,
+          operatorName: SessionManager().userName ?? 'Operador',
+          at: DateTime.now(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Registro WhatsApp falhou: $e');
+    }
   }
 
   /// Marca o pacote mensal como cobrado (só no SIM do dialog).
   Future<void> _markPackageAsCharged(String firstDocId) async {
+    await _recordWhatsappSent();
     final docs = _pendingPackageDocs;
     _pendingPackageDocs = null;
     if (docs == null || docs.isEmpty) return;
@@ -371,6 +417,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
   }
 
   Future<void> _markAsCharged(String financialId) async {
+    await _recordWhatsappSent();
     try {
       await FirebaseFirestore.instance.collection('financial').doc(financialId).update({
         'status': 'cobrado', // Ou manter pendente e usar lastContactDate para filtrar visualmente
