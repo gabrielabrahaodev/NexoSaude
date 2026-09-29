@@ -1,4 +1,4 @@
-# Obsidian local config (plugin settings, workspace, cache — máquina local)
+﻿# Obsidian local config (plugin settings, workspace, cache — máquina local)
 .obsidian/
 **/.obsidian/
 *.class
@@ -50,3 +50,4 @@ app.*.map.json
 migrate/*-key.json
 migrate/usuarios.json
 migrate/node_modules/
+.firebase/
