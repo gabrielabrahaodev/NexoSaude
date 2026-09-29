@@ -18,7 +18,7 @@ description: Abas da ficha do paciente — cadastro, anamnese, orçamentos, trat
 - **anamnesis_tab**: doc único `anamnesis/{patientId}` (+ espelho em `patients`); switches de hábitos.
 - **budgets_tab**: `budgets` do paciente (`_treatmentService` morto — remover).
 - **treatments_tab**: agrupa por `planId`; parâmetro `sum` sombreia tipo — renomear para `total`.
-- **clinical_record_screen** (`ClinicalRecordTab`): lista `clinical_records`.
+- **clinical_record_screen** (`ClinicalRecordTab`): lista `clinical_records` com selo por tipo — "Cobrança" (verde, envios de WhatsApp) vs "Atendimento" (azul).
 - **odontogram_screen**: `patients/{id}/clinical_data/odontogram` (`teeth` + `lastUpdate`); `scale` depreciado.
 - **patient_lab_tab**: `lab_orders` do paciente; catch vazio.
 - **patient_docs_tab**: `DocumentService.getDocs` por categoria; `if` sem chaves.
