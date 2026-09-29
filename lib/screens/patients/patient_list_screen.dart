@@ -62,7 +62,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
       body: Column(
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             color: AppColors.surface,
             child: TextField(
               controller: _searchController,
@@ -279,6 +279,6 @@ class _PatientListScreenState extends State<PatientListScreen> {
   }
 
   Widget _buildEmptyState(String message) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.person_search, size: 80, color: Colors.grey[300]), const SizedBox(height: 16), Text(message, style: const TextStyle(color: Colors.grey, fontSize: 16))]));
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.person_search, size: 64, color: Colors.grey[300]), const SizedBox(height: 12), Text(message, style: const TextStyle(color: Colors.grey, fontSize: 14))]));
   }
 }

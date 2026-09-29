@@ -167,7 +167,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
               Text(
                   "Valor cheio do pacote: ${formatBRL(fullAmount)}"),
             Text("${items.length} conta(s) no mês"),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             const Text("Como deseja cobrar?"),
           ],
         ),
@@ -239,7 +239,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
           children: [
             Text("Paciente: $patientName"),
             Text("Total do pacote: ${formatBRL(totalAmount)}"),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             TextField(
               controller: amountCtrl,
               keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -517,7 +517,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
         children: [
           // Filtros de Mês (pílula padrão)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: MonthSelectorPill(
               date: _currentMonth,
               onPrev: () => _changeMonth(-1),

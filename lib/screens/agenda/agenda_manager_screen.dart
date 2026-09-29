@@ -1094,6 +1094,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: true,
+        toolbarHeight: 56,
       ),
       
       floatingActionButton: FloatingActionButton.extended(
@@ -1131,7 +1132,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
               child: Row(children: [
                 IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeWeek(-7)), 
                 Expanded(child: Column(children: [
-                  Text("Semana", style: AppTextStyles.caption), 
+                  Text("Semana", style: AppTextStyles.caption.copyWith(fontSize: 12)), 
                   Text("${formatDateShort(_currentWeekStart)}  –  ${formatDateShort(weekEnd.subtract(const Duration(days: 1)))}", style: AppTextStyles.subtitle.copyWith(fontSize: 13))
                 ])), 
                 IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeWeek(7))
@@ -1198,8 +1199,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                           return Container(
                             height: _headerHeight, alignment: Alignment.center, 
                             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Text(_getWeekDayName(day.weekday), style: AppTextStyles.caption), 
-                              Text("${day.day}", style: AppTextStyles.caption)
+                              Text(_getWeekDayName(day.weekday), style: AppTextStyles.caption.copyWith(fontSize: 12)), 
+                              Text("${day.day}", style: AppTextStyles.caption.copyWith(fontSize: 12))
                             ])
                           ); 
                         })

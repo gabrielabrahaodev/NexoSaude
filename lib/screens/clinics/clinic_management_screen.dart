@@ -178,7 +178,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -202,7 +202,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                   )
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
             Expanded(
               child: _loadingRole

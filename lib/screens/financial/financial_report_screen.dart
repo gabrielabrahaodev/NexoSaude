@@ -356,7 +356,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
               Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                     child: MonthSelectorPill(
                       date: _currentMonth,
                       labelBelow:
@@ -376,7 +376,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                     child: transactions.isEmpty 
                       ? const Center(child: Text("Nenhuma movimentação neste mês.", style: TextStyle(color: Colors.grey)))
                       : ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(12),
                           itemCount: transactions.length,
                           itemBuilder: (context, index) {
                             final item = transactions[index];
@@ -443,7 +443,7 @@ class _TransactionRow extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(DateFormat('dd').format(item.date), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey[800])),
+                  Text(DateFormat('dd').format(item.date), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey[800])),
                   Text(DateFormat('MMM').format(item.date).toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.grey)),
                 ],
               ),

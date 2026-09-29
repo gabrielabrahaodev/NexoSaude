@@ -40,11 +40,11 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
           children: [
             Text(
               "Ortodontia Science",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             Text(
               "Últimas atualizações científicas",
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
             ),
           ],
         ),
@@ -88,7 +88,7 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
             // POR ISSO (Card simples funcional):
             return Card(
               key: ValueKey(article.id),
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: ListTile(
                 title: Text(
                   article.title,

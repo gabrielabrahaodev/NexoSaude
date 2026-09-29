@@ -66,7 +66,7 @@ class _ClinicLabScreenState extends State<ClinicLabScreen> {
         children: [
           // --- CABEÇALHO E FILTROS ---
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.surface,
               border: Border(bottom: BorderSide(color: Colors.grey.shade200))

@@ -143,7 +143,7 @@ class _CareDayScreenState extends State<CareDayScreen> {
                 }
               }
               return ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 itemCount: appts.length,
                 itemBuilder: (context, i) {
                   final a = appts[i];

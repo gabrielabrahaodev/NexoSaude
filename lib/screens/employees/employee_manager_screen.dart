@@ -208,7 +208,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                 builder: (context, snap) {
                   if (!snap.hasData) {
                     return const Padding(
-                      padding: EdgeInsets.all(16),
+                      padding: EdgeInsets.all(12),
                       child: SizedBox(
                           height: 20,
                           width: 20,
@@ -218,7 +218,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                   final clinics = snap.data!.docs;
                   if (clinics.isEmpty) {
                     return const Padding(
-                      padding: EdgeInsets.all(16),
+                      padding: EdgeInsets.all(12),
                       child: Text("Nenhuma clínica.",
                           style: TextStyle(color: Colors.grey)),
                     );
@@ -394,7 +394,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                     ],
                     onChanged: (val) => setState(() => _selectedRole = val!),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   const Divider(),
                   const Text("Dados de Acesso", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 10),
@@ -433,7 +433,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -456,7 +456,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                 )
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
             // PEDIDOS DE SENHA (segue o item Funcionários). Sem e-mail
             // automático: gere a nova senha com o reset-senha.bat e informe.
@@ -547,7 +547,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             ],
 
             // LISTA DE FUNCIONÁRIOS

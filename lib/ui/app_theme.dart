@@ -32,37 +32,37 @@ class AppColors {
 class AppTextStyles {
   // Não-const de propósito: cores vêm dos getters adaptativos.
   static TextStyle get h1 => TextStyle(
-        fontSize: 22,
+        fontSize: 19,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get h2 => TextStyle(
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get subtitle => TextStyle(
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: FontWeight.w500,
         color: AppColors.textSecondary,
       );
 
   static TextStyle get body => TextStyle(
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: FontWeight.w400,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get caption => TextStyle(
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       );
 
   static TextStyle get chip => const TextStyle(
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: FontWeight.w600,
       );
 }
@@ -87,6 +87,13 @@ ThemeData buildAppTheme({bool dark = false}) {
       backgroundColor: dark ? const Color(0xFF1E2126) : Colors.white,
       foregroundColor: dark ? Colors.white : const Color(0xFF1F2933),
       elevation: 0,
+      centerTitle: true,
+      toolbarHeight: 44,
+      titleTextStyle: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.bold,
+        color: dark ? Colors.white : const Color(0xFF1F2933),
+      ),
     ),
     cardTheme: CardThemeData(
       color: dark ? const Color(0xFF1E2126) : Colors.white,

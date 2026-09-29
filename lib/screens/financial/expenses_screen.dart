@@ -142,6 +142,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: true,
+        toolbarHeight: 56,
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list ),

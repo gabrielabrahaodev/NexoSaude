@@ -17,14 +17,14 @@ class PageTitle extends StatelessWidget {
       children: [
         Text(title,
             style: TextStyle(
-                fontSize: 20,
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary)),
         if (subtitle != null && subtitle!.isNotEmpty) ...[
           const SizedBox(height: 2),
           Text(subtitle!,
               style: TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary)),
+                  fontSize: 12, color: AppColors.textSecondary)),
         ],
       ],
     );

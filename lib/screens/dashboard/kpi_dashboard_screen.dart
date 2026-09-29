@@ -177,7 +177,7 @@ class KpiDashboardScreen extends StatelessWidget {
                                 session.currentClinicName ?? 'Clínica',
                             monthLabel: monthLabel,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           LayoutBuilder(
                             builder: (context, constraints) {
                               final narrow =
@@ -251,7 +251,7 @@ class KpiDashboardScreen extends StatelessWidget {
                               );
                             },
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           _SectionTitle(
                             icon: Icons.schedule,
                             title: "Próximos vencimentos",
@@ -287,7 +287,7 @@ class KpiDashboardScreen extends StatelessWidget {
                                     ],
                                   ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           _SectionTitle(
                             icon: Icons.cake_outlined,
                             title: "Aniversariantes do mês",
@@ -369,7 +369,7 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
@@ -393,7 +393,7 @@ class _KpiCard extends StatelessWidget {
             child: Text(
               value,
               style: const TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.w800),
+                  fontSize: 22, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(height: 2),
@@ -434,7 +434,7 @@ class _SectionTitle extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-              fontSize: 16, fontWeight: FontWeight.w700),
+              fontSize: 15, fontWeight: FontWeight.w700),
         ),
         const Spacer(),
         if (actionLabel != null && onAction != null)

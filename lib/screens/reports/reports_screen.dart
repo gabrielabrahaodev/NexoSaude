@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -238,12 +238,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         iconTheme: const IconThemeData(),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _MonthSelector(date: _currentMonth, onPrev: () => _changeMonth(-1), onNext: () => _changeMonth(1)),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
             AnimatedOpacity(
               opacity: _isChangingMonth ? 0.4 : 1.0,
@@ -276,7 +276,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           return Column(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: dreResultBg(isProfit),
                                   borderRadius: BorderRadius.circular(12),
@@ -297,7 +297,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 12),
 
                               IntrinsicHeight(
                                 child: Row(
@@ -315,7 +315,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               
                               _KpiCard(title: "LUCRO LÍQUIDO (Caixa)", value: netProfit, color: isProfit ? Colors.blue : Colors.red, icon: Icons.account_balance_wallet, isHighlight: true),
                               
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 16),
 
                               Row(
                                 children: [
@@ -339,16 +339,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 ],
                               ),
                               
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 12),
                               const Text("Previsão para Fechamento", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                               const SizedBox(height: 8),
                               
                               Container(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
                                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                                     const Text("Saldo Projetado (Final do Mês):"),
-                                    Text("${formatBRL(netProfit)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: netProfit >= 0 ? AppColors.textPrimary : Colors.red))
+                                    Text("${formatBRL(netProfit)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: netProfit >= 0 ? AppColors.textPrimary : Colors.red))
                                 ]),
                               )
                             ],
@@ -384,10 +384,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               children: [
                 const Icon(Icons.flash_on, color: Colors.amber, size: 40),
                 const SizedBox(height: 10),
-                const Text("Simular Antecipação", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text("Simular Antecipação", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
                 const Text("Converta recebimentos de Cartão pendentes em dinheiro hoje.", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 
                 FutureBuilder<QuerySnapshot>(
                   future: FirebaseFirestore.instance.collection('financial')
@@ -435,7 +435,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true), 
                   decoration: const InputDecoration(labelText: "Valor para Antecipar", prefixText: "R\$ ", border: OutlineInputBorder())
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -445,7 +445,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     child: const Text("VER PARCELAS E CONFIRMAR"),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
               ],
             ),
           );
@@ -609,7 +609,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 5),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text("LÍQUIDO A RECEBER:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Text("${formatBRL((totalRealized - totalFees))}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+                Text("${formatBRL((totalRealized - totalFees))}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green)),
               ]),
             ]
           ),
@@ -775,7 +775,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
                 const SizedBox(height: 10),
                 Text("Despesas Pagas", style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
-                Text("${formatBRL(widget.totalValue)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                Text("${formatBRL(widget.totalValue)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
               ]
             ),
           ),
