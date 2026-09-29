@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -451,7 +451,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
                   if (_canShow('pacientes')) _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
                   if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
-                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
+                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact,),
                   if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact, badge: _avisoStream),
                   if (_canShow('fluxo')) _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
                       highlightColor, Colors.purple, isCompact),
@@ -462,7 +462,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   if (_canShow('agenda')) _buildMenuItem(1, "Agenda", Icons.calendar_today_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
                   if (_canShow('pacientes')) _buildMenuItem(2, "Pacientes", Icons.people_outline, highlightColor, primaryColor, isCompact),
                   if (_canShow('dashboard')) _buildMenuItem(0, "Dashboard", Icons.dashboard_outlined, highlightColor, primaryColor, isCompact),
-                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact, badge: _remarcarStream),
+                  if (_canShow('atendimento')) _buildMenuItem(12, "Atendimento", Icons.medical_services_outlined, highlightColor, primaryColor, isCompact,),
 
                   // --- ITEM CONDICIONAL PARA PSICOLOGIA ---
                   if (ClinicCapabilities.ofType(_currentClinicType)

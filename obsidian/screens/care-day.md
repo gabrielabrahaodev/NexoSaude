@@ -19,11 +19,11 @@ tags:
 
 ## Quando usar
 
-Rotina do profissional; pendência `remarcar` abre [[remarcar-dialog]] em vez da ficha.
+Rotina do profissional; remarcação do portal se decide só na [[agenda-manager]] (aqui o card é normal).
 
 ## Fluxos
 
-- Tile → modal com a ficha (`CareVisitPanel`: evolução + cobrança + próxima) em 92% da tela — sem nova tela; `CareVisitScreen` virou casca fina (compat). Pendência `remarcar` abre [[remarcar-dialog]].
+- Tile → modal com a ficha (`CareVisitPanel`: evolução + cobrança + próxima) em 92% da tela — sem nova tela; `CareVisitScreen` virou casca fina (compat).
 - Cards translúcidos (surface 72–92% + borda/sombra na cor do status) com `StatusChip`; dentistas carregados de `users` por `allowedClinics` (mapa id→nome).
 
 ## Gotchas
