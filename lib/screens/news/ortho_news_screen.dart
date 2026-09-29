@@ -1,6 +1,7 @@
 // ortho_news_screen.dart
 import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
+import '../../services/session_manager.dart';
 import '../../utils/external_link.dart';
 import '../../models/news_model.dart';
 import '../../services/news_service.dart';
@@ -21,10 +22,17 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
   }
 
   void _loadNews() {
+    final clinicType = SessionManager().clinicType;
     setState(() {
-      _newsFuture = _newsService.getLatestOrthoNews();
+      _newsFuture =
+          _newsService.getLatestOrthoNews(clinicType: clinicType);
     });
   }
+
+  String get _headerTitle =>
+      SessionManager().clinicType == 'psychology'
+          ? "Psi Science"
+          : "Ortodontia Science";
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +47,7 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Ortodontia Science",
+              _headerTitle,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             Text(
