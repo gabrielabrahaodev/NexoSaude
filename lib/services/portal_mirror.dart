@@ -459,6 +459,14 @@ class PortalMirrorSync {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 14));
+    // Throttle: 1 leitura; se a janela foi construída há < 6h, não faz nada.
+    final slotsRef = _db.collection('portal_slots').doc(clinicId);
+    final old = await slotsRef.get();
+    final builtAt = (old.data()?['windowBuiltAt'] as Timestamp?)?.toDate();
+    if (builtAt != null &&
+        now.difference(builtAt) < const Duration(hours: 6)) {
+      return;
+    }
     final grade = await clinicGrade(clinicId);
     final clinicType = await clinicTypeOf(clinicId);
     final users = await _db
@@ -507,18 +515,18 @@ class PortalMirrorSync {
         data[key] = freeSlots(grade: grade, busy: busy.toList(), refused: const []);
       }
     }
-    // Apaga dias passados (limpeza da janela).
-    final old = await _db.collection('portal_slots').doc(clinicId).get();
+    // Apaga dias passados (limpeza da janela; reusa o doc já lido).
+    // Pula metadados (windowBuiltAt) — só chaves '{dentistId}.{dia}'.
     final prune = <String, dynamic>{};
     for (final k in (old.data() ?? {}).keys) {
-      final dayPart = k.contains('.') ? k.split('.').last : '';
+      if (!k.contains('.')) continue;
+      final dayPart = k.split('.').last;
       if (dayPart.compareTo(_dayKey(start)) < 0) {
         prune[k] = FieldValue.delete();
       }
     }
-    await _db
-        .collection('portal_slots')
-        .doc(clinicId)
-        .set({...data, ...prune}, SetOptions(merge: true));
+    await slotsRef.set(
+        {...data, ...prune, 'windowBuiltAt': Timestamp.fromDate(now)},
+        SetOptions(merge: true));
   }
 }

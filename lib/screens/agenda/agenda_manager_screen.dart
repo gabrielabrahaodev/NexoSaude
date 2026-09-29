@@ -60,6 +60,12 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     final role = SessionManager().userRole?.toLowerCase().trim();
     final clinicId = SessionManager().currentClinicId;
 
+    // Janela de slots do portal (14 dias, fim de semana incluso):
+    // throttled em 6h no service — 1 leitura na maioria das vezes.
+    if (clinicId != null) {
+      PortalMirrorSync.ensureWindow(clinicId);
+    }
+
     if ((role == 'recepcionista' || role == 'owner') && clinicId != null) {
       setState(() {
         _shouldShowFilter = true;

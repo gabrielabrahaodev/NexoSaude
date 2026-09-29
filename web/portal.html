@@ -294,6 +294,7 @@
             const byDay = {};
             for (const k of Object.keys(data)) {
                 const dot = k.indexOf('.');
+                if (dot < 0) continue;
                 const kd = k.slice(0, dot), day = k.slice(dot + 1);
                 if (did && kd !== did) continue;
                 const times = (data[k] || []).filter((t) => !refused.includes(day + 'T' + t)).sort();
