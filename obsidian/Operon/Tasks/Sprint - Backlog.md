@@ -23,7 +23,7 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [ ] Decidir Blaze (US$ 1–3/mês) vs seguir no Spark {{operonId:: nx-105}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/decisao
 - [ ] Trocar SALES_WHATSAPP placeholder na landing {{operonId:: nx-106}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e1}} #nexosaude #area/site
 - [ ] Revisar bloqueios fundidos do Yervant com o dono {{operonId:: nx-107}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e3}} #nexosaude #area/dados
-- [ ] Deploy de firestore.indexes.json pendente (nunca aceitar delete) {{operonId:: nx-108}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/infra
+- [x] Deploy de firestore.indexes.json pendente (nunca aceitar delete) {{operonId:: nx-108}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/infra
 - [ ] Checagem de CPF duplicado no cadastro (query existe, bloqueio comentado) {{operonId:: nx-109}} {{status:: Planned}} {{priority:: B}} #nexosaude #area/app
 - [ ] Higiene Cloudinary/API keys: restringir preset unsigned + chaves no console {{operonId:: nx-110}} {{status:: Planned}} {{priority:: B}} #nexosaude #area/seguranca
 - [ ] Cadastrar datas de nascimento (405/415 sem) para aniversariantes do KPI {{operonId:: nx-111}} {{status:: Planned}} {{priority:: B}} #nexosaude #area/operacao
