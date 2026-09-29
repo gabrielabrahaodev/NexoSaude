@@ -66,8 +66,11 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   /// PWA: compara a versão instalada (localStorage) com a publicada.
   /// Diferente = mostra "Atualizar" que recarrega limpo (sem Ctrl+F5).
+  /// 1x por sessão: dispensado uma vez, só pergunta de novo ao recarregar.
+  bool _versionPromptShown = false;
+
   Future<void> _checkAppVersion() async {
-    if (!kIsWeb) return;
+    if (!kIsWeb || _versionPromptShown) return;
     try {
       final res = await http
           .get(Uri.parse(
@@ -84,6 +87,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         return;
       }
       if (stored != current && mounted) {
+        _versionPromptShown = true;
         final update = await showDialog<bool>(
           context: context,
           barrierDismissible: true,
@@ -251,6 +255,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   void _onMenuSelect(int index) {
     setState(() => _selectedIndex = index);
+    // Checa versão a cada troca de menu (navegação explícita, sem risco
+    // de interromper digitação); o aviso aparece 1x por sessão.
+    _checkAppVersion();
     if (Scaffold.maybeOf(context)?.hasDrawer ?? false) {
       Navigator.pop(context);
     }
