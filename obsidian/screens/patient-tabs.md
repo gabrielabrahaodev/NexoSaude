@@ -19,6 +19,7 @@ description: Abas da ficha do paciente — cadastro, anamnese, orçamentos, trat
 - **budgets_tab**: `budgets` do paciente (`_treatmentService` morto — remover).
 - **treatments_tab**: agrupa por `planId`; parâmetro `sum` sombreia tipo — renomear para `total`.
 - **clinical_record_screen** (`ClinicalRecordTab`): lista `clinical_records` com selo por tipo — "Cobrança" (verde, envios de WhatsApp) vs "Atendimento" (azul).
+- Pagamentos: filhas com pai presente ficam só no modal da família (`familyOf`/`visibleCharges`/`familyProgress`, testados); pai "Parcelado" abre o modal com progresso, selo "A receber da operadora" no cartão e estorno/cancelamento preservados.
 - **odontogram_screen**: `patients/{id}/clinical_data/odontogram` (`teeth` + `lastUpdate`); `scale` depreciado.
 - **patient_lab_tab**: `lab_orders` do paciente; catch vazio.
 - **patient_docs_tab**: `DocumentService.getDocs` por categoria; `if` sem chaves.
