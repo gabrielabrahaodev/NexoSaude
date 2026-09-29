@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import 'package:universal_html/html.dart' as html;
+import 'dart:convert';
 import '../../services/clinic_capabilities.dart';
 import '../../services/menu_access.dart';
 import '../../services/pending_counts.dart';
@@ -59,6 +61,54 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     _currentClinicId = SessionManager().currentClinicId;
     _currentClinicType = SessionManager().clinicType;
     // Tenta carregar o tipo se já houver algo na sessão (opcional, pois o StreamBuilder atualiza depois)
+    _checkAppVersion();
+  }
+
+  /// PWA: compara a versão instalada (localStorage) com a publicada.
+  /// Diferente = mostra "Atualizar" que recarrega limpo (sem Ctrl+F5).
+  Future<void> _checkAppVersion() async {
+    if (!kIsWeb) return;
+    try {
+      final res = await http
+          .get(Uri.parse(
+              'version.json?t=${DateTime.now().millisecondsSinceEpoch}'))
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) return;
+      final current =
+          (jsonDecode(res.body) as Map)['version']?.toString() ?? '';
+      if (current.isEmpty) return;
+      final stored =
+          html.window.localStorage['nexosaude_app_version'];
+      if (stored == null || stored.isEmpty) {
+        html.window.localStorage['nexosaude_app_version'] = current;
+        return;
+      }
+      if (stored != current && mounted) {
+        final update = await showDialog<bool>(
+          context: context,
+          barrierDismissible: true,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Nova versão disponível"),
+            content: const Text(
+                "O NexoSaúde foi atualizado. Recarregue para usar a versão nova."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text("Depois"),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("Atualizar agora"),
+              ),
+            ],
+          ),
+        );
+        if (update == true) {
+          html.window.localStorage['nexosaude_app_version'] = current;
+          html.window.location.reload();
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchUserData() async {

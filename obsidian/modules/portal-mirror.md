@@ -40,6 +40,7 @@ Sem Functions, o portal lê espelhos: `portal/{token}` (3 sessões + top-3 atras
 - Rebuild exclui `Cancelado` das próximas (igual ao delta `removeSession`); query com limit 100 p/ cobrir pacote anual (~52 sessões).
 - Profissionais do espelho (`isPortalProfessional`, testado): papéis clínicos + owner em clínica psicológica (psicólogo atuante). Backfill `slots-backfill.js` com a mesma regra. Rebuild do `ensureWindow` expande `durationMinutes` (blocos por intervalo).
 - Deploy do portal: `flutter build web` NÃO atualiza `build/web/sistema-interno/` (cópia manual) — sincronizar `web/*.html` → lá antes de `firebase deploy --only hosting`. `portal_slots` com chave sem `.` quebra o JS antigo: todo leitor deve pular chaves sem ponto.
+- Deploy completo: `powershell -File tool/bump_version.ps1` → `flutter build web` → sync `sistema-interno` → `firebase deploy --only hosting`. O app avisa "Nova versão" sozinho (`version.json` + localStorage).
 - Profissionais do espelho (`isPortalProfessional`, testado): papéis clínicos + owner em clínica psicológica (psicólogo atuante).
 
 Ver [[portal-page]], [[remarcar-dialog]], [[atendimento]].
