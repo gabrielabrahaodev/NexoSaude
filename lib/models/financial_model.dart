@@ -97,6 +97,11 @@ class FinancialModel {
   bool get isPaid =>
       FinancialModel.isPaidOf(status: status, paidAmount: paidAmount, amount: amount);
 
+  /// Status terminal de original parcelado: saiu da cobrança/relatórios,
+  /// mas o histórico é mantido (nunca deletar — ver RN fiscal).
+  static bool isReplaced(String status) =>
+      status.toLowerCase().contains('substitu');
+
   Map<String, dynamic> toMap() {
     return {
       'clinicId': clinicId,

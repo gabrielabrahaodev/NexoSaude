@@ -207,8 +207,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                
                bool isCard = method.contains('cart') || method.contains('crédit') || method.contains('credit');
                
-               // REGRA 1: Não pode ser cancelado, nem já estar antecipado
-               bool isAvailable = isCard && !status.contains('anticipat') && !status.contains('antecipad') && !status.contains('cancel');
+               // REGRA 1: Não pode ser cancelado/substituído, nem já estar antecipado
+               bool isAvailable = isCard && !status.contains('anticipat') && !status.contains('antecipad') && !status.contains('cancel') && !status.contains('substitu');
                
                // REGRA 2: Só pode antecipar se ainda não venceu (o dinheiro ainda não caiu na conta naturalmente)
                Timestamp? ts = data['dueDate'] as Timestamp? ?? data['date'] as Timestamp?;

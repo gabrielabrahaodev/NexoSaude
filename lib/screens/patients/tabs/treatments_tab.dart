@@ -158,7 +158,9 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
 
                 double localPaid = planReceivables
                     .where((f) =>
-                        f.isPaid && f.status.toLowerCase() != 'cancelado')
+                        f.isPaid &&
+                        f.status.toLowerCase() != 'cancelado' &&
+                        !FinancialModel.isReplaced(f.status))
                     .fold(0.0, (sum, f) => sum + f.amount);
                 
                 // Separa Custos e Comissões
@@ -172,7 +174,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                 double progress = planTotal == 0 ? 0 : (localPaid / planTotal);
                 if (progress > 1) progress = 1;
 
-                final installmentsList = planReceivables.where((f) => f.installmentNumber != null && f.installmentNumber!.contains('/') && f.status.toLowerCase() != 'cancelado').toList();
+                final installmentsList = planReceivables.where((f) => f.installmentNumber != null && f.installmentNumber!.contains('/') && f.status.toLowerCase() != 'cancelado' && !FinancialModel.isReplaced(f.status)).toList();
                 int totalInstallments = installmentsList.length;
                 int paidInstallments = installmentsList.where((f) => f.isPaid).length;
                 String installmentStatus = totalInstallments > 0 ? "$paidInstallments/$totalInstallments Pagas" : "";

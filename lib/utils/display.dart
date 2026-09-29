@@ -88,8 +88,10 @@ String? birthMonthOf(dynamic birthDate) {
   return null;
 }
 
-/// Cor do selo do lançamento: pago > pendente > demais (cancelado).
-Color chargeBadgeColor({required bool isPaid, required bool isPending}) {
+/// Cor do selo do lançamento: pago > pendente > substituído > demais (cancelado).
+Color chargeBadgeColor(
+    {required bool isPaid, required bool isPending, bool isReplaced = false}) {
+  if (isReplaced) return Colors.blueGrey;
   if (isPaid) return Colors.green;
   if (isPending) return Colors.red;
   return Colors.orange;

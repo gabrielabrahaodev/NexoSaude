@@ -120,9 +120,9 @@ class OracleReportService {
 
       bool isCreditCard = method.toLowerCase().contains('cart') || method.toLowerCase().contains('credit');
       bool isAnticipated = status.contains('anticipat') || status.contains('antecipad');
-      bool isCanceled = status.contains('cancel');
+      bool isCanceled = status.contains('cancel') || status.contains('substitu');
 
-      if (isCanceled) continue; // Expulsa cancelados
+      if (isCanceled) continue; // Expulsa cancelados e substituídos
 
       DateTime date = (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
       DateTime dueDate = (data['dueDate'] as Timestamp?)?.toDate() ?? date;

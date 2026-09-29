@@ -81,6 +81,18 @@ class FinancialService {
     return out;
   }
 
+  /// Soma N meses preservando o dia (clamp p/ o último dia do mês).
+  /// Puro e testado — base dos vencimentos do parcelamento.
+  static DateTime addMonths(DateTime from, int months) {
+    final total = (from.month - 1) + months;
+    final year = from.year + total ~/ 12;
+    final month = total % 12 + 1;
+    final lastDay = DateTime(year, month + 1, 0).day;
+    final day = from.day > lastDay ? lastDay : from.day;
+    return DateTime(
+        year, month, day, from.hour, from.minute, from.second);
+  }
+
   /// Como um recebimento deve ser gravado conforme o método.
   /// Métodos imediatos (Dinheiro/Pix/...) = pago na hora (`pago`).
   /// Cartão mantém o fluxo próprio de recebível (`paid`).
@@ -131,6 +143,39 @@ class FinancialService {
       'cancelledAt': FieldValue.serverTimestamp(),
     });
     await _syncDebtOfCharge(id);
+  }
+
+  /// Cancela a família inteira num batch só (ou tudo ou nada):
+  /// vinculados excluídos + status `cancelado` + espelho do portal.
+  Future<void> cancelFamily(List<String> ids) async {
+    final batch = _db.batch();
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk =
+          ids.sublist(i, i + 10 > ids.length ? ids.length : i + 10);
+      final exps = await _db
+          .collection('expenses')
+          .where('relatedFinancialId', whereIn: chunk)
+          .get();
+      final labs = await _db
+          .collection('lab_orders')
+          .where('relatedFinancialId', whereIn: chunk)
+          .get();
+      for (var doc in [...exps.docs, ...labs.docs]) {
+        batch.delete(doc.reference);
+      }
+    }
+    for (final fid in ids) {
+      batch.update(_db.collection('financial').doc(fid), {
+        'status': 'cancelado',
+        'cancelledAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+    for (final fid in ids) {
+      try {
+        await _syncDebtOfCharge(fid);
+      } catch (_) {}
+    }
   }
 
   /// Monta os dados da cobrança recriada a partir de um doc cancelado.
@@ -223,6 +268,8 @@ class FinancialService {
     String? status,
     bool? isPaid,
     DateTime? paymentDate,
+    // Vencimentos por parcela (default: addMonths a partir de hoje).
+    List<DateTime>? dueDates,
   }) async {
     final batch = _db.batch();
     final financialRef = _db.collection('financial');
@@ -249,10 +296,15 @@ class FinancialService {
         'netAmount': netValPerInstallment ?? payValue,
       });
     } else {
-      // Parcelado: Atualiza original e cria novos
+      // Parcelado ou parcial: original vira terminal (nunca delete —
+      // histórico fiscal) ou segue pendente com o saldo aberto.
+      // Parcial (valor < saldo) não explode parcelas: quita sem parcelar.
+      final sliced = isTotalPayment ? installments : 1;
       batch.update(financialRef.doc(originalTransaction.id), {
-        'isPaid': isPaid ?? true,
-        'status': status != null ? '$status (renegociado/parcelado)' : 'pago (renegociado/parcelado)',
+        'isPaid': isTotalPayment ? (isPaid ?? true) : false,
+        'status': isTotalPayment
+            ? 'substituido (parcelado)'
+            : 'pendente',
         'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
         'paymentMethod': method,
         'paidAmount': payValue,
@@ -260,16 +312,20 @@ class FinancialService {
 
       final slices = FinancialService.computeInstallments(
         payValue: payValue,
-        installments: installments,
+        installments: sliced,
         taxPerInstallment: taxValPerInstallment,
         netPerInstallment: netValPerInstallment,
       );
 
-      for (int i = 1; i <= installments; i++) {
+      final baseDay = DateTime.now();
+      for (int i = 1; i <= sliced; i++) {
         final slice = slices[i - 1];
         final double finalValue = slice.value;
         final double finalTax = slice.tax;
         final double finalNet = slice.net;
+        final due = (dueDates != null && dueDates.length >= i)
+            ? dueDates[i - 1]
+            : FinancialService.addMonths(baseDay, i);
 
         final newDocRef = financialRef.doc();
 
@@ -278,9 +334,11 @@ class FinancialService {
           'patientId': originalTransaction.patientId,
           'patientName': originalTransaction.patientName,
           'title': originalTransaction.title,
-          'description': "${originalTransaction.title} ($i/$installments) - $method",
+          'description': sliced > 1
+              ? "${originalTransaction.title} ($i/$sliced) - $method"
+              : "${originalTransaction.title} (parcial) - $method",
           'date': FieldValue.serverTimestamp(),
-          'dueDate': DateTime.now().add(Duration(days: 30 * i)),
+          'dueDate': due,
           'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
           'value': finalValue,
           'amount': finalValue,
@@ -289,7 +347,7 @@ class FinancialService {
           'status': status ?? 'pago',
           'type': 'income',
           'paymentMethod': method,
-          'installmentNumber': "$i/$installments",
+          'installmentNumber': sliced > 1 ? "$i/$sliced" : null,
           'parentId': originalTransaction.id, // família p/ cancelamento em lote
           'dentistId': dentistId,
           'dentistName': dentistName,

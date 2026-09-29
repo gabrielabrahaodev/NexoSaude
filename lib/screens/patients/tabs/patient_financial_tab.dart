@@ -516,25 +516,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     final hasFamily = familyIds.length > 1;
 
     Future<void> cancelIds(List<String> ids, String okMsg) async {
-      // Vinculados de todos (whereIn em blocos de 10)
-      for (var i = 0; i < ids.length; i += 10) {
-        final chunk = ids.sublist(
-            i, i + 10 > ids.length ? ids.length : i + 10);
-        final exps = await FirebaseFirestore.instance
-            .collection('expenses')
-            .where('relatedFinancialId', whereIn: chunk)
-            .get();
-        final labs = await FirebaseFirestore.instance
-            .collection('lab_orders')
-            .where('relatedFinancialId', whereIn: chunk)
-            .get();
-        for (var doc in [...exps.docs, ...labs.docs]) {
-          await doc.reference.delete();
-        }
-      }
-      for (final fid in ids) {
-        await _finService.cancelCharge(fid);
-      }
+      await _finService.cancelFamily(ids);
       _toast(okMsg);
     }
 
@@ -746,7 +728,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
   // --- MENU DE OPÇÕES (1 toque, por estado; sem long-press) ---
   void _showItemOptions(FinancialModel item) {
     final cancelled = item.status.toLowerCase() == 'cancelado';
+    final replaced = FinancialModel.isReplaced(item.status);
     final paid = !cancelled &&
+        !replaced &&
         (item.isPaid || (item.paidAmount >= item.amount && item.amount > 0));
 
     ListTile opt(IconData icon, String label, VoidCallback action,
@@ -775,6 +759,12 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             if (cancelled) ...[
               opt(Icons.refresh, "Recriar cobrança",
                   () => _confirmRecreateCharge(item)),
+            ] else if (replaced) ...[
+              // Original parcelado: sem estorno (as parcelas são a dívida
+              // real); só cancela a família toda se preciso.
+              opt(Icons.cancel_outlined, "Cancelar lançamento",
+                  () => _confirmCancelCharge(item),
+                  color: Colors.red),
             ] else if (paid) ...[
               // O dialog de estorno já oferece "Corrigir e relançar"
               opt(Icons.undo, "Estornar / Corrigir",
@@ -810,12 +800,14 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     bool isPaid = false;
     String status = "";
     bool isCancelled = false;
+    bool isReplaced = false;
 
     if (isIncome) {
       final fin = item as FinancialModel;
 
       // Cancelada (soft-delete): fora de cobrança/relatórios, mostra cinza
       isCancelled = fin.status.toLowerCase() == 'cancelado';
+      isReplaced = FinancialModel.isReplaced(fin.status);
 
       // --- MÁGICA DA ARQUITETURA (VISÃO PACIENTE VS TESOURARIA) ---
       // Se for Cartão de Crédito/Débito, a dívida do paciente está quitada.
@@ -823,6 +815,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       bool isCard = (fin.paymentMethod ?? '').toLowerCase().contains('cart');
 
       isPaid = !isCancelled &&
+          !isReplaced &&
           (FinancialModel.isPaidOf(
                   status: fin.status,
                   paidAmount: fin.paidAmount,
@@ -832,6 +825,8 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
       if (isCancelled) {
         status = "Cancelada";
+      } else if (isReplaced) {
+        status = "Parcelado";
       } else if (isPaid) {
         status = "Pago";
       } else {
@@ -945,7 +940,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                   StatusChip(
                     label: status,
                     color: chargeBadgeColor(
-                        isPaid: isPaid, isPending: isPending),
+                        isPaid: isPaid,
+                        isPending: isPending,
+                        isReplaced: isReplaced),
                     horizontal: 6,
                     vertical: 2,
                     radius: 4,
@@ -964,6 +961,18 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
   void _showReceiveDialog(BuildContext context, FinancialModel item, {Map<String, dynamic>? preFilledData}) async {
     final amountCtrl = TextEditingController(text: preFilledData?['amount']?.toStringAsFixed(2) ?? (item.amount - item.paidAmount).toStringAsFixed(2));
     final installmentsCtrl = TextEditingController(text: preFilledData?['installments']?.toString() ?? "1");
+    // Vencimento por parcela (grade editável); sincronizada com N.
+    final List<DateTime> parcelDueDates = [];
+    void syncParcelDueDates(int n) {
+      final base = DateTime.now();
+      while (parcelDueDates.length < n) {
+        parcelDueDates.add(
+            FinancialService.addMonths(base, parcelDueDates.length + 1));
+      }
+      if (parcelDueDates.length > n) {
+        parcelDueDates.removeRange(n, parcelDueDates.length);
+      }
+    }
     final commPercentCtrl = TextEditingController(text: "0");
     final commValueCtrl = TextEditingController(text: "0.00");
     final costCtrl = TextEditingController(text: "0.00");
@@ -1174,6 +1183,15 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                       onChanged: (v) => setStateModal(() => recalculateFromPercent()),
                     ),
                     const SizedBox(height: 10),
+                    if (parseBRL(amountCtrl.text) <
+                        (item.amount - item.paidAmount))
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text(
+                            "Valor parcial: registra a baixa sem parcelar.",
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.orange)),
+                      ),
                     
                     const Text("Forma de Pagamento", style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 5),
@@ -1225,8 +1243,62 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                         controller: installmentsCtrl, 
                         keyboardType: TextInputType.number, 
                         decoration: InputDecoration(labelText: "Número de Parcelas", border: OutlineInputBorder(), isDense: true),
-                        onChanged: (v) => setStateModal(() => calculateFees()),
+                        onChanged: (v) => setStateModal(() {
+                          syncParcelDueDates(int.tryParse(v) ?? 1);
+                          calculateFees();
+                        }),
                       ),
+                      if ((int.tryParse(installmentsCtrl.text) ?? 1) > 1) ...[
+                        const SizedBox(height: 8),
+                        const Text("Vencimentos (toque para alterar)",
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey)),
+                        ...List.generate(
+                            (int.tryParse(installmentsCtrl.text) ?? 1),
+                            (i) {
+                          if (parcelDueDates.length <= i) {
+                            syncParcelDueDates(
+                                int.tryParse(installmentsCtrl.text) ?? 1);
+                          }
+                          return Padding(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                    child: Text(
+                                        "Parcela ${i + 1}",
+                                        style: const TextStyle(
+                                            fontSize: 13))),
+                                Text(
+                                    formatDateShort(parcelDueDates[i]),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13)),
+                                TextButton(
+                                  onPressed: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: parcelDueDates[i],
+                                      firstDate: DateTime.now().subtract(
+                                          const Duration(days: 30)),
+                                      lastDate: DateTime.now().add(
+                                          const Duration(days: 365 * 5)),
+                                    );
+                                    if (picked != null) {
+                                      setStateModal(() =>
+                                          parcelDueDates[i] = picked);
+                                    }
+                                  },
+                                  child: const Text("ALTERAR"),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ],
 
                     if (selectedMethod == "Débito" || selectedMethod == "Cartão de Crédito") 
@@ -1426,8 +1498,14 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                             ? null
                             : () async {
                                 final val = parseBRL(amountCtrl.text);
-                                final inst =
-                                    int.tryParse(installmentsCtrl.text) ?? 1;
+                                final remaining =
+                                    item.amount - item.paidAmount;
+                                // Parcial (valor < saldo) quita sem parcelar:
+                                // trava as parcelas em 1.
+                                final inst = (val < remaining)
+                                    ? 1
+                                    : (int.tryParse(installmentsCtrl.text) ??
+                                        1);
                                 final finalCommission =
                                     parseBRL(commValueCtrl.text);
                                 final finalCost = parseBRL(costCtrl.text);
@@ -1487,22 +1565,25 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                               status: recording.status,
                               isPaid: recording.isPaid,
                               paymentDate: DateTime.now(),
+                              dueDates: (inst > 1 &&
+                                      parcelDueDates.length == inst)
+                                  ? List<DateTime>.from(parcelDueDates)
+                                  : null,
                             );
 
-                            if (selectedMethod == "Cartão de Crédito" && inst > 1) {
-                               if (item.id.isNotEmpty) {
-                                  batch.delete(FirebaseFirestore.instance.collection('financial').doc(item.id));
-                               }
-                            } else {
-                               if (selectedProfileId != null) {
-                                  String? machineName = feeProfile?['machine_name'];
-                                  if (item.id.isNotEmpty) {
-                                     batch.update(FirebaseFirestore.instance.collection('financial').doc(item.id), {
-                                       'machineProfileId': selectedProfileId,
-                                       'machineProfileName': machineName
-                                     });
-                                  }
-                               }
+                            if (selectedProfileId != null) {
+                              String? machineName =
+                                  feeProfile?['machine_name'];
+                              if (item.id.isNotEmpty) {
+                                batch.update(
+                                    FirebaseFirestore.instance
+                                        .collection('financial')
+                                        .doc(item.id),
+                                    {
+                                      'machineProfileId': selectedProfileId,
+                                      'machineProfileName': machineName
+                                    });
+                              }
                             }
 
                             if (selectedProfessionalId != null && finalCommission > 0 && generateExpense) {
@@ -1781,16 +1862,18 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                       child: Column(
                                         children: [
                                           Container(width: 2, height: 15, color: Colors.grey[300]),
-                                          Container(
-                                            width: 12, height: 12,
-                                            decoration: BoxDecoration(
-                                              color: isIncome 
-                                                  ? ((item as FinancialModel).status == 'pending' ? Colors.red : Colors.green) 
-                                                  : Colors.orange,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(color: Colors.white, width: 2)
-                                            ),
-                                          ),
+                                           Container(
+                                             width: 12, height: 12,
+                                             decoration: BoxDecoration(
+                                               color: isIncome
+                                                   ? (FinancialModel.isReplaced((item as FinancialModel).status)
+                                                       ? Colors.blueGrey
+                                                       : ((item as FinancialModel).status == 'pending' ? Colors.red : Colors.green))
+                                                   : Colors.orange,
+                                               shape: BoxShape.circle,
+                                               border: Border.all(color: Colors.white, width: 2)
+                                             ),
+                                           ),
                                           Expanded(child: Container(width: 2, color: Colors.grey[300])),
                                         ],
                                       ),
