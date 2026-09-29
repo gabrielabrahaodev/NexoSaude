@@ -15,6 +15,7 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [x] Backup owner: tela Exportar (JSON/CSV, tudo marcado) + CPF duplicado + temp forte [[main-dashboard]] {{operonId:: nx-124}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/app
 - [x] Atendimento sem novo lançamento; próxima sessão com dentista + horários livres [[care-day]] {{operonId:: nx-125}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/atendimento
 - [x] Cobrança via WhatsApp registrada no prontuário (SIM-confirmado) [[collections]] {{operonId:: nx-126}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
+- [x] Parcelas de cartão em modal da família (filhas fora da lista) [[patient-tabs]] {{operonId:: nx-134}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
 - [ ] Repetir próxima semana (+7 dias com choque) [[care-day]] {{operonId:: nx-127}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s1}} #nexosaude #area/atendimento
 - [ ] Cargas paralelas na ficha (Future.wait) [[care-day]] {{operonId:: nx-128}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
 - [ ] Sheet instantânea com shimmer no bloco de risco [[agenda-manager]] {{operonId:: nx-129}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento

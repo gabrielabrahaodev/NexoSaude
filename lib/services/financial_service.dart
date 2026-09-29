@@ -81,6 +81,64 @@ class FinancialService {
     return out;
   }
 
+  /// Família de parcelamento (puro e testado).
+  /// Dada a lista cheia + um item, devolve o pai (null se avulso ou
+  /// órfão de legado) e as filhas ordenadas por `i/N`.
+  static ({FinancialModel? parent, List<FinancialModel> children})
+      familyOf(List<FinancialModel> docs, FinancialModel item) {
+    final key = item.parentId;
+    if (key != null && key.isNotEmpty) {
+      FinancialModel? parent;
+      for (final d in docs) {
+        if (d.id == key) {
+          parent = d;
+          break;
+        }
+      }
+      final kids =
+          docs.where((d) => d.parentId == key).toList()..sort(_bySlice);
+      return (parent: parent, children: kids);
+    }
+    final kids =
+        docs.where((d) => d.parentId == item.id).toList()..sort(_bySlice);
+    return (
+      parent: kids.isEmpty ? null : item,
+      children: kids,
+    );
+  }
+
+  static int _bySlice(FinancialModel a, FinancialModel b) =>
+      _sliceIndex(a.installmentNumber)
+          .compareTo(_sliceIndex(b.installmentNumber));
+
+  static int _sliceIndex(String? installmentNumber) {
+    final part = (installmentNumber ?? '').split('/').first;
+    return int.tryParse(part) ?? 999;
+  }
+
+  /// Lista da timeline: esconde filhas cujo pai está presente.
+  /// Órfãs (pai deletado no legado) continuam visíveis.
+  static List<FinancialModel> visibleCharges(List<FinancialModel> docs) {
+    final ids = {for (final d in docs) d.id};
+    return [
+      for (final d in docs)
+        if (d.parentId == null ||
+            d.parentId!.isEmpty ||
+            !ids.contains(d.parentId))
+          d,
+    ];
+  }
+
+  /// Progresso da família: pagas sobre total.
+  static ({int paid, int total}) familyProgress(
+      List<FinancialModel> children) {
+    var paid = 0;
+    for (final c in children) {
+      if (c.isPaid) paid++;
+    }
+    return (paid: paid, total: children.length);
+  }
+
   /// Soma N meses preservando o dia (clamp p/ o último dia do mês).
   /// Puro e testado — base dos vencimentos do parcelamento.
   static DateTime addMonths(DateTime from, int months) {

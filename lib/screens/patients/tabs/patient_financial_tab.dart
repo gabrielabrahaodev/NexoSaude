@@ -776,6 +776,127 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     );
   }
 
+  // --- MODAL DA FAMÍLIA (parcelamento com cartão) ---
+  // Filhas não aparecem na lista: o pai substituído é a porta de entrada.
+  void _showFamilyModal(
+      FinancialModel item, List<FinancialModel> allDocs) {
+    final fam = FinancialService.familyOf(allDocs, item);
+    final kids = fam.children;
+    final parent = fam.parent;
+    if (kids.isEmpty) {
+      _showItemOptions(item);
+      return;
+    }
+    final prog = FinancialService.familyProgress(kids);
+    final isCard =
+        (item.paymentMethod ?? '').toLowerCase().contains('cart');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("${parent?.title ?? item.title}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(
+                        "${prog.paid}/${prog.total} pagas",
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary)),
+                    const SizedBox(height: 6),
+                    LinearProgressIndicator(
+                      value: prog.total == 0
+                          ? 0
+                          : prog.paid / prog.total,
+                      backgroundColor: Colors.grey[300],
+                      color: Colors.green,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              for (final k in kids) ...[
+                ListTile(
+                  dense: true,
+                  title: Text(
+                      "Parcela ${k.installmentNumber ?? ''} — ${formatBRL(k.amount)}",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  subtitle: Text(
+                      k.dueDate != null
+                          ? "Vence ${formatDateShort(k.dueDate!)}"
+                          : "Sem vencimento",
+                      style: const TextStyle(fontSize: 12)),
+                  trailing: StatusChip(
+                    label: isCard && k.isPaid
+                        ? "A receber da operadora"
+                        : (k.isPaid ? "Paga" : "Pendente"),
+                    color: chargeBadgeColor(
+                        isPaid: k.isPaid,
+                        isPending: !k.isPaid),
+                    horizontal: 6,
+                    vertical: 2,
+                    radius: 4,
+                    bold: false,
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showItemOptions(k);
+                  },
+                ),
+                const Divider(height: 1, indent: 16),
+              ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _confirmReversal(item);
+                        },
+                        icon: const Icon(Icons.undo, size: 18),
+                        label: const Text("Estornar"),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _confirmCancelCharge(item);
+                        },
+                        icon: const Icon(Icons.cancel_outlined,
+                            size: 18),
+                        label: const Text("Cancelar"),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- MENU DE OPÇÕES (1 toque, por estado; sem long-press) ---
   void _showItemOptions(FinancialModel item) {
     final cancelled = item.status.toLowerCase() == 'cancelado';
@@ -841,7 +962,8 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
   // --- TIMELINE ITEM ---
   // --- TIMELINE ITEM ---
-  Widget _buildTimelineItem(dynamic item, bool isIncome) {
+  Widget _buildTimelineItem(dynamic item, bool isIncome,
+      {List<FinancialModel>? allDocs}) {
     String itemId = item.id;
     DateTime date = isIncome ? item.date : (item as ExpenseModel).dueDate; 
     String title = isIncome ? (item as FinancialModel).title : "${(item as ExpenseModel).category} (${(item as ExpenseModel).description})";
@@ -926,7 +1048,17 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
     return GestureDetector(
       onTap: () {
-        if (isIncome) _showItemOptions(item as FinancialModel);
+        if (!isIncome) return;
+        final fin = item as FinancialModel;
+        // Família vai ao modal; avulso segue ao menu.
+        if (allDocs != null) {
+          final fam = FinancialService.familyOf(allDocs, fin);
+          if (fam.children.isNotEmpty) {
+            _showFamilyModal(fin, allDocs);
+            return;
+          }
+        }
+        _showItemOptions(fin);
       },
       child: Card(
         elevation: isPending ? 3 : 0, 
@@ -947,6 +1079,24 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                   style: TextStyle(fontSize: 11, color: AppColors.textSecondary), 
                   textAlign: TextAlign.right
                 ),
+
+              if (isIncome && allDocs != null)
+                Builder(builder: (_) {
+                  final fin = item as FinancialModel;
+                  final n = FinancialService.familyOf(allDocs, fin)
+                      .children
+                      .length;
+                  if (n == 0) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text("$n parcelas — toque para ver",
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.right),
+                  );
+                }),
 
               const SizedBox(height: 4),
               Text("${formatBRL(amount)}", 
@@ -1806,10 +1956,20 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                     .toList()
                   ..sort();
 
-                // Aplica filtros de valor e procedimento (totais acima usam a lista cheia)
+                // Aplica filtros de valor e procedimento (totais acima usam a lista cheia).
+                // Filhas com pai presente ficam só no modal da família.
                 final minValue = _parseFilterValue(_minValueCtrl.text);
                 final maxValue = _parseFilterValue(_maxValueCtrl.text);
+                final listed = FinancialService.visibleCharges([
+                  for (final e in timeline)
+                    if (e is FinancialModel) e,
+                ]);
+                final listedIds = {for (final e in listed) e.id};
                 final visible = timeline.where((item) {
+                  if (item is FinancialModel &&
+                      !listedIds.contains(item.id)) {
+                    return false;
+                  }
                   final amount = _itemAmount(item);
                   if (minValue != null && amount < minValue) return false;
                   if (maxValue != null && amount > maxValue) return false;
@@ -1905,7 +2065,11 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                   children: [
                                     Expanded(
                                       child: isIncome
-                                          ? _buildTimelineItem(item, true) 
+                                          ? _buildTimelineItem(item, true,
+                                              allDocs: [
+                                                for (final e in timeline)
+                                                  if (e is FinancialModel) e,
+                                              ])
                                           : const SizedBox(),
                                     ),
                                     SizedBox(
