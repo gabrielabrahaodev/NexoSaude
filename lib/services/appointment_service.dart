@@ -18,7 +18,9 @@ class AppointmentService {
   }
 
   // NOVO: Verifica disponibilidade (Para o Formulário)
-  Future<List<String>> getBusySlots(String clinicId, DateTime date, {String? excludeId}) async {
+  // Com dentistId, considera só os slots DESSE profissional.
+  Future<List<String>> getBusySlots(String clinicId, DateTime date,
+      {String? excludeId, String? dentistId}) async {
     DateTime startOfDay = DateTime(date.year, date.month, date.day, 0, 0);
     DateTime endOfDay = DateTime(date.year, date.month, date.day, 23, 59);
 
@@ -32,6 +34,9 @@ class AppointmentService {
     for (var doc in snapshot.docs) {
       if (excludeId != null && doc.id == excludeId) continue;
       if ('${doc['status']}'.toLowerCase() == 'cancelado') continue;
+      if (dentistId != null &&
+          dentistId.isNotEmpty &&
+          '${doc['dentistId'] ?? ''}' != dentistId) continue;
 
       DateTime d = (doc['date'] as Timestamp).toDate();
       int duration = doc['durationMinutes'] ?? 30;

@@ -9,6 +9,8 @@ import '../../services/clinical_record_service.dart';
 import '../../services/financial_service.dart';
 import '../../services/portal_mirror.dart';
 import '../../services/session_manager.dart';
+import '../../services/user_service.dart';
+import '../../models/user_model.dart';
 import '../../services/whatsapp_helper.dart';
 import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
@@ -44,7 +46,6 @@ class CareVisitPanel extends StatefulWidget {
 
 class _CareVisitPanelState extends State<CareVisitPanel> {
   final _detailsCtrl = TextEditingController();
-  final _amountCtrl = TextEditingController();
   String? _template;
   String _method = 'Pix';
   bool _evolutionSaved = false;
@@ -52,11 +53,14 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   String? _phone;
   DateTime? _nextDate;
 
-  // Cobrança: nova ou baixa de existente (aba Pagamentos).
-  bool _useExisting = false;
+  // Cobrança: SOMENTE baixa de lançamento existente (criado em Pagamentos).
   List<FinancialModel> _openCharges = [];
   String? _selectedChargeId;
   bool _loadingCharges = false;
+
+  // Próxima sessão: profissional (padrão = do agendamento atual).
+  List<UserModel> _nextDentists = [];
+  String? _nextDentistId;
 
   static const _methods = [
     'Dinheiro',
@@ -68,15 +72,34 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   @override
   void initState() {
     super.initState();
+    _nextDentistId = widget.appointment.dentistId;
     _loadPhone();
     _loadOpenCharges();
+    _loadNextDentists();
   }
 
   @override
   void dispose() {
     _detailsCtrl.dispose();
-    _amountCtrl.dispose();
     super.dispose();
+  }
+
+  /// Profissionais da clínica p/ a próxima sessão.
+  Future<void> _loadNextDentists() async {
+    try {
+      final clinicId = widget.appointment.clinicId;
+      final list = await UserService().getDentistsForClinic(clinicId);
+      if (!mounted) return;
+      setState(() {
+        _nextDentists = list;
+        // Padrão = dentista do agendamento atual (se ainda atender).
+        if ((_nextDentistId ?? '').isEmpty ||
+            !list.any((d) => d.id == _nextDentistId)) {
+          _nextDentistId =
+              list.isNotEmpty ? list.first.id : widget.appointment.dentistId;
+        }
+      });
+    } catch (_) {}
   }
 
   /// Em aberto do paciente (igual à aba Pagamentos): não-pagos e não-cancelados.
@@ -201,67 +224,6 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     }
   }
 
-  Map<String, dynamic> _chargeMap(String id, bool receiveNow) {
-    final a = widget.appointment;
-    final amount = parseBRL(_amountCtrl.text);
-    final rec = FinancialService.recordingFor(_method);
-    return FinancialModel(
-      id: id,
-      clinicId: a.clinicId,
-      patientId: a.patientId,
-      patientName: a.patientName,
-      title:
-          "Atendimento ${a.procedure} ${formatDateShort(a.date)}",
-      description: '',
-      amount: amount,
-      paidAmount: receiveNow ? amount : 0.0,
-      date: DateTime.now(),
-      dueDate: DateTime.now(),
-      type: 'income',
-      status: receiveNow ? rec.status : 'pendente',
-      paymentMethod: _method,
-      dentistId: a.dentistId,
-      dentistName: SessionManager().userName,
-    ).toMap();
-  }
-
-  Future<void> _charge(bool receiveNow) async {
-    if (parseBRL(_amountCtrl.text) <= 0) {
-      toast(context, "Informe o valor da sessão.", error: true);
-      return;
-    }
-    setState(() => _saving = true);
-    try {
-      final ref =
-          FirebaseFirestore.instance.collection('financial').doc();
-      final map = _chargeMap(ref.id, receiveNow);
-      await ref.set(map);
-      await PortalMirrorSync.upsertDebt(
-        patientId: widget.appointment.patientId,
-        debt: {
-          'id': ref.id,
-          'title': '${map['title'] ?? 'Lançamento'}',
-          'amount': (map['amount'] as num?)?.toDouble() ?? 0.0,
-          'paidAmount': (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
-          'dueDate': (map['dueDate'] as Timestamp?)?.toDate(),
-          'status': '${map['status'] ?? ''}',
-        },
-      );
-      if (mounted) {
-        toast(
-            context,
-            receiveNow
-                ? "Recebido ${formatBRL(parseBRL(_amountCtrl.text))}."
-                : "Lançamento pendente criado.",
-            ok: true);
-      }
-    } catch (e) {
-      if (mounted) toast(context, "Erro ao cobrar: $e", error: true);
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
   Future<void> _pickNext() async {
     final date = await showDatePicker(
       context: context,
@@ -269,11 +231,54 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
       lastDate: DateTime.now().add(const Duration(days: 90)),
     );
     if (date == null || !mounted) return;
-    final time =
-        await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (time == null) return;
-    setState(() => _nextDate = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute));
+    final a = widget.appointment;
+    final did = (_nextDentistId?.isNotEmpty == true
+            ? _nextDentistId
+            : a.dentistId) ??
+        '';
+    // Somente horários livres DESSE profissional.
+    final busy = await AppointmentService()
+        .getBusySlots(a.clinicId, date, dentistId: did);
+    final grade = await clinicGrade(a.clinicId);
+    final free = grade.where((t) => !busy.contains(t)).toList();
+    if (free.isEmpty) {
+      if (mounted) {
+        toast(context, "Dia sem horário livre para este profissional.");
+      }
+      return;
+    }
+    if (!mounted) return;
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Horários livres"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final t in free)
+                ChoiceChip(
+                  label: Text(t),
+                  selected: false,
+                  onSelected: (_) => Navigator.pop(ctx, t),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    final parts = picked.split(':');
+    setState(() => _nextDate = DateTime(date.year, date.month, date.day,
+        int.parse(parts[0]), int.parse(parts[1])));
   }
 
   Future<void> _scheduleNext() async {
@@ -288,6 +293,23 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     setState(() => _saving = true);
     try {
       final a = widget.appointment;
+      final did = (_nextDentistId?.isNotEmpty == true
+              ? _nextDentistId
+              : a.dentistId) ??
+          '';
+      // Revalida no vivo (alguém pode ter ocupado após a escolha).
+      final hhmm =
+          "${_nextDate!.hour.toString().padLeft(2, '0')}:${_nextDate!.minute.toString().padLeft(2, '0')}";
+      final busy = await AppointmentService()
+          .getBusySlots(a.clinicId, _nextDate!, dentistId: did);
+      if (busy.contains(hhmm)) {
+        if (mounted) {
+          toast(context,
+              "Horário ocupado para este profissional. Escolha outro.",
+              error: true);
+        }
+        return;
+      }
       await AppointmentService().add(AppointmentModel(
         id: '',
         patientId: a.patientId,
@@ -296,7 +318,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
         status: 'Aguardando Confirmação',
         procedure: a.procedure,
         clinicId: a.clinicId,
-        dentistId: a.dentistId,
+        dentistId: did.isEmpty ? a.dentistId : did,
         durationMinutes: a.durationMinutes,
       ));
       final msg = nextSessionText(
@@ -383,7 +405,8 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
             ),
           ),
           const SizedBox(height: 12),
-          // 2. COBRANÇA (nova ou baixa de existente)
+          // 2. COBRANÇA (somente baixa de existente — novo lançamento
+          // nasce na aba Pagamentos).
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -392,34 +415,17 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
                 children: [
                   Text("2. Cobrança", style: AppTextStyles.h2),
                   const SizedBox(height: 8),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                          value: false,
-                          label: Text("Nova"),
-                          icon: Icon(Icons.add, size: 18)),
-                      ButtonSegment(
-                          value: true,
-                          label: Text("Em aberto"),
-                          icon: Icon(Icons.list_alt, size: 18)),
-                    ],
-                    selected: {_useExisting},
-                    onSelectionChanged: (s) =>
-                        setState(() => _useExisting = s.first),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_useExisting) ...[
-                    if (_loadingCharges)
-                      const Center(
-                          child: SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2)))
-                    else if (_openCharges.isEmpty)
-                      const Text(
-                          "Nada em aberto. Volte para Nova."),
-                    if (_openCharges.isNotEmpty) ...[
+                  if (_loadingCharges)
+                    const Center(
+                        child: SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2)))
+                  else if (_openCharges.isEmpty)
+                    const Text(
+                        "Nada em aberto. Crie o lançamento na aba Pagamentos."),
+                  if (_openCharges.isNotEmpty) ...[
                       DropdownButtonFormField<String>(
                         value: _selectedChargeId,
                         decoration: InputDecoration(
@@ -472,63 +478,6 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
                         ],
                       ),
                     ],
-                  ] else ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _amountCtrl,
-                          keyboardType:
-                              const TextInputType.numberWithOptions(
-                                  decimal: true),
-                          decoration: InputDecoration(
-                              labelText: "Valor (R\$)",
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12))),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _method,
-                          decoration: InputDecoration(
-                              labelText: "Meio",
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12))),
-                          items: [
-                            for (final m in _methods)
-                              DropdownMenuItem(
-                                  value: m, child: Text(m)),
-                          ],
-                          onChanged: (v) =>
-                              setState(() => _method = v ?? 'Pix'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed:
-                              _saving ? null : () => _charge(false),
-                          child: const Text("Lançar pendente"),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed:
-                              _saving ? null : () => _charge(true),
-                          child: const Text("Receber agora"),
-                        ),
-                      ),
-                    ],
-                  ),
-                  ],
                 ],
               ),
             ),
@@ -542,6 +491,25 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("3. Próxima sessão", style: AppTextStyles.h2),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _nextDentists.any((d) => d.id == _nextDentistId)
+                        ? _nextDentistId
+                        : null,
+                    decoration: InputDecoration(
+                        labelText: "Profissional",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12))),
+                    items: [
+                      for (final d in _nextDentists)
+                        DropdownMenuItem(
+                            value: d.id, child: Text(d.name)),
+                    ],
+                    onChanged: (v) => setState(() {
+                      _nextDentistId = v;
+                      _nextDate = null;
+                    }),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
