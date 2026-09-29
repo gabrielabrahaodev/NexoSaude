@@ -14,6 +14,9 @@ import 'package:crypto/crypto.dart';
 class NewsService {
   // Cache em memória para evitar re-traduções e detectar duplicatas
   final Map<String, OrthoArticle> _cache = {};
+  // Quando cada id ENTROU no cache (evicção por idade de fetch, não do
+  // artigo: Europe PMC só dá o ano e viria datado de 1º/jan).
+  final Map<String, DateTime> _fetchedAt = {};
   DateTime? _lastFetch;
   String? _lastTheme;
 
@@ -29,10 +32,11 @@ class NewsService {
       {bool forceRefresh = false, String clinicType = 'dental'}) async {
     final now = DateTime.now();
 
-    // 1. LIMPA NOTÍCIAS ANTIGAS DO CACHE (mais de 30 dias)
+    // 1. LIMPA ITENS FETCHADOS HÁ +30 DIAS (não pela data do artigo)
     _cache.removeWhere((id, article) {
-      final age = now.difference(article.date);
-      return age.inDays > 30;
+      final fetched = _fetchedAt[id];
+      if (fetched == null) return true;
+      return now.difference(fetched).inDays > 30;
     });
 
     // 2. Retorna cache se recente (< 60 minutos), mesmo tema, sem forçar
@@ -80,6 +84,7 @@ class NewsService {
         url: r.url,
         date: r.date,
       );
+      _fetchedAt[uniqueId] = DateTime.now();
       addedCount++;
     }));
 
@@ -87,8 +92,10 @@ class NewsService {
     if (_cache.length > 30) {
       final sorted = _sortedCache();
       _cache.clear();
+      _fetchedAt.clear();
       for (var i = 0; i < 30 && i < sorted.length; i++) {
         _cache[sorted[i].id] = sorted[i];
+        _fetchedAt[sorted[i].id] = now;
       }
     }
 
@@ -164,6 +171,26 @@ class NewsService {
   }
 }
 
+/// Limpa markup das APIs (tags + entidades HTML) ANTES de traduzir.
+/// Puro e testado.
+String cleanText(String raw) {
+  if (raw.isEmpty) return '';
+  var s = raw.replaceAll(RegExp(r'<[^>]*>'), ' ');
+  const entities = {
+    '&lt;': '<',
+    '&gt;': '>',
+    '&amp;': '&',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&nbsp;': ' ',
+  };
+  entities.forEach((k, v) => s = s.replaceAll(k, v));
+  s = s.replaceAllMapped(
+      RegExp(r'&#(\d+);'), (m) => String.fromCharCode(int.parse(m[1]!)));
+  return s.replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
 /// Artigo bruto (pré-tradução). Parse puro e testado.
 class RawArticle {
   final String title;
@@ -190,7 +217,7 @@ List<RawArticle> parseEuropePmc(String body) {
         ((json['resultList'] as Map?)?['result'] as List?) ?? [];
     for (final e in results) {
       final m = Map<String, dynamic>.from(e as Map);
-      final title = '${m['title'] ?? ''}'.trim();
+      final title = cleanText('${m['title'] ?? ''}');
       if (title.isEmpty) continue;
       final pmid = '${m['pmid'] ?? ''}';
       final doi = '${m['doi'] ?? ''}';
@@ -200,7 +227,7 @@ List<RawArticle> parseEuropePmc(String body) {
       if (url.isEmpty) continue;
       out.add(RawArticle(
         title: title,
-        summary: '${m['abstractText'] ?? ''}'.trim(),
+        summary: cleanText('${m['abstractText'] ?? ''}'),
         source: 'Europe PMC',
         url: url,
         date: _europePmcDate(m),
@@ -226,8 +253,8 @@ List<RawArticle> parseSemanticScholar(String body) {
     final results = (json['data'] as List?) ?? [];
     for (final e in results) {
       final m = Map<String, dynamic>.from(e as Map);
-      final title = '${m['title'] ?? ''}'.trim();
-      final url = '${m['url'] ?? ''}'.trim();
+      final title = cleanText('${m['title'] ?? ''}');
+      final url = cleanText('${m['url'] ?? ''}');
       if (title.isEmpty || url.isEmpty) continue;
       DateTime date;
       try {
@@ -237,7 +264,7 @@ List<RawArticle> parseSemanticScholar(String body) {
       }
       out.add(RawArticle(
         title: title,
-        summary: '${m['abstract'] ?? ''}'.trim(),
+        summary: cleanText('${m['abstract'] ?? ''}'),
         source: 'Semantic Scholar',
         url: url,
         date: date,

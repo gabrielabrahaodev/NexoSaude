@@ -21,11 +21,11 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
     _loadNews();
   }
 
-  void _loadNews() {
+  void _loadNews({bool force = false}) {
     final clinicType = SessionManager().clinicType;
     setState(() {
-      _newsFuture =
-          _newsService.getLatestOrthoNews(clinicType: clinicType);
+      _newsFuture = _newsService.getLatestOrthoNews(
+          forceRefresh: force, clinicType: clinicType);
     });
   }
 
@@ -62,7 +62,7 @@ class _OrthoNewsScreenState extends State<OrthoNewsScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: primaryColor),
-            onPressed: _loadNews,
+            onPressed: () => _loadNews(force: true),
           )
         ],
       ),

@@ -24,6 +24,15 @@ void main() {
     });
   });
 
+  group('cleanText', () {
+    test('remove tags e decodifica entidades', () {
+      expect(
+          cleanText('The &lt;i&gt;SMD&lt;/i&gt; = .17 <b>verdict</b>'),
+          'The <i>SMD</i> = .17 verdict');
+      expect(cleanText('a&nbsp;b &amp; c&#39;d'), "a b & c'd");
+    });
+  });
+
   group('parseSemanticScholar', () {
     test('extrai título, url e data', () {
       const body = '''
