@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:odonto_controle/models/financial_model.dart';
 import 'package:odonto_controle/screens/patients/tabs/patient_financial_tab.dart';
@@ -103,7 +103,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             Container(
               width: double.infinity,
               color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 800),
@@ -111,13 +111,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                 ),
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, thickness: 0.5),
 
             // Faixa full-width: contexto (conteúdo centralizado).
             Container(
               width: double.infinity,
               color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 800),
@@ -125,7 +125,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                 ),
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, thickness: 0.5),
 
             // Conteúdo das abas: coluna central estreita.
             Expanded(
