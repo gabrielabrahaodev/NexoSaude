@@ -16,7 +16,7 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [x] Atendimento sem novo lançamento; próxima sessão com dentista + horários livres [[care-day]] {{operonId:: nx-125}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/atendimento
 - [x] Deploy da master em produção (build + hosting) e validar login owner {{operonId:: nx-101}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e1}} {{dateDue:: 2026-10-03}} #nexosaude #area/entrega
 - [x] Commitar a fila pendente na master (código + vault já validados: analyze 0, testes verdes) {{operonId:: nx-102}} {{status:: Finished}} {{priority:: A}} {{dateDue:: 2026-10-02}} #nexosaude #area/entrega
-- [ ] Reconsentir os 53 pacientes com consulta em 14 dias (lista em Temp + recepção reemite com diálogo) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao
+- [ ] Reconsentir os 45 pacientes sem aceite com consulta em 14 dias (filtro Sem aceite na lista + recepção reemite na ficha) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao
 - [ ] Validar trial ponta a ponta (pedir → aprovar no Master → entrar → portal) {{operonId:: nx-104}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e1}} #nexosaude #area/qualidade
 
 ## Depois (prioridade B)
