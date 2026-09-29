@@ -408,6 +408,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                     controller: _passwordController,
                     decoration: const InputDecoration(labelText: "Senha Inicial", border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock)),
                     obscureText: true,
+                    autofillHints: const [AutofillHints.newPassword],
                   ),
                 ],
               ),

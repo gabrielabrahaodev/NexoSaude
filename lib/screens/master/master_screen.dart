@@ -178,6 +178,7 @@ class _MasterScreenState extends State<MasterScreen> {
                 TextField(
                     controller: _passCtrl,
                     obscureText: true,
+                    autofillHints: const [AutofillHints.newPassword],
                     decoration:
                         const InputDecoration(labelText: "Senha inicial")),
                 TextField(

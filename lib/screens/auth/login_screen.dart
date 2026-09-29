@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -208,6 +209,9 @@ class _LoginScreenState extends State<LoginScreen> {
       
       // OBRIGATÓRIO: Inicializa a sessão antes de liberar o loading
       await _initializeSession(userCred.user!.uid);
+      // Confirma o autofill uma única vez: o Chrome salva aqui e não
+      // oferece de novo em outros formulários (ex.: paciente).
+      TextInput.finishAutofillContext();
 
     } on FirebaseAuthException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? "Erro")));
@@ -237,9 +241,40 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 Text("Controle de Clínicas", style: AppTextStyles.subtitle, textAlign: TextAlign.center),
               const SizedBox(height: 30),
-              TextField(controller: _emailController, textInputAction: TextInputAction.next, onSubmitted: (_) => FocusScope.of(context).nextFocus(), decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: const Icon(Icons.email_outlined))),
-              const SizedBox(height: 12),
-              TextField(controller: _passwordController, textInputAction: TextInputAction.done, onSubmitted: (_) => _submit(), decoration: InputDecoration(labelText: "Senha", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: const Icon(Icons.lock_outline)), obscureText: true),
+              AutofillGroup(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                        controller: _emailController,
+                        textInputAction: TextInputAction.next,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).nextFocus(),
+                        decoration: InputDecoration(
+                            labelText: "Email",
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            prefixIcon:
+                                const Icon(Icons.email_outlined))),
+                    const SizedBox(height: 12),
+                    TextField(
+                        controller: _passwordController,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [AutofillHints.password],
+                        onSubmitted: (_) => _submit(),
+                        decoration: InputDecoration(
+                            labelText: "Senha",
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            prefixIcon:
+                                const Icon(Icons.lock_outline)),
+                        obscureText: true),
+                  ],
+                ),
+              ),
               if (_isLogin)
                 Align(
                   alignment: Alignment.centerRight,

@@ -317,6 +317,7 @@ class _SettingsTabState extends State<SettingsTab> {
               TextField(
                 controller: _currentPass,
                 obscureText: true,
+                autofillHints: const [AutofillHints.password],
                 decoration: InputDecoration(
                     labelText: "Senha atual",
                     border: OutlineInputBorder(
@@ -326,6 +327,7 @@ class _SettingsTabState extends State<SettingsTab> {
               TextField(
                 controller: _newPass,
                 obscureText: true,
+                autofillHints: const [AutofillHints.newPassword],
                 decoration: InputDecoration(
                     labelText: "Nova senha (mín. 6 caracteres)",
                     border: OutlineInputBorder(
@@ -335,6 +337,7 @@ class _SettingsTabState extends State<SettingsTab> {
               TextField(
                 controller: _confirmPass,
                 obscureText: true,
+                autofillHints: const [AutofillHints.newPassword],
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _changePassword(),
                 decoration: InputDecoration(
