@@ -16,6 +16,15 @@ void main() {
     });
   });
 
+  group('propostaExpirada', () {
+    test('dia anterior expirou; hoje e futuro valem', () {
+      final now = DateTime(2026, 9, 29, 10, 0);
+      expect(propostaExpirada(DateTime(2026, 9, 24, 8, 30), now), isTrue);
+      expect(propostaExpirada(DateTime(2026, 9, 29, 8, 30), now), isFalse);
+      expect(propostaExpirada(DateTime(2026, 9, 30, 8, 30), now), isFalse);
+    });
+  });
+
   group('confirmText', () {
     test('traz nome, data, hora e link do portal', () {
       final msg = confirmText(

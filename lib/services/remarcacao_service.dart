@@ -38,6 +38,12 @@ String confirmText({
 String _isoSlot(DateTime d) =>
     "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}T${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
 
+/// Puro e testado: proposta anterior a hoje (dia) já expirou.
+bool propostaExpirada(DateTime proposed, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  return proposed.isBefore(today);
+}
+
 /// Caixa de pendências da remarcação (glue: sem teste, depende do Firestore).
 /// Aprovar revalida no vivo; recusar volta p/ Agendado e esconde o slot
 /// SÓ desse paciente (segue livre para os demais).
@@ -49,6 +55,9 @@ class RemarcacaoService {
   static Future<String?> approve(AppointmentModel appt) async {
     final proposed = appt.proposedDate;
     if (proposed == null) return "Sem data proposta.";
+    if (propostaExpirada(proposed, DateTime.now())) {
+      return "Data proposta já passou. Recuse e peça outra data.";
+    }
     try {
       final busy = await AppointmentService().getBusySlots(
         appt.clinicId,
