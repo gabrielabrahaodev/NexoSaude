@@ -28,7 +28,9 @@ Extraído de [[modules/financial]] e [[screens/reports/kpi-dashboard|kpi-dashboa
 
 ## TODOs
 
-- TODO: importar a lista exata de `firestore.indexes.json` do código.
-- TODO: registrar comando de deploy dos índices (`firebase deploy --only firestore:indexes`).
+- Lista exata em 2026-09-30: 53 índices em firestore.indexes.json, todos COLLECTION, grupos appointments, financial, treatment_plans, expenses, lab_orders, patients, budgets, users, inventory, docs, clinical_records, clinics, suppliers, procedures. Exceção: users.allowedClinics usa CONTAINS. Sem fieldOverrides.
+<!-- fonte: firestore.indexes.json -->
+- Deploy: firebase.json declara `firestore.rules` e `firestore.indexes.json` para o CLI; hosting sai por `firebase deploy --only hosting --project=nexosaude` via deploy.bat; rules saem por migrate/rules-release.js via REST; índices seguem o mesmo CLI (`firebase deploy --only firestore:indexes`, derivado do padrão do repo).
+<!-- fonte: firebase.json: firestore; deploy.bat; migrate/rules-release.js -->
 
 Ver [[data-model/collections]].

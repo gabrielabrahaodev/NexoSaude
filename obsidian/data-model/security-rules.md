@@ -27,6 +27,6 @@ Resumo do que existe no vault (`Requisitos.md` RN-58, `foundation/01-prd.md` §4
 
 ## TODOs
 
-- TODO: importar de `firestore.rules` (fonte final no código, não no vault).
+- Importado de firestore.rules (293 linhas) em 2026-09-30. Helpers: `isAuthenticated`, `isOwner` (role owner), `isSuperAdmin` (role superadmin), `isPlatformDebtor`, `hasClinicAccess` (allowedClinics), `isSecretsPath`. - Matches: users (auto-cadastro com allowlist de roles + trial owner pendente), trial_requests (create público com allowlist de 7 campos), user_prefs (próprio ou owner), password_reset_requests (create público, resto owner), clinics (staff atualiza pixKey/gradeConfig/whatsappNumber com flags g_pix/g_grade/g_clinica), platform_config + platform_debits, news, appointments (update Confirmado e remarcar por allowlist), portal get público + update por allowlist de 4 chaves, portal_slots read público, financial (avisoPagamento), anamnesis (14 campos), catch-all F para 8 coleções operacionais, procedures/inventory/suppliers amplos de propósito, expenses/lab_orders escopados, settings com segredos só owner, subcoleções de patients. - Divergências contra o resumo RN-58: allowlist do portal tem 4 chaves, sem propostasRecusadas; rules trazem isSuperAdmin, isPlatformDebtor, trial_requests e flags de clínica não citadas no RN. <!-- fonte: firestore.rules:8-291 -->
 
 Ver [[data-model/collections]], [[decisions/0002-multitenant-session]].

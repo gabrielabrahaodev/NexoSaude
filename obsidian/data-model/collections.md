@@ -28,7 +28,7 @@ Agregado das coleções mencionadas em `modules/`. Fonte: [[modules/financial]],
 | `psychology_schedules` | Contratos recorrentes (`package` vs `session`) | [[modules/psychology-packages]] |
 | `patients/{id}/docs` | Metadados de arquivos (binário no Cloudinary) | [[integrations/cloudinary]] |
 | `patients/{id}/clinical_data/odontogram` | `teeth` + `lastUpdate` | [[modules/clinical]] |
-| `anticipations` | Histórico de antecipações de recebíveis | `Requisitos.md` RN |
+| `anticipations` | Sem leitores/escritores no app; blocos removidos das rules, acesso negado por padrão | firestore.rules:261-268 |
 | `suppliers` / `inventory` | Fornecedores e estoque (leitores legados sem filtro) | [[modules/operations]] |
 
 ## Globais / plataforma (sem `clinicId`)
@@ -43,6 +43,8 @@ Agregado das coleções mencionadas em `modules/`. Fonte: [[modules/financial]],
 | `platform_debits` | Débitos da plataforma por owner (Master) |
 | `password_reset_requests` | Pedidos de reset (create público, resto owner) |
 | `trial_requests` | Autoprovisionamento aprovado via Master |
+| `platform_config` | Assinatura da plataforma (basePrice, extraPrice, pixKey), só superadmin escreve | firestore.rules:128-133 |
+| `user_prefs` | Preferências por usuário (ex. tema), próprio ou owner | firestore.rules:84-88 |
 
 ## Espelhos públicos
 
@@ -50,10 +52,12 @@ Agregado das coleções mencionadas em `modules/`. Fonte: [[modules/financial]],
 |---|---|
 | `portal/{token}` | Espelho por paciente (3 sessões + top-3 atrasos + totais + Pix) |
 | `portal_slots/{clinicId}` | Livres 14 dias por dentista |
+| `clinics/{id}/leads` | Leads da avaliação pública; DIVERGÊNCIA: sem regra dedicada nas rules, cai no deny padrão | lib/screens/public/public_evaluation_screen.dart |
 | `anamnesis/{patientId}` | Escrita pública com allowlist de 14 campos |
 
 Ver [[data-model/mirrors]] e [[data-model/security-rules]].
 
 ## TODOs
 
-- TODO: conferir lista contra `firestore.rules` e `firestore.indexes.json` (fonte final no código, não no vault).
+- Verificado contra o código em 2026-09-30: coleções com uso em lib (via collection) e matches em firestore.rules conferem com as tabelas acima, com os ajustes desta revisão (anticipations, platform_config, user_prefs, leads). Grupos de firestore.indexes.json: appointments, financial, treatment_plans, expenses, lab_orders, patients, budgets, users, inventory, docs, clinical_records, clinics, suppliers, procedures.
+<!-- fonte: firestore.rules:50-291; firestore.indexes.json; grep collection( em lib -->

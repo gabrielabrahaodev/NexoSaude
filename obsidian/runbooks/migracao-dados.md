@@ -22,7 +22,8 @@ Fragmentos que existem no vault (fonte: [[modules/portal-mirror]], `foundation/0
 
 ## TODOs
 
-- TODO: inventariar scripts `migrate/` e backfills (não descritos no vault).
+- Inventário migrate/ em 2026-09-30: agenda-diag.js, count.js, debts-diag.js, migrate.js, portal-backfill.js, portal-diag.js, reset-password.js, rules-release.js, slots-backfill.js, slots-diag.js. Backfills de espelho: slots-backfill.js e portal-backfill.js (mesma regra isPortalProfessional do app).
+<!-- fonte: migrate/ -->
 - TODO: escrever procedimento padrão (backup, ordem, verificação).
 
 Ver [[modules/portal-mirror]], [[data-model/mirrors]].

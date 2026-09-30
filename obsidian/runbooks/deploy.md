@@ -22,7 +22,9 @@ Fragmentos que existem no vault (fonte: [[modules/portal-mirror]], `Requisitos.m
 
 ## TODOs
 
-- TODO: escrever o passo a passo completo (pré-requisitos, rollback, verificação pós-deploy).
-- TODO: confirmar comando de deploy das rules/índices (`firebase deploy --only firestore:rules,indexes`).
+- Passo a passo (deploy.bat na raiz): 0 carimba versão via tool/bump_version.ps1 (gera web/version.json); 1 flutter clean + flutter build web com base-href /sistema-interno/; 2 reorganiza build/web (app vai para sistema-interno, páginas públicas e landing voltam para a raiz como index.html); 3 firebase deploy --only hosting --project=nexosaude.
+<!-- fonte: deploy.bat; tool/bump_version.ps1 -->
+- Hosting: `firebase deploy --only hosting --project=nexosaude` (deploy.bat). Rules: migrate/rules-release.js publica via REST com service account (contorna 403 do test no CLI). Índices: mesmo CLI (`firebase deploy --only firestore:indexes`), derivado do padrão do repo + firebase.json que declara rules e indexes.
+<!-- fonte: deploy.bat; migrate/rules-release.js:1-30; firebase.json -->
 
 Ver [[data-model/indexes]], [[modules/portal-mirror]].
