@@ -42,3 +42,6 @@ Cobrança, documentação do paciente, feed de notícias.
 - [[screens/clinical/ortho-news|ortho-news]] — feed que usa o cache + tradução
 - [[screens/clinical/patient-details|patient-details]] — docs do paciente + link do portal
 - [[screens/portal/public-evaluation|public-evaluation]] — redireciona para o WhatsApp da clínica
+
+> [!note] Conteúdo detalhado por integração
+> Ver [[integrations/whatsapp]], [[integrations/cloudinary]], [[integrations/europe-pmc]].
