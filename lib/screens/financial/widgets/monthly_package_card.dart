@@ -18,6 +18,9 @@ class MonthlyPackageCard extends StatelessWidget {
   final bool isPartial;
   final bool billingLoading;
 
+  /// Deep-link p/ a ficha (sem menu). Nulo = sem botão.
+  final VoidCallback? onOpenPatient;
+
   const MonthlyPackageCard({
     super.key,
     required this.patientName,
@@ -32,6 +35,7 @@ class MonthlyPackageCard extends StatelessWidget {
     this.billingDetail,
     this.isPartial = false,
     this.billingLoading = false,
+    this.onOpenPatient,
   });
 
   @override
@@ -117,6 +121,15 @@ class MonthlyPackageCard extends StatelessWidget {
                 ],
               ),
             const SizedBox(width: 10),
+            if (onOpenPatient != null)
+              InkWell(
+                onTap: onOpenPatient,
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.person_outline,
+                      size: 20, color: Colors.blue),
+                ),
+              ),
             const Icon(Icons.chevron_right, color: Colors.grey),
           ],
         ),

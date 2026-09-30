@@ -8,6 +8,7 @@ import '../../models/financial_model.dart';
 import '../../services/clinic_capabilities.dart';
 import '../../services/package_billing.dart';
 import '../../services/session_manager.dart';
+import '../../utils/patient_route.dart';
 import '../../services/clinical_record_service.dart';
 import '../../services/whatsapp_helper.dart';
 import 'widgets/charge_confirm_dialog.dart';
@@ -693,6 +694,9 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                               totalAmount: packageAmount,
                               contactedToday: contactedToday,
                               billingLoading: true,
+                              onOpenPatient: () => Navigator.push(
+                                  context,
+                                  openPatient(patientId, patientName)),
                               onTap: () {},
                             );
                           }
@@ -709,6 +713,9 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                               billingDetail:
                                   "Cálculo indisponível no momento",
                               contactedToday: contactedToday,
+                              onOpenPatient: () => Navigator.push(
+                                  context,
+                                  openPatient(patientId, patientName)),
                               onTap: () => _handleMonthlyPackageCharge({
                                 'patientId': patientId,
                                 'patientName': patientName,
@@ -727,28 +734,31 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                               : "${bill.describe()} • ${formatBRL(bill.amountDue)}"
                                   "${bill.isPartial ? " (parcial)" : ""}";
 
-                          return MonthlyPackageCard(
-                            patientName: patientName,
-                            periodLabel: periodLabel,
-                            installmentNumber: installmentNumber,
-                            sessionCount:
-                                bill?.previstas ?? items.length,
-                            dueDate:
-                                (data['dueDate'] as Timestamp).toDate(),
-                            totalAmount: totalAmount,
-                            fullAmount: packageAmount,
-                            billingDetail: detail,
-                            isPartial: bill?.isPartial ?? false,
-                            contactedToday: contactedToday,
-                            onTap: () => _handleMonthlyPackageCharge({
-                              'patientId': patientId,
-                              'patientName': patientName,
-                              'monthlyPeriod': monthlyPeriod,
-                              'totalAmount': totalAmount,
-                              'fullAmount': packageAmount,
-                              'billingDetail': detail,
-                              'items': items,
-                            }),
+                            return MonthlyPackageCard(
+                              patientName: patientName,
+                              periodLabel: periodLabel,
+                              installmentNumber: installmentNumber,
+                              sessionCount:
+                                  bill?.previstas ?? items.length,
+                              dueDate:
+                                  (data['dueDate'] as Timestamp).toDate(),
+                              totalAmount: totalAmount,
+                              fullAmount: packageAmount,
+                              billingDetail: detail,
+                              isPartial: bill?.isPartial ?? false,
+                              contactedToday: contactedToday,
+                              onOpenPatient: () => Navigator.push(
+                                  context,
+                                  openPatient(patientId, patientName)),
+                              onTap: () => _handleMonthlyPackageCharge({
+                                'patientId': patientId,
+                                'patientName': patientName,
+                                'monthlyPeriod': monthlyPeriod,
+                                'totalAmount': totalAmount,
+                                'fullAmount': packageAmount,
+                                'billingDetail': detail,
+                                'items': items,
+                              }),
                           );
                         },
                       );
@@ -789,6 +799,10 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                       item: item,
                       contactedToday: contactedToday,
                       onTap: () => _handleCharge(item),
+                      onOpenPatient: () => Navigator.push(
+                          context,
+                          openPatient(
+                              item.patientId, item.patientName)),
                       paymentNoticed:
                           (data['avisoPagamento'] as Map?) != null,
                       onDismissNotice: () => FirebaseFirestore.instance

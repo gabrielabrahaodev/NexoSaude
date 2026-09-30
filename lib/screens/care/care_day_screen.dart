@@ -8,6 +8,7 @@ import '../../services/care_day.dart';
 import '../../services/session_manager.dart';
 import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
+import '../../utils/patient_route.dart';
 import '../../widgets/status_chip.dart';
 import 'care_visit_screen.dart';
 /// Modo Atendimento — "Meu dia" (spec 3.1).
@@ -283,6 +284,17 @@ class _VisitCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis),
                     ),
                     StatusChip(label: a.status, color: accent),
+                    IconButton(
+                      icon: const Icon(Icons.person_outline, size: 20),
+                      color: Colors.blue,
+                      tooltip: "Abrir paciente",
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.push(
+                          context,
+                          openPatient(
+                              a.patientId, a.patientName)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),

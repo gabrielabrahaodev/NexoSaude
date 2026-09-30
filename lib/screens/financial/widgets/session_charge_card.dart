@@ -11,6 +11,9 @@ class SessionChargeCard extends StatelessWidget {
   final bool paymentNoticed;
   final VoidCallback? onDismissNotice;
 
+  /// Deep-link p/ a ficha (sem menu). Nulo = sem botão.
+  final VoidCallback? onOpenPatient;
+
   const SessionChargeCard({
     super.key,
     required this.item,
@@ -18,6 +21,7 @@ class SessionChargeCard extends StatelessWidget {
     required this.onTap,
     this.paymentNoticed = false,
     this.onDismissNotice,
+    this.onOpenPatient,
   });
 
   @override
@@ -65,7 +69,8 @@ class SessionChargeCard extends StatelessWidget {
                       ),
                     ),
                 ],
-              ),          ],
+              ),
+          ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -73,6 +78,15 @@ class SessionChargeCard extends StatelessWidget {
             Text("${formatBRL(item.amount)}",
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 16)),
+            if (onOpenPatient != null)
+              IconButton(
+                icon: const Icon(Icons.person_outline,
+                    size: 20, color: Colors.blue),
+                tooltip: "Abrir paciente",
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onOpenPatient,
+              ),
             const SizedBox(width: 10),
             const Icon(Icons.chevron_right, color: Colors.grey),
           ],
