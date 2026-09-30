@@ -37,6 +37,8 @@ Fila priorizada (scrum). Épicos entregues em [[tasks/epics/E1-plataforma-assina
 - [ ] Reconsentir os 45 pacientes sem aceite com consulta em 14 dias (filtro Sem aceite na lista + recepção reemite na ficha) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao
 - [ ] Validar trial ponta a ponta (pedir → aprovar no Master → entrar → portal) {{operonId:: nx-104}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e1}} #nexosaude #area/qualidade
 
+- [ ] Leads da avaliacao publica sem regra (deny padrao): clinics/id/leads nao tem match em firestore.rules; confirmar se gravacao esta quebrada e decidir entre adicionar regra ou remover escrita [[screens/portal/public-evaluation]] {{operonId:: nx-135}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/seguranca
+- [ ] Allowlist do portal sem propostasRecusadas: rules tem 4 chaves e vault citava 5; alinhar rule ou documentacao e confirmar onde a recusa e gravada [[data-model/security-rules]] {{operonId:: nx-136}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/seguranca
 ## Depois (prioridade B)
 
 - [ ] Decidir Blaze (US$ 1–3/mês) vs seguir no Spark {{operonId:: nx-105}} {{status:: Paused}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/decisao
@@ -49,6 +51,9 @@ Fila priorizada (scrum). Épicos entregues em [[tasks/epics/E1-plataforma-assina
 - [x] Alertas de exceção no KPI (pacientes/casos fora do esperado hoje) {{operonId:: nx-114}} {{status:: Finished}} {{priority:: B}} #nexosaude #area/app
 - [ ] Exclusão definitiva do projeto antigo (30 dias após shutdown) {{operonId:: nx-113}} {{status:: Planned}} {{priority:: B}} {{dateDue:: 2026-10-29}} {{parentTask:: nx-e5}} #nexosaude #area/infra
 
+- [ ] anticipations sem leitores, escritores ou bloco nas rules: confirmar remocao total ou re-adicionar regra [[data-model/collections]] {{operonId:: nx-137}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/dados
+- [ ] Campo formats inexistente no codigo (so em plugin de terceiros): checar documentos do Firestore e limpar se existir, senao encerrar [[integrations/europe-pmc]] {{operonId:: nx-138}} {{status:: Planned}} {{priority:: B}} #nexosaude #area/app
+- [ ] E1 cita 51 indices e firestore.indexes.json tem 53: identificar os 2 adicionados e atualizar o epico [[tasks/epics/E1-plataforma-assinatura]] {{operonId:: nx-139}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/dados
 ## Estacionado (n�o fazer sem decis�o expl�cita)
 
 - [ ] Inspetor workstation na agenda (revertido; retomar só com novo desenho) {{operonId:: nx-112}} {{status:: Paused}} {{priority:: C}} #nexosaude #estacionado #area/app
