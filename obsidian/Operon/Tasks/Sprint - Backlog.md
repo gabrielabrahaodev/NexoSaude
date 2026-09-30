@@ -19,7 +19,7 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [x] Repetir próxima semana (+7 dias com choque) [[care-day]] {{operonId:: nx-127}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s1}} #nexosaude #area/atendimento
 - [x] Cargas paralelas na ficha (Future.wait) [[care-day]] {{operonId:: nx-128}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
 - [x] Sheet instantânea com shimmer no bloco de risco [[agenda-manager]] {{operonId:: nx-129}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
-- [ ] Deep-links de volta (cobrança/ficha sem menu) [[collections]] {{operonId:: nx-130}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
+- [x] Deep-links de volta (cobrança/ficha sem menu) [[collections]] {{operonId:: nx-130}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
 - [ ] Faixa fixa de alertas clínicos (dividir com wizard de contexto) [[care-day]] {{operonId:: nx-131}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
 - [ ] Próxima sessão sugerida (+7 dias validada) [[care-day]] {{operonId:: nx-132}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
 - [ ] Presença em massa no Meu dia [[care-day]] {{operonId:: nx-133}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
