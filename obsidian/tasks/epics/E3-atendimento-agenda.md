@@ -27,4 +27,4 @@ updated: 2026-09-30
 
 ## Ver também
 
-- [[screens/agenda/agenda-manager|agenda-manager]], [[screens/agenda/agenda-form|agenda-form]], [[portal-mirror]], [[Requisitos]]
+- [[screens/agenda/agenda-manager|agenda-manager]], [[screens/agenda/agenda-form|agenda-form]], [[portal-mirror]], [[foundation/04-requisitos|Requisitos]]

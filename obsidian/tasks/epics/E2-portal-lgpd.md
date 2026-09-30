@@ -27,4 +27,4 @@ updated: 2026-09-30
 
 ## Ver também
 
-- [[screens/portal/portal-page|portal-page]], [[screens/clinical/patient-details|patient-details]], [[screens/clinical/create-patient|create-patient]], [[flows/atendimento|atendimento]], [[Requisitos]]
+- [[screens/portal/portal-page|portal-page]], [[screens/clinical/patient-details|patient-details]], [[screens/clinical/create-patient|create-patient]], [[flows/atendimento|atendimento]], [[foundation/04-requisitos|Requisitos]]

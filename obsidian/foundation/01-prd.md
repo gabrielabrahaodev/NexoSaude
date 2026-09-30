@@ -12,7 +12,7 @@ updated: 2026-09-30
 
 # PRD — NexoSaúde (Controle de Clínicas)
 
-Versão: 1.0 — 2026-09-19. Status: implementado (coberto por [[Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]] UC-01..UC-91 e [[spec-atendimento-portal]] + [[spec-landing-master]]). Projeto Firebase: `nexosaude` (`https://nexosaude.web.app/sistema-interno/`). Plano Spark (sem Cloud Functions).
+Versão: 1.0 — 2026-09-19. Status: implementado (coberto por [[foundation/04-requisitos|Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]] UC-01..UC-91 e [[spec-atendimento-portal]] + [[spec-landing-master]]). Projeto Firebase: `nexosaude` (`https://nexosaude.web.app/sistema-interno/`). Plano Spark (sem Cloud Functions).
 
 ## 1. Executive Summary
 

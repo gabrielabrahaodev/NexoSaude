@@ -26,4 +26,4 @@ updated: 2026-09-30
 
 ## Ver também
 
-- [[screens/operations/operations-manager|operations-manager]], [[screens/operations/operations-tabs|operations-tabs]], [[screens/operations/employee-manager|employee-manager]], [[screens/operations/clinic-management|clinic-management]], [[Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]]
+- [[screens/operations/operations-manager|operations-manager]], [[screens/operations/operations-tabs|operations-tabs]], [[screens/operations/employee-manager|employee-manager]], [[screens/operations/clinic-management|clinic-management]], [[foundation/04-requisitos|Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]]

@@ -47,4 +47,4 @@ cancelamento de contrato (`_cancelSchedule` no form, modo edição).
 - [[screens/clinical/psychology-kanban|psychology-kanban]] — acompanha os contratos ativos
 - [[screens/clinical/psychology-schedule|psychology-schedule]] — form que gera os pacotes
 - [[financial]] — baixa e status dos lançamentos
-- [[PSYCHOLOGY_PACKAGES]] — documento do billing
+- [[modules/psychology-packages-billing|PSYCHOLOGY_PACKAGES]] — documento do billing

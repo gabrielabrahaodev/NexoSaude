@@ -28,6 +28,7 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 | [[foundation/01-prd|01-prd]] | Produto, histórias, riscos |
 | [[foundation/02-use-cases|02-use-cases]] | Catálogo UC com atores |
 | [[foundation/03-sequence-diagrams|03-sequence-diagrams]] | Fluxos em sequência |
+| [[foundation/04-requisitos|04-requisitos]] | RN por módulo com referências de código |
 
 ## Módulos (como funciona hoje)
 
@@ -46,6 +47,7 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 | [[modules/ui-consistency|ui-consistency]] | Helpers puros testados (moeda, data, toast, slots) |
 | [[modules/pix-brcode|pix-brcode]] | Redirecionamento → [[integrations/pix-brcode|pix-brcode]] |
 | [[modules/portal-mirror|portal-mirror]] | Espelhos `portal/` + `portal_slots/` |
+| [[modules/psychology-packages-billing|psychology-packages-billing]] | Detalhe do billing mensal por presença (implementado) |
 
 ## Telas (por domínio)
 
@@ -102,10 +104,10 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 - Sprints de velocidade: [[tasks/epics/S1-economia-cliques|S1-economia-cliques]], [[tasks/epics/S2-tempo-janelas|S2-tempo-janelas]], [[tasks/epics/S3-qualidade-atendimento|S3-qualidade-atendimento]].
 - Épicos entregues: [[tasks/epics/E1-plataforma-assinatura|E1-plataforma-assinatura]], [[tasks/epics/E2-portal-lgpd|E2-portal-lgpd]], [[tasks/epics/E3-atendimento-agenda|E3-atendimento-agenda]], [[tasks/epics/E4-acesso-multiclinica|E4-acesso-multiclinica]], [[tasks/epics/E5-cota-dados|E5-cota-dados]], [[tasks/epics/E6-docs-vault|E6-docs-vault]], [[tasks/epics/E7-avaliacoes-tecnicas|E7-avaliacoes-tecnicas]].
 
-## Documentos raiz (legado, fora da árvore-alvo — preservados)
+## Documentos realocados da raiz (2026-09-30)
 
-- [[Requisitos]] — RN por módulo com referências de código.
-- [[PSYCHOLOGY_PACKAGES]] — billing psico por presença.
+- [[foundation/04-requisitos|Requisitos]] — RN por módulo com referências de código.
+- [[modules/psychology-packages-billing|PSYCHOLOGY_PACKAGES]] — billing psico por presença.
 
 ## Templates e ferramentas
 
