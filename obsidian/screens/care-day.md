@@ -25,6 +25,8 @@ Rotina do profissional; remarcação do portal se decide só na [[agenda-manager
 
 - Tile → modal com a ficha (`CareVisitPanel`: evolução + baixa de existente + próxima) em 92% da tela — sem nova tela; `CareVisitScreen` virou casca fina (compat).
 - Cobrança recebe SOMENTE lançamento existente (criado em Pagamentos); nova sessão com seletor de profissional (padrão = atual) + só horários livres (`getBusySlots` por dentista) com revalidação no agendar.
+- Próxima sessão sugerida (+7 dias, `repeatNextWeek` + `isSlotFree`, recarrega ao trocar profissional); botão "Repetir próxima semana" agenda direto.
+- Presença em massa: checkbox nas rows `Aguardando Confirmação` (`needsConfirmation`, puro e testado) + barra "Confirmar presença (N)"; falha parcial avisa quais faltaram; seleção obsoleta é podada.
 - Cards translúcidos (surface 72–92% + borda/sombra na cor do status) com `StatusChip`; dentistas carregados de `users` por `allowedClinics` (mapa id→nome).
 
 ## Gotchas

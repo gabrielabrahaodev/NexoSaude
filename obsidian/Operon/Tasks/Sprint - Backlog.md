@@ -21,8 +21,8 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [x] Sheet instantânea com shimmer no bloco de risco [[agenda-manager]] {{operonId:: nx-129}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
 - [x] Deep-links de volta (cobrança/ficha sem menu) [[collections]] {{operonId:: nx-130}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
 - [x] Faixa fixa de alertas clínicos (dividir com wizard de contexto) [[care-day]] {{operonId:: nx-131}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
-- [ ] Próxima sessão sugerida (+7 dias validada) [[care-day]] {{operonId:: nx-132}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
-- [ ] Presença em massa no Meu dia [[care-day]] {{operonId:: nx-133}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [x] Próxima sessão sugerida (+7 dias validada) [[care-day]] {{operonId:: nx-132}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [x] Presença em massa no Meu dia [[care-day]] {{operonId:: nx-133}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
 - [x] Deploy da master em produção (build + hosting) e validar login owner {{operonId:: nx-101}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e1}} {{dateDue:: 2026-10-03}} #nexosaude #area/entrega
 - [x] Commitar a fila pendente na master (código + vault já validados: analyze 0, testes verdes) {{operonId:: nx-102}} {{status:: Finished}} {{priority:: A}} {{dateDue:: 2026-10-02}} #nexosaude #area/entrega
 - [ ] Reconsentir os 45 pacientes sem aceite com consulta em 14 dias (filtro Sem aceite na lista + recepção reemite na ficha) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao
