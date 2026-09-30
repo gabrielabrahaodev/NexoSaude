@@ -1,6 +1,6 @@
 ---
 operonId: nx-s2
-status: Planned
+status: Finished
 priority: A
 tags:
   - nexosaude
