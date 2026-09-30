@@ -1,6 +1,6 @@
 ---
 operonId: nx-e7
-status: Finished
+status: stable
 priority: C
 tags:
   - nexosaude

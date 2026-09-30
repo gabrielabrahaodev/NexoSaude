@@ -1,6 +1,6 @@
 ---
 operonId: nx-e4
-status: Finished
+status: stable
 priority: A
 tags:
   - nexosaude
