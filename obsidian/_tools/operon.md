@@ -107,7 +107,7 @@ Created file task:
 Draft migration guide.md
 
 Source note after conversion:
-[[Draft migration guide]]
+`Draft migration guide`
 Edit or convert to file task
 Run Edit or convert to file task from the Command Palette.
 Open the current file task for editing when the active note is already an Operon file task.

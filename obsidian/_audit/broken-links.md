@@ -21,3 +21,4 @@ tags:
 ## Referência futura (resolvida nesta branch)
 
 - `[[_audit/reorg-report]]` citado no índice antes do relatório existir; resolvido com a criação deste relatório em `_audit/reorg-report.md`.
+- [resolvido em 2026-09-30] exemplo convertido para codigo inline em [[_tools/operon]] (era nome de arquivo hipotetico na doc de terceiros)
