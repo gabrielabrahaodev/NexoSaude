@@ -14,7 +14,7 @@ tags:
 
 ## Entregas
 
-- `MenuAccess` role-aware (`canShow` + `defaultFor` + matriz de testes): menu sem `if (role)` — ver [[main-dashboard]], [[session-multitenant]]
+- `MenuAccess` role-aware (`canShow` + `defaultFor` + matriz de testes): menu sem `if (role)` — ver [[screens/reports/main-dashboard|main-dashboard]], [[session-multitenant]]
 - Gestão por abas e seções (9 sub-chaves `g_*`): tabs filtradas + Pix/Grade/Acesso/Dados com trava própria + editor com grupo dedicado
 - Rules `clinics` liberam `pixKey/gradeConfig/whatsappNumber` com a flag (publicadas)
 - Seletor multi-clínica (owner OU `allowedClinics>1`) + "Gerenciar" trocando de verdade + vínculo editável em Funcionários + reset de senha na ficha
@@ -23,4 +23,4 @@ tags:
 
 ## Ver também
 
-- [[operations-manager]], [[operations-tabs]], [[employee-manager]], [[clinic-management]], [[Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]]
+- [[screens/operations/operations-manager|operations-manager]], [[screens/operations/operations-tabs|operations-tabs]], [[screens/operations/employee-manager|employee-manager]], [[screens/operations/clinic-management|clinic-management]], [[Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]]

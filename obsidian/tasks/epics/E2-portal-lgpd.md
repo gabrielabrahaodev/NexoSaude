@@ -16,7 +16,7 @@ tags:
 
 - Espelhos `portal/{token}` + `portal_slots/{clinicId}` com sync por deltas (`portal_mirror.dart`, testado) — ver [[portal-mirror]]
 - Pix BR Code estático local + QR (padrão Bacen, sem PSP) — ver [[pix-brcode]]
-- Remarcação com aceite revalidado no vivo + recusa via WhatsApp — ver [[remarcar-dialog]]
+- Remarcação com aceite revalidado no vivo + recusa via WhatsApp — ver [[screens/agenda/remarcar-dialog|remarcar-dialog]]
 - Checkbox LGPD no cadastro e no cadastro rápido; diálogo explícito ao gerar; `accepted/at/via/by`
 - Revogação de verdade: apaga espelho + limpa token + `accepted:false`/`revokedAt`
 - Sweep 09/2026: 415 espelhos sem aceite apagados, 0 restantes; autocura fechada (só `accepted==true`); backfill full travado
@@ -24,4 +24,4 @@ tags:
 
 ## Ver também
 
-- [[portal-page]], [[patient-details]], [[create-patient]], [[flows/atendimento|atendimento]], [[Requisitos]]
+- [[screens/portal/portal-page|portal-page]], [[screens/clinical/patient-details|patient-details]], [[screens/clinical/create-patient|create-patient]], [[flows/atendimento|atendimento]], [[Requisitos]]

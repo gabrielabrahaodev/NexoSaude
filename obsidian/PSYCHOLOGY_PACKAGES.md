@@ -169,5 +169,5 @@ for (final entry in sessionsByMonth.entries) {
 ## Ver tamb�m
 
 - [[psychology-packages]] � regras e billing
-- [[psychology-kanban]] � acompanhamento dos contratos
+- [[screens/clinical/psychology-kanban|psychology-kanban]] � acompanhamento dos contratos
 - [[financial]] � baixa dos lan�amentos

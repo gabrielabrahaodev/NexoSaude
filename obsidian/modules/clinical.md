@@ -38,7 +38,7 @@ Finalizar atendimento, aprovar orçamento, odontograma, anamnese, docs, lab.
 
 ## Ver também
 
-- [[patient-details]] — ficha que hospeda as abas clínicas
-- [[patient-tabs]] — as 9 abas (orçamento, odonto, lab, docs)
-- [[budget-wizard]] — aprovação que gera plano + financeiro
-- [[clinic-lab]] — pedidos de laboratório
+- [[screens/clinical/patient-details|patient-details]] — ficha que hospeda as abas clínicas
+- [[screens/clinical/patient-tabs|patient-tabs]] — as 9 abas (orçamento, odonto, lab, docs)
+- [[screens/clinical/budget-wizard|budget-wizard]] — aprovação que gera plano + financeiro
+- [[screens/clinical/clinic-lab|clinic-lab]] — pedidos de laboratório

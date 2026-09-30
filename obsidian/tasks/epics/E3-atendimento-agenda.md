@@ -16,7 +16,7 @@ datetimeModified: 2026-09-29T01:23:07
 ## Entregas
 
 - Modo Atendimento (`screens/care/`): Meu dia, ficha em 3 blocos, cobrança Nova/Em aberto, remarcar
-- Ficha em modal 92% (`CareVisitPanel` embutível; `CareVisitScreen` virou casca) + cards translúcidos com `StatusChip` — ver [[care-day]]
+- Ficha em modal 92% (`CareVisitPanel` embutível; `CareVisitScreen` virou casca) + cards translúcidos com `StatusChip` — ver [[screens/agenda/care-day|care-day]]
 - Bloqueio por intervalo: 1 doc, paciente-primeiro, fusão, idempotência (`block_interval.dart`, 14 testes) — ver [[agenda]]
 - Fusão histórica: 5.638 → 270 docs (setembro Yervant 798 → 188, −76%)
 - Grade: células 12px negrito adaptativo; abre na Agenda; ordem Agenda/Pacientes/Dashboard; Gestão de Agenda com scroll e intervalo personalizado
@@ -24,4 +24,4 @@ datetimeModified: 2026-09-29T01:23:07
 
 ## Ver também
 
-- [[agenda-manager]], [[agenda-form]], [[portal-mirror]], [[Requisitos]]
+- [[screens/agenda/agenda-manager|agenda-manager]], [[screens/agenda/agenda-form|agenda-form]], [[portal-mirror]], [[Requisitos]]

@@ -42,9 +42,9 @@ Cobrança, pacotes mensais, relatório financeiro, despesa recorrente, recebimen
 
 ## Ver também
 
-- [[collections]] — cobrança e baixa no dia a dia
-- [[financial-report]] — extrato, taxas e PDF
-- [[expenses]] — o outro lado do caixa
-- [[kpi-dashboard]] — a receber/inadimplência
-- [[patient-details]] — aba Pagamentos por paciente
-- [[assinatura-page]] — débitos do owner (plataforma)
+- [[screens/financial/collections|collections]] — cobrança e baixa no dia a dia
+- [[screens/financial/financial-report|financial-report]] — extrato, taxas e PDF
+- [[screens/financial/expenses|expenses]] — o outro lado do caixa
+- [[screens/reports/kpi-dashboard|kpi-dashboard]] — a receber/inadimplência
+- [[screens/clinical/patient-details|patient-details]] — aba Pagamentos por paciente
+- [[screens/admin/assinatura-page|assinatura-page]] — débitos do owner (plataforma)

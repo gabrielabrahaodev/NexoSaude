@@ -15,13 +15,13 @@ tags:
 ## Tarefas
 
 ### nx-128 — Cargas paralelas na ficha
-Telefone + lançamentos em aberto + dentistas da ficha (`CareVisitPanel.initState`) com `Future.wait` em vez de sequência. Ver [[care-day]].
+Telefone + lançamentos em aberto + dentistas da ficha (`CareVisitPanel.initState`) com `Future.wait` em vez de sequência. Ver [[screens/agenda/care-day|care-day]].
 **Aceite:** tempo de abertura ≈ query mais lenta (hoje ≈ soma das 3).
 
 ### nx-129 — Sheet instantânea com shimmer
-Sheet do evento na agenda (`_showAppointmentOptions`) abre na hora; só o bloco de risco (no-show) mostra shimmer até `_patientService.getPatientRiskProfile` resolver. Ver [[agenda-manager]].
+Sheet do evento na agenda (`_showAppointmentOptions`) abre na hora; só o bloco de risco (no-show) mostra shimmer até `_patientService.getPatientRiskProfile` resolver. Ver [[screens/agenda/agenda-manager|agenda-manager]].
 **Aceite:** toque → sheet visível sem esperar risco; bloco preenche sozinho.
 
 ### nx-130 — Deep-links de volta
-Cobrança e Meu dia ganham "abrir ficha/paciente" direto no contexto (sem menu lateral + recarga de listas). Ver [[collections]], [[care-day]].
+Cobrança e Meu dia ganham "abrir ficha/paciente" direto no contexto (sem menu lateral + recarga de listas). Ver [[screens/financial/collections|collections]], [[screens/agenda/care-day|care-day]].
 **Aceite:** cobrança → ficha em 1 toque, sem perder a lista.

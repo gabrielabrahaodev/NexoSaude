@@ -42,7 +42,7 @@ Auth, troca de clínica, filtro por clínica, regra "só psico" / "só dental", 
 
 ## Ver também
 
-- [[auth-login-rolecheck]] — login + resolução pós-login
-- [[main-dashboard]] — shell que consome sessão, clínica e acesso
-- [[clinic-management]] — cria unidades + troca de contexto
-- [[employee-manager]] — vínculo `allowedClinics` por usuário
+- [[screens/auth/auth-login-rolecheck|auth-login-rolecheck]] — login + resolução pós-login
+- [[screens/reports/main-dashboard|main-dashboard]] — shell que consome sessão, clínica e acesso
+- [[screens/operations/clinic-management|clinic-management]] — cria unidades + troca de contexto
+- [[screens/operations/employee-manager|employee-manager]] — vínculo `allowedClinics` por usuário

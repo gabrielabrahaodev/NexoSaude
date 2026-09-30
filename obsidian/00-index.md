@@ -56,14 +56,14 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 ## Telas
 
-[[agenda-manager]], [[agenda-form]], [[auth-login-rolecheck]], [[care-day]],
-[[clinic-lab]], [[clinic-management]], [[collections]], [[create-patient]],
-[[employee-manager]], [[expenses]], [[financial-report]], [[kpi-dashboard]],
-[[landing-page]], [[assinatura-page]], [[master-screen]], [[main-dashboard]],
-[[operations-manager]], [[operations-tabs]], [[ortho-news]], [[patient-list]],
-[[patient-details]], [[patient-tabs]], [[portal-page]], [[psychology-kanban]],
-[[psychology-schedule]], [[public-evaluation]], [[budget-wizard]],
-[[remarcar-dialog]], [[reports]].
+[[screens/agenda/agenda-manager|agenda-manager]], [[screens/agenda/agenda-form|agenda-form]], [[screens/auth/auth-login-rolecheck|auth-login-rolecheck]], [[screens/agenda/care-day|care-day]],
+[[screens/clinical/clinic-lab|clinic-lab]], [[screens/operations/clinic-management|clinic-management]], [[screens/financial/collections|collections]], [[screens/clinical/create-patient|create-patient]],
+[[screens/operations/employee-manager|employee-manager]], [[screens/financial/expenses|expenses]], [[screens/financial/financial-report|financial-report]], [[screens/reports/kpi-dashboard|kpi-dashboard]],
+[[screens/admin/landing-page|landing-page]], [[screens/admin/assinatura-page|assinatura-page]], [[screens/admin/master-screen|master-screen]], [[screens/reports/main-dashboard|main-dashboard]],
+[[screens/operations/operations-manager|operations-manager]], [[screens/operations/operations-tabs|operations-tabs]], [[screens/clinical/ortho-news|ortho-news]], [[screens/clinical/patient-list|patient-list]],
+[[screens/clinical/patient-details|patient-details]], [[screens/clinical/patient-tabs|patient-tabs]], [[screens/portal/portal-page|portal-page]], [[screens/clinical/psychology-kanban|psychology-kanban]],
+[[screens/clinical/psychology-schedule|psychology-schedule]], [[screens/portal/public-evaluation|public-evaluation]], [[screens/clinical/budget-wizard|budget-wizard]],
+[[screens/agenda/remarcar-dialog|remarcar-dialog]], [[screens/reports/reports|reports]].
 
 ## Gestão (Operon)
 

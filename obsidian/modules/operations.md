@@ -37,6 +37,6 @@ Estoque baixo, fornecedor, procedimento, antecipação de cartão.
 
 ## Ver também
 
-- [[operations-manager]] — shell com as abas
-- [[operations-tabs]] — as 5 abas (inclui Config)
-- [[employee-manager]] — cria `users` + vínculo `allowedClinics`
+- [[screens/operations/operations-manager|operations-manager]] — shell com as abas
+- [[screens/operations/operations-tabs|operations-tabs]] — as 5 abas (inclui Config)
+- [[screens/operations/employee-manager|employee-manager]] — cria `users` + vínculo `allowedClinics`

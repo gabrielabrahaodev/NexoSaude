@@ -41,5 +41,5 @@ KPI, antecipação de parcelas, mês fechado, score do paciente.
 
 ## Ver também
 
-- [[financial-report]] — extrato que consome a união
-- [[kpi-dashboard]] — KPIs do dia
+- [[screens/financial/financial-report|financial-report]] — extrato que consome a união
+- [[screens/reports/kpi-dashboard|kpi-dashboard]] — KPIs do dia

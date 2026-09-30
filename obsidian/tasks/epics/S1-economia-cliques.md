@@ -15,5 +15,5 @@ tags:
 ## Tarefas
 
 ### nx-127 — Repetir próxima semana
-Botão "mesmo horário na próxima semana" na ficha (`CareVisitPanel`, seção 3): pré-preenche dia/hora/profissional (+7 dias) validando choque via `getBusySlots`; confirmação vira 1 toque. Ver [[care-day]].
+Botão "mesmo horário na próxima semana" na ficha (`CareVisitPanel`, seção 3): pré-preenche dia/hora/profissional (+7 dias) validando choque via `getBusySlots`; confirmação vira 1 toque. Ver [[screens/agenda/care-day|care-day]].
 **Aceite:** agenda +7 dias livres agenda direto; dia cheio avisa e não agenda.

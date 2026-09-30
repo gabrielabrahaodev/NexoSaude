@@ -15,7 +15,7 @@ tags:
 ## Entregas
 
 - Trial com porteira: cadastro → pendente → Master aprova → relógio de 7d anda (`web/assinatura.html`, `web/master.html`, rules A1b, `trial_requests`)
-- Páginas públicas: [[landing-page]], [[assinatura-page]], [[master-screen]] (+ `logo.png` na raiz, landing vira `index.html`)
+- Páginas públicas: [[screens/admin/landing-page|landing-page]], [[screens/admin/assinatura-page|assinatura-page]], [[screens/admin/master-screen|master-screen]] (+ `logo.png` na raiz, landing vira `index.html`)
 - Trava de assinatura (`subscription.dart`: 40+15×(n−1), trial OU bloqueio manual) em `role_check_screen`
 - Débitos da plataforma (`platform_config/debits`, rules dedicadas) + gerar mensalidade + novo owner
 - Deploy hosting + 51 índices (`firestore.indexes.json` como fonte da verdade)

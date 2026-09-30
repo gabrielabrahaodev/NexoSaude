@@ -38,7 +38,7 @@ Cobrança, documentação do paciente, feed de notícias.
 
 ## Ver também
 
-- [[collections]] — cobrança via WhatsApp (principal consumidor)
-- [[ortho-news]] — feed que usa o cache + tradução
-- [[patient-details]] — docs do paciente + link do portal
-- [[public-evaluation]] — redireciona para o WhatsApp da clínica
+- [[screens/financial/collections|collections]] — cobrança via WhatsApp (principal consumidor)
+- [[screens/clinical/ortho-news|ortho-news]] — feed que usa o cache + tradução
+- [[screens/clinical/patient-details|patient-details]] — docs do paciente + link do portal
+- [[screens/portal/public-evaluation|public-evaluation]] — redireciona para o WhatsApp da clínica

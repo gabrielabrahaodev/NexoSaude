@@ -4,25 +4,25 @@ Fila priorizada (scrum). Épicos entregues em [[tasks/epics/E1-plataforma-assina
 
 ## Agora (prioridade A)
 
-- [x] Mostrar nome do usuário logado junto ao "Sair do Sistema" no menu [[main-dashboard]] {{operonId:: nx-116}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e4}} #nexosaude #area/app
-- [x] Agenda no celular: exibir o nome inteiro do paciente na célula [[agenda-manager]] {{operonId:: ox2veye}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/app {{datetimeModified:: 2026-09-29T01:23:07}}
-- [x] Agenda: filtro de profissional com largura reduzida (max 320px, alinhado à esquerda) [[agenda-manager]] {{operonId:: nx-118}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/agenda
+- [x] Mostrar nome do usuário logado junto ao "Sair do Sistema" no menu [[screens/reports/main-dashboard|main-dashboard]] {{operonId:: nx-116}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e4}} #nexosaude #area/app
+- [x] Agenda no celular: exibir o nome inteiro do paciente na célula [[screens/agenda/agenda-manager|agenda-manager]] {{operonId:: ox2veye}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/app {{datetimeModified:: 2026-09-29T01:23:07}}
+- [x] Agenda: filtro de profissional com largura reduzida (max 320px, alinhado à esquerda) [[screens/agenda/agenda-manager|agenda-manager]] {{operonId:: nx-118}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/agenda
 - [x] Padronizar cabeçalhos de todas as telas: seletor de mês no padrão arredondado de Relatórios + header moderno minimalista [[ui-consistency]] {{operonId:: nx-119}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e4}} #nexosaude #area/app
 - [x] Compactar visual global: headers 44px + fontes/paddings reduzidos (exceto agenda e pagamentos) [[ui-consistency]] {{operonId:: nx-120}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e4}} #nexosaude #area/app
-- [x] Remarcação do portal em laranja no atendimento/agenda com aceitar + WhatsApp + reflexo no portal [[remarcar-dialog]] {{operonId:: nx-121}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/agenda
-- [x] Parcelamento: status terminal, cancel em batch, vencimentos mensais editáveis, parcial x parcelar [[patient-tabs]] {{operonId:: nx-122}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
-- [x] Notícias científicas por tema da clínica (Europe PMC + Semantic Scholar) [[ortho-news]] {{operonId:: nx-123}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e7}} #nexosaude #area/app
-- [x] Backup owner: tela Exportar (JSON/CSV, tudo marcado) + CPF duplicado + temp forte [[main-dashboard]] {{operonId:: nx-124}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/app
-- [x] Atendimento sem novo lançamento; próxima sessão com dentista + horários livres [[care-day]] {{operonId:: nx-125}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/atendimento
-- [x] Cobrança via WhatsApp registrada no prontuário (SIM-confirmado) [[collections]] {{operonId:: nx-126}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
-- [x] Parcelas de cartão em modal da família (filhas fora da lista) [[patient-tabs]] {{operonId:: nx-134}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
-- [x] Repetir próxima semana (+7 dias com choque) [[care-day]] {{operonId:: nx-127}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s1}} #nexosaude #area/atendimento
-- [x] Cargas paralelas na ficha (Future.wait) [[care-day]] {{operonId:: nx-128}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
-- [x] Sheet instantânea com shimmer no bloco de risco [[agenda-manager]] {{operonId:: nx-129}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
-- [x] Deep-links de volta (cobrança/ficha sem menu) [[collections]] {{operonId:: nx-130}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
-- [ ] Faixa fixa de alertas clínicos (dividir com wizard de contexto) [[care-day]] {{operonId:: nx-131}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
-- [ ] Próxima sessão sugerida (+7 dias validada) [[care-day]] {{operonId:: nx-132}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
-- [ ] Presença em massa no Meu dia [[care-day]] {{operonId:: nx-133}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [x] Remarcação do portal em laranja no atendimento/agenda com aceitar + WhatsApp + reflexo no portal [[screens/agenda/remarcar-dialog|remarcar-dialog]] {{operonId:: nx-121}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/agenda
+- [x] Parcelamento: status terminal, cancel em batch, vencimentos mensais editáveis, parcial x parcelar [[screens/clinical/patient-tabs|patient-tabs]] {{operonId:: nx-122}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
+- [x] Notícias científicas por tema da clínica (Europe PMC + Semantic Scholar) [[screens/clinical/ortho-news|ortho-news]] {{operonId:: nx-123}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e7}} #nexosaude #area/app
+- [x] Backup owner: tela Exportar (JSON/CSV, tudo marcado) + CPF duplicado + temp forte [[screens/reports/main-dashboard|main-dashboard]] {{operonId:: nx-124}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/app
+- [x] Atendimento sem novo lançamento; próxima sessão com dentista + horários livres [[screens/agenda/care-day|care-day]] {{operonId:: nx-125}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/atendimento
+- [x] Cobrança via WhatsApp registrada no prontuário (SIM-confirmado) [[screens/financial/collections|collections]] {{operonId:: nx-126}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
+- [x] Parcelas de cartão em modal da família (filhas fora da lista) [[screens/clinical/patient-tabs|patient-tabs]] {{operonId:: nx-134}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
+- [x] Repetir próxima semana (+7 dias com choque) [[screens/agenda/care-day|care-day]] {{operonId:: nx-127}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s1}} #nexosaude #area/atendimento
+- [x] Cargas paralelas na ficha (Future.wait) [[screens/agenda/care-day|care-day]] {{operonId:: nx-128}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
+- [x] Sheet instantânea com shimmer no bloco de risco [[screens/agenda/agenda-manager|agenda-manager]] {{operonId:: nx-129}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
+- [x] Deep-links de volta (cobrança/ficha sem menu) [[screens/financial/collections|collections]] {{operonId:: nx-130}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
+- [ ] Faixa fixa de alertas clínicos (dividir com wizard de contexto) [[screens/agenda/care-day|care-day]] {{operonId:: nx-131}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [ ] Próxima sessão sugerida (+7 dias validada) [[screens/agenda/care-day|care-day]] {{operonId:: nx-132}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [ ] Presença em massa no Meu dia [[screens/agenda/care-day|care-day]] {{operonId:: nx-133}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
 - [x] Deploy da master em produção (build + hosting) e validar login owner {{operonId:: nx-101}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e1}} {{dateDue:: 2026-10-03}} #nexosaude #area/entrega
 - [x] Commitar a fila pendente na master (código + vault já validados: analyze 0, testes verdes) {{operonId:: nx-102}} {{status:: Finished}} {{priority:: A}} {{dateDue:: 2026-10-02}} #nexosaude #area/entrega
 - [ ] Reconsentir os 45 pacientes sem aceite com consulta em 14 dias (filtro Sem aceite na lista + recepção reemite na ficha) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao
