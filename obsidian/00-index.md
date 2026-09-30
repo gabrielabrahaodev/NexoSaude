@@ -31,6 +31,7 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 - [[spec-atendimento-portal]] — Modo Atendimento + Portal (decisão b).
 - [[spec-landing-master]] — Landing + master + assinatura (trial e cobrança por usuário).
+- [[specs/2026-09-30-pagamentos-redesign]] — Redesign da aba Pagamentos (spec + [[tasks/backlog-pagamentos]] + [[tasks/sprints-pagamentos]]).
 
 ## Mapas
 
