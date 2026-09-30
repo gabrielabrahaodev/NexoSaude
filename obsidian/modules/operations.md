@@ -6,6 +6,9 @@ tags:
   - modules
 name: operations-module
 description: Gestão operacional — estoque, fornecedores, catálogo de procedimentos e taxas de cartão/máquina.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Operações / Gestão

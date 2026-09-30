@@ -5,6 +5,9 @@ tags:
   - prd
 name: prd
 description: Requisitos do produto, histórias e riscos.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # PRD — NexoSaúde (Controle de Clínicas)

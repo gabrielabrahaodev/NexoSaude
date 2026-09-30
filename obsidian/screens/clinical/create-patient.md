@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-create-patient
 description: Cadastro de paciente com clinicId da sessão.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # CreatePatientScreen

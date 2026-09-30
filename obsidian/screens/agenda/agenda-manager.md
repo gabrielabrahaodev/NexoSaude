@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-agenda-manager
 description: Grade semanal de agendamentos com finalização (Realizado/Falta/Atestado), encaixe e cancelamento.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # AgendaManagerScreen

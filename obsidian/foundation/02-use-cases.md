@@ -5,6 +5,9 @@ tags:
   - casos-de-uso
 name: casos-de-uso
 description: Catálogo UC com atores e referências.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # OdontoControle - Casos de Uso do Sistema

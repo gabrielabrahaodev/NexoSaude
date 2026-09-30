@@ -6,6 +6,9 @@ tags:
   - modules
 name: session-multitenant
 description: Sessão global, isolamento multi-tenant por clinicId, fluxo de auth e decisões por tipo de clínica.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Session / Multi-tenant

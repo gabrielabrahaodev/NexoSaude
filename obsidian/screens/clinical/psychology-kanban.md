@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-psychology-kanban
 description: Fluxo terapêutico (kanban) das agendas de psicologia.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # PsychologyKanbanBoard

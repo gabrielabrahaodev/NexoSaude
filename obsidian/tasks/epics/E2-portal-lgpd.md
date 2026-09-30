@@ -5,6 +5,9 @@ priority: A
 tags:
   - nexosaude
   - area/portal
+title: E2 — Portal do paciente e LGPD linha dura
+type: epic
+updated: 2026-09-30
 ---
 
 # E2 — Portal do paciente e LGPD linha dura

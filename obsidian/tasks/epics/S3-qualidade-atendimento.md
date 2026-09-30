@@ -5,6 +5,9 @@ priority: A
 tags:
   - nexosaude
   - area/atendimento
+title: S3 — Qualidade do atendimento
+type: epic
+updated: 2026-09-30
 ---
 
 # S3 — Qualidade do atendimento

@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-main-dashboard
 description: Shell principal — sidebar responsiva, seletor de clínica, menu por papel e tipo.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # MainWebDashboard

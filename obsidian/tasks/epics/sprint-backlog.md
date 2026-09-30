@@ -1,3 +1,12 @@
+---
+title: Backlog NexoSaúde
+type: epic
+status: draft
+updated: 2026-09-30
+tags:
+  - nexosaude
+---
+
 # Backlog NexoSaúde
 
 Fila priorizada (scrum). Épicos entregues em [[tasks/epics/E1-plataforma-assinatura|E1 - Plataforma e Assinatura]], [[tasks/epics/E2-portal-lgpd|E2 - Portal e LGPD]], [[tasks/epics/E3-atendimento-agenda|E3 - Atendimento e Agenda]], [[tasks/epics/E4-acesso-multiclinica|E4 - Acesso e Multiclínica]], [[tasks/epics/E5-cota-dados|E5 - Cota e Dados]], [[tasks/epics/E6-docs-vault|E6 - Docs e Vault]], [[tasks/epics/E7-avaliacoes-tecnicas|E7 - Avaliações Técnicas]]. Regra: todo item novo ganha `operonId` único (`nx-1xx`) e pai quando couber.

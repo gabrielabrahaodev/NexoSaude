@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-patient-list
 description: Lista de pacientes com busca, avatar e exclusão em cascata.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # PatientListScreen

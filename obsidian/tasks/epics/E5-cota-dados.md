@@ -5,6 +5,9 @@ priority: B
 tags:
   - nexosaude
   - area/cota
+title: E5 — Economia de cota e dados
+type: epic
+updated: 2026-09-30
 ---
 
 # E5 — Economia de cota e dados

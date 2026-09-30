@@ -5,6 +5,9 @@ priority: A
 tags:
   - nexosaude
   - area/plataforma
+title: E1 — Plataforma e Assinatura
+type: epic
+updated: 2026-09-30
 ---
 
 # E1 — Plataforma e Assinatura

@@ -7,6 +7,9 @@ tags:
   - brain
   - screens
   - atendimento
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # Care Day (Meu dia)

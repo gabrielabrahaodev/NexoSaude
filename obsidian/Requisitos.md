@@ -5,6 +5,9 @@ tags:
   - requisitos
 name: requisitos
 description: RN por módulo com referências de código.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # OdontoControle - Requisitos & Regras de Negócio

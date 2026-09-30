@@ -7,6 +7,9 @@ aliases:
   - spec-landing-master
 name: spec-landing-master
 description: Trial com porteira, master e assinatura.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # Landing + Master + Assinatura (trial e cobrança por usuário) — Design

@@ -5,6 +5,9 @@ priority: A
 tags:
   - nexosaude
   - area/acesso
+title: E4 — Acesso, menu e multi-clínica
+type: epic
+updated: 2026-09-30
 ---
 
 # E4 — Acesso, menu e multi-clínica

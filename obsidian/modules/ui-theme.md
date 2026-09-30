@@ -6,6 +6,9 @@ tags:
   - modules
 name: ui-theme-module
 description: Tema global, estilos e widgets compartilhados (cards, kanban, contexto do paciente).
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # UI / Tema

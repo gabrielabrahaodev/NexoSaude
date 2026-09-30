@@ -5,6 +5,9 @@ priority: B
 tags:
   - nexosaude
   - area/docs
+title: E6 — Documentação e vault
+type: epic
+updated: 2026-09-30
 ---
 
 # E6 — Documentação e vault

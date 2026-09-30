@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-kpi-dashboard
 description: Dashboard de KPIs da clínica (item 1 do menu) — receber, inadimplência, hoje, aniversariantes.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # KpiDashboardScreen

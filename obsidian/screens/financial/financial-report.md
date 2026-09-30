@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-financial-report
 description: Posição financeira — transações, taxas e PDF (TableHelper).
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # FinancialReportScreen

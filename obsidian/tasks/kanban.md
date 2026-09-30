@@ -3,6 +3,12 @@
 kanban-plugin: board
 kanban-plugin-created: 2026-09-29
 
+title: Kanban NexoSaúde
+type: epic
+status: draft
+updated: 2026-09-30
+tags:
+  - nexosaude
 ---
 
 ## A Fazer

@@ -7,6 +7,9 @@ tags:
   - brain
   - hub
   - atendimento
+type: flow
+status: stable
+updated: 2026-09-30
 ---
 
 # Atendimento (hub)

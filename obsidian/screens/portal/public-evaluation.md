@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-public-evaluation
 description: Avaliação pública (link externo) que gera lead dentro da clínica.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # PublicEvaluationScreen

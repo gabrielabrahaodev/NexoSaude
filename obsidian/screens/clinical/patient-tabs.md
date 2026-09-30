@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-patient-tabs
 description: Abas da ficha do paciente — cadastro, anamnese, orçamentos, tratamentos, prontuário, odonto, lab, docs, financeiro.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # Patient Tabs

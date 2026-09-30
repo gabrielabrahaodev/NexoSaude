@@ -6,6 +6,9 @@ tags:
   - modules
 name: agenda-module
 description: Agendamentos, grade semanal, finalização com presença/atestado e repositório unificado dental+psico.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Agenda

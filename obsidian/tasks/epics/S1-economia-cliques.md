@@ -5,6 +5,9 @@ priority: A
 tags:
   - nexosaude
   - area/atendimento
+title: S1 — Economia de cliques
+type: epic
+updated: 2026-09-30
 ---
 
 # S1 — Economia de cliques

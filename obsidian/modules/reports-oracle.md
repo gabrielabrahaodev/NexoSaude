@@ -6,6 +6,9 @@ tags:
   - modules
 name: reports-oracle-module
 description: Relatórios gerenciais, saúde financeira do paciente e snapshot mensal do oráculo.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Relatórios / Oráculo

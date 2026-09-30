@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-auth
 description: Login/cadastro e resolução de papel e clínica pós-login.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # LoginScreen + RoleCheckScreen

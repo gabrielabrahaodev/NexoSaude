@@ -1,4 +1,4 @@
-﻿---
+---
 title: Ortho News
 tags:
   - nexosaude
@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-ortho-news
 description: Feed de notícias de ortodontia com tradução e cache.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # OrthoNewsScreen

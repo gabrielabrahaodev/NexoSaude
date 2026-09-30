@@ -7,6 +7,9 @@ tags:
   - brain
   - modules
   - portal
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Espelhos do Portal

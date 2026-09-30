@@ -5,6 +5,9 @@ tags:
   - brain
 name: brain-index
 description: Mapa do vault obsidian — um arquivo por módulo, tela, mapa ou documento do NexoSaúde.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # Obsidian — NexoSaúde

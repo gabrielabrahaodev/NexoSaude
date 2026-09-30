@@ -6,6 +6,9 @@ tags:
   - modules
 name: psychology-packages
 description: Pacotes e sessões de psicologia — geração mensal, monthlyPeriod e billing rateado por presença.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Pacotes / Sessões (Psicologia)

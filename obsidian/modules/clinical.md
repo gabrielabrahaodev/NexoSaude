@@ -6,6 +6,9 @@ tags:
   - modules
 name: clinical-module
 description: Prontuário, tratamentos, orçamentos, odontograma e laboratório do paciente.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Clínico

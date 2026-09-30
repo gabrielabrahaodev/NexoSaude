@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-operations-manager
 description: Shell de gestão com abas (estoque, fornecedores, procedimentos, taxas).
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # OperationsManagerScreen

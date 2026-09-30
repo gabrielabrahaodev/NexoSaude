@@ -6,6 +6,9 @@ tags:
   - modules
 name: comms-module
 description: Comunicação e conteúdo — WhatsApp, upload de documentos (Cloudinary) e notícias de ortodontia.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Comunicação / Conteúdo

@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-operations-tabs
 description: Abas de gestão — estoque, fornecedores, procedimentos, taxas de cartão e configurações (tema + acesso).
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # Operations Tabs

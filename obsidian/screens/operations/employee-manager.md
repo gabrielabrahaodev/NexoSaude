@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-employee-manager
 description: Gestão de funcionários — cria Auth + doc users com role e allowedClinics.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # EmployeeManagerScreen

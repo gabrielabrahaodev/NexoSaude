@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-clinic-management
 description: CRUD de clínicas (owner) com vínculo de ownerId e nome.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # ClinicManagementScreen

@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-patient-details
 description: Ficha do paciente com tabs dinâmicas por tipo de clínica.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # PatientDetailsScreen

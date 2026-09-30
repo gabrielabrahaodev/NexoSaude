@@ -5,6 +5,9 @@ priority: A
 tags:
   - nexosaude
   - area/atendimento
+title: S2 — Tempo entre janelas
+type: epic
+updated: 2026-09-30
 ---
 
 # S2 — Tempo entre janelas

@@ -1,3 +1,12 @@
+---
+title: Operon — documentação do plugin
+type: spec
+status: draft
+updated: 2026-09-30
+tags:
+  - nexosaude
+---
+
 Operon
 Operon is a task management plugin for humans and agents in Obsidian. It keeps tasks in Markdown while giving them structured metadata, durable identity, reusable views, planning surfaces, recurrence, reminders, and time tracking.
 

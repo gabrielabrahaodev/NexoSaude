@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-expenses
 description: Despesas da clínica, incluindo recorrentes e baixa como paga.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # ExpensesScreen

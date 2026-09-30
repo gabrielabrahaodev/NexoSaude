@@ -5,6 +5,9 @@ tags:
   - diagramas
 name: diagramas-sequencia
 description: Fluxos principais em sequência.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # OdontoControle - Diagramas de Sequência

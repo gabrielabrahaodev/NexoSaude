@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-clinic-lab
 description: Gestão de pedidos de laboratório da clínica (protéticos).
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # ClinicLabScreen

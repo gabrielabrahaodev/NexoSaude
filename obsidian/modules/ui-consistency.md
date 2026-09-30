@@ -7,6 +7,9 @@ tags:
   - brain
   - modules
   - ui
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Consistência Visual e Helpers

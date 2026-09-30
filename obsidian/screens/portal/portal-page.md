@@ -7,6 +7,9 @@ tags:
   - brain
   - screens
   - portal
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # Página do Portal (portal.html)

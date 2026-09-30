@@ -5,6 +5,9 @@ priority: C
 tags:
   - nexosaude
   - area/avaliacao
+title: E7 — Avaliações técnicas (decisões, não código)
+type: epic
+updated: 2026-09-30
 ---
 
 # E7 — Avaliações técnicas (decisões, não código)

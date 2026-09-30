@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-psychology-schedule
 description: Contrato de pacote/sessão de psicologia — lista e formulário com geração em lote.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # PsychologySchedule (Form)

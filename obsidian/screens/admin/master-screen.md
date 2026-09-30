@@ -7,6 +7,9 @@ tags:
   - brain
   - screens
   - plataforma
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # Master da Plataforma

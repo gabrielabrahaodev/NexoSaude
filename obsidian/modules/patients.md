@@ -6,6 +6,9 @@ tags:
   - modules
 name: patients-module
 description: Cadastro de pacientes, perfil de risco por assiduidade e exclusão em cascata.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Pacientes

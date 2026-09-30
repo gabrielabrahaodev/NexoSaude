@@ -6,6 +6,9 @@ tags:
   - modules
 name: financial-module
 description: Contas a receber/pagar, cobrança via WhatsApp, despesas e processamento de pagamentos.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Financeiro

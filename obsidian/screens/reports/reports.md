@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-reports
 description: Relatórios gerenciais com KPIs, antecipações e lançamentos manuais.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # ReportsScreen

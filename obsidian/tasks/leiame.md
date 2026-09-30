@@ -1,3 +1,12 @@
+---
+title: Kanban NexoSaúde (Operon) — guia de 5 minutos
+type: spec
+status: draft
+updated: 2026-09-30
+tags:
+  - nexosaude
+---
+
 # Kanban NexoSaúde (Operon) — guia de 5 minutos
 
 ## Board pronto: "Kanban NexoSaúde" (já criado neste vault)

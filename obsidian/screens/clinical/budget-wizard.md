@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-budget-wizard
 description: Assistente de aprovação de orçamento que gera plano + financeiro.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # BudgetApprovalWizard

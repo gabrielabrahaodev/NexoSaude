@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-collections
 description: Cobrança manual inteligente — pacotes mensais (psico) e avulsas com WhatsApp.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # CollectionsScreen

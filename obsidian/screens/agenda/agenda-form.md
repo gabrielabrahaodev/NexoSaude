@@ -6,6 +6,9 @@ tags:
   - screens
 name: screen-agenda-form
 description: Formulário de agendamento dental com verificação de disponibilidade e seleção de paciente.
+type: screen
+status: stable
+updated: 2026-09-30
 ---
 
 # AgendaFormScreen

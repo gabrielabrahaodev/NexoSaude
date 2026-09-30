@@ -6,6 +6,9 @@ tags:
   - nexosaude
   - area/atendimento
 datetimeModified: 2026-09-29T01:23:07
+title: E3 — Atendimento e agenda operacional
+type: epic
+updated: 2026-09-30
 ---
 
 # E3 — Atendimento e agenda operacional
