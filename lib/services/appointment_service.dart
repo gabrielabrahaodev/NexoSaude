@@ -9,6 +9,10 @@ class AppointmentService {
   static DateTime repeatNextWeek(DateTime from) =>
       DateTime(from.year, from.month, from.day + 7, from.hour, from.minute);
 
+  /// Sugestão livre? `hhmm` ("09:30") fora da lista de ocupados (puro).
+  static bool isSlotFree(String hhmm, List<String> busy) =>
+      !busy.contains(hhmm);
+
   // NOVO: Busca por intervalo de datas (Para a Agenda Semanal)
   Stream<List<AppointmentModel>> getByDateRange(String clinicId, DateTime start, DateTime end) {
     return _collection

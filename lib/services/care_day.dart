@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../models/appointment_model.dart';
 import '../utils/display.dart';
 
 /// Lógica pura do Modo Atendimento (testada em `test/care_day_test.dart`).
@@ -13,6 +14,11 @@ import '../utils/display.dart';
   final start = DateTime(ref.year, ref.month, ref.day);
   return (start: start, end: start.add(const Duration(days: 1)));
 }
+
+/// Precisa de confirmação de presença? Só `Aguardando Confirmação`
+/// entra no lote (puro e testado).
+bool needsConfirmation(AppointmentModel a) =>
+    a.status.toLowerCase().trim() == 'aguardando confirmação';
 
 /// Modelos de evolução rápida por tipo de clínica (v1: fixos em código;
 /// editáveis pelo owner ficam para v2).

@@ -26,6 +26,10 @@ class CareDayScreen extends StatefulWidget {
 class _CareDayScreenState extends State<CareDayScreen> {
   final Map<String, String> _dentists = {};
 
+  /// Seleção p/ confirmação de presença em lote.
+  final Set<String> _selected = {};
+  bool _confirming = false;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +60,40 @@ class _CareDayScreenState extends State<CareDayScreen> {
     return role.contains('dentist') ||
         role == 'dentista' ||
         role == 'psicologo';
+  }
+
+  /// Confirma presença em lote (1 escrita por doc; falha parcial avisa
+  /// quais faltaram).
+  Future<void> _confirmSelected(List<AppointmentModel> appts) async {
+    final targets =
+        appts.where((a) => _selected.contains(a.id)).toList();
+    if (targets.isEmpty || _confirming) return;
+    setState(() => _confirming = true);
+    final failed = <String>[];
+    var done = 0;
+    for (final a in targets) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('appointments')
+            .doc(a.id)
+            .update({'status': 'Confirmado'});
+        done++;
+      } catch (_) {
+        failed.add(a.patientName);
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _confirming = false;
+      _selected.clear();
+    });
+    toast(
+      context,
+      failed.isEmpty
+          ? "Presença confirmada ($done)."
+          : "Confirmados $done; faltaram: ${failed.join(', ')}.",
+      error: failed.isNotEmpty,
+    );
   }
 
   Color _statusColor(AppointmentModel a) {
@@ -141,25 +179,80 @@ class _CareDayScreenState extends State<CareDayScreen> {
                   paidToday.add('${m['patientId'] ?? ''}');
                 }
               }
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: appts.length,
-                itemBuilder: (context, i) {
-                  final a = appts[i];
-                  final paid = paidToday.contains(a.patientId);
-                  final dentistLabel = _ownOnly
-                      ? ''
-                      : " • ${_dentists[a.dentistId] ?? 'Profissional'}";
-                  return _VisitCard(
-                    appt: a,
-                    paid: paid,
-                    dentistLabel: dentistLabel,
-                    accent: _statusColor(a),
-                    onOpen: () {
-                      _openVisitSheet(context, a);
-                    },
-                  );
-                },
+              // Poda seleção obsoleta (ex.: confirmado na ficha).
+              final eligibleIds = {
+                for (final a in appts)
+                  if (needsConfirmation(a)) a.id
+              };
+              if (_selected.any((id) => !eligibleIds.contains(id))) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  setState(() => _selected
+                      .removeWhere((id) => !eligibleIds.contains(id)));
+                });
+              }
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: appts.length,
+                      itemBuilder: (context, i) {
+                        final a = appts[i];
+                        final paid = paidToday.contains(a.patientId);
+                        final dentistLabel = _ownOnly
+                            ? ''
+                            : " • ${_dentists[a.dentistId] ?? 'Profissional'}";
+                        final selectable = needsConfirmation(a);
+                        return _VisitCard(
+                          appt: a,
+                          paid: paid,
+                          dentistLabel: dentistLabel,
+                          accent: _statusColor(a),
+                          onOpen: () {
+                            _openVisitSheet(context, a);
+                          },
+                          selectable: selectable,
+                          selected: _selected.contains(a.id),
+                          onSelect: selectable
+                              ? (v) => setState(() {
+                                    if (v == true) {
+                                      _selected.add(a.id);
+                                    } else {
+                                      _selected.remove(a.id);
+                                    }
+                                  })
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                  if (_selected.isNotEmpty)
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _confirming
+                                ? null
+                                : () => _confirmSelected(appts),
+                            icon: _confirming
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white))
+                                : const Icon(Icons.check),
+                            label: Text(_confirming
+                                ? "Confirmando..."
+                                : "Confirmar presença (${_selected.length})"),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           );
@@ -224,12 +317,20 @@ class _VisitCard extends StatelessWidget {
   final Color accent;
   final VoidCallback onOpen;
 
+  /// Seleção p/ presença em lote (só rows elegíveis recebem checkbox).
+  final bool selectable;
+  final bool selected;
+  final ValueChanged<bool?>? onSelect;
+
   const _VisitCard({
     required this.appt,
     required this.paid,
     required this.dentistLabel,
     required this.accent,
     required this.onOpen,
+    this.selectable = false,
+    this.selected = false,
+    this.onSelect,
   });
 
   @override
@@ -261,6 +362,12 @@ class _VisitCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    if (selectable)
+                      Checkbox(
+                        value: selected,
+                        onChanged: onSelect,
+                        visualDensity: VisualDensity.compact,
+                      ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),

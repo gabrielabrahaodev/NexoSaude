@@ -11,7 +11,6 @@ import '../../services/portal_mirror.dart';
 import '../../services/session_manager.dart';
 import '../../services/user_service.dart';
 import '../../models/user_model.dart';
-import '../../services/whatsapp_helper.dart';
 import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
 import '../../utils/external_link.dart';
@@ -62,6 +61,11 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   List<UserModel> _nextDentists = [];
   String? _nextDentistId;
 
+  // Sugestão automática (+7 dias, validada na grade).
+  DateTime? _suggestedDate;
+  bool? _suggestedFree;
+  bool _loadingSuggestion = false;
+
   static const _methods = [
     'Dinheiro',
     'Pix',
@@ -78,6 +82,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
       _loadPhone(),
       _loadOpenCharges(),
       _loadNextDentists(),
+      _loadSuggestion(),
     ]);
   }
 
@@ -224,6 +229,33 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     }
   }
 
+  /// Sugestão automática: mesmo dia/hora da semana seguinte, validada
+  /// contra a grade do profissional. Vira "confirmar" em vez de "montar".
+  Future<void> _loadSuggestion() async {
+    if (mounted) setState(() => _loadingSuggestion = true);
+    try {
+      final a = widget.appointment;
+      final candidate = AppointmentService.repeatNextWeek(a.date);
+      final did = (_nextDentistId?.isNotEmpty == true
+              ? _nextDentistId
+              : a.dentistId) ??
+          '';
+      final hhmm =
+          "${candidate.hour.toString().padLeft(2, '0')}:${candidate.minute.toString().padLeft(2, '0')}";
+      final busy = await AppointmentService()
+          .getBusySlots(a.clinicId, candidate, dentistId: did);
+      if (!mounted) return;
+      setState(() {
+        _suggestedDate = candidate;
+        _suggestedFree = AppointmentService.isSlotFree(hhmm, busy);
+      });
+    } catch (_) {
+      if (mounted) setState(() => _suggestedDate = null);
+    } finally {
+      if (mounted) setState(() => _loadingSuggestion = false);
+    }
+  }
+
   Future<void> _repeatNextWeek() async {
     final a = widget.appointment;
     final candidate = AppointmentService.repeatNextWeek(a.date);
@@ -236,7 +268,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     final busy = await AppointmentService()
         .getBusySlots(a.clinicId, candidate, dentistId: did);
     if (!mounted) return;
-    if (busy.contains(hhmm)) {
+    if (!AppointmentService.isSlotFree(hhmm, busy)) {
       toast(context, "Horário ocupado na próxima semana.",
           error: true);
       return;
@@ -323,7 +355,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
           "${_nextDate!.hour.toString().padLeft(2, '0')}:${_nextDate!.minute.toString().padLeft(2, '0')}";
       final busy = await AppointmentService()
           .getBusySlots(a.clinicId, _nextDate!, dentistId: did);
-      if (busy.contains(hhmm)) {
+      if (!AppointmentService.isSlotFree(hhmm, busy)) {
         if (mounted) {
           toast(context,
               "Horário ocupado para este profissional. Escolha outro.",
@@ -526,11 +558,48 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
                         DropdownMenuItem(
                             value: d.id, child: Text(d.name)),
                     ],
-                    onChanged: (v) => setState(() {
-                      _nextDentistId = v;
-                      _nextDate = null;
-                    }),
+                    onChanged: (v) {
+                      setState(() {
+                        _nextDentistId = v;
+                        _nextDate = null;
+                        _suggestedDate = null;
+                        _suggestedFree = null;
+                      });
+                      _loadSuggestion();
+                    },
                   ),
+                  const SizedBox(height: 8),
+                  // Sugestão automática (+7 dias, livre/ocupado visível).
+                  if (_loadingSuggestion)
+                    const LinearProgressIndicator(minHeight: 2)
+                  else if (_suggestedDate != null)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Sugestão: ${DateFormat('dd/MM HH:mm').format(_suggestedDate!)} • ${(_suggestedFree ?? false) ? 'Livre' : 'Ocupado'}",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: (_suggestedFree ?? false)
+                                  ? Colors.green
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed:
+                              (_suggestedFree ?? false) && !_saving
+                                  ? () {
+                                      setState(() =>
+                                          _nextDate = _suggestedDate);
+                                      _scheduleNext();
+                                    }
+                                  : null,
+                          child: const Text("Confirmar"),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
