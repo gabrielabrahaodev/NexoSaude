@@ -14,7 +14,7 @@ description: Ficha do paciente com tabs dinâmicas por tipo de clínica.
 
 ## O que é
 
-Cabeçalho (`_HeaderSummaryRow` + `PatientSmartContextCard`) + `TabBar` cujo tamanho vem de `ClinicCapabilities.patientTabCount` (dental 9, psico 7). Header tem 4 cards: assiduidade, A Receber, Recebido e Custo Operacional (soma `expenses` por `relatedPatientId`) — os totais moram aqui, não na aba Pagamentos.
+Cabeçalho (`_HeaderSummaryRow` + `PatientSmartContextCard`) + `TabBar` cujo tamanho vem de `ClinicCapabilities.patientTabCount` (dental 9, psico 7). Header tem 4 cards: assiduidade, A Receber, Recebido e Custo Operacional (soma `expenses` por `relatedPatientId`) — os totais moram aqui, não na aba Pagamentos. O card de contexto divide espaço com faixa fixa de alertas clínicos (chips vermelhos de alergia/diabetes/hipertensão/cardíaco/gestante, função pura `clinicalAlerts`, mesma leitura da anamnese do resumo).
 
 ## Quando usar
 

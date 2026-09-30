@@ -51,3 +51,5 @@ migrate/*-key.json
 migrate/usuarios.json
 migrate/node_modules/
 .firebase/
+
+obsidian.zip

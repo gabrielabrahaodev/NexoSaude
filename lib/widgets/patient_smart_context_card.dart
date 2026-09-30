@@ -4,14 +4,45 @@ import '../ui/app_theme.dart';
 import '../utils/display.dart';
 import '../services/session_manager.dart';
 
+/// Alertas clínicos puros a partir do doc `anamnesis/{patientId}`.
+/// Mesma fonte do resumo — o strip fixo e o texto nunca divergem.
+List<String> clinicalAlerts(Map<String, dynamic>? data) {
+  if (data == null || data.isEmpty) return const [];
+  final alerts = <String>[];
+  if (data['hasAllergies'] == true) {
+    alerts.add("Alérgico(a): ${data['allergiesDesc']}");
+  }
+  final conditions = data['conditions'];
+  if (conditions is Map) {
+    if (conditions['Diabetes'] == true) alerts.add("Diabético");
+    if (conditions['Hipertensão (Pressão Alta)'] == true) {
+      alerts.add("Hipertenso");
+    }
+    if (conditions['Problemas Cardíacos'] == true) alerts.add("Cardíaco");
+  }
+  if (data['pregnant'] == true) alerts.add("Gestante");
+  return alerts;
+}
+
+/// Contexto do paciente: resumo narrativo + alertas (mesma leitura).
+class PatientContext {
+  final String? summary;
+  final List<String> alerts;
+
+  const PatientContext({this.summary, this.alerts = const []});
+
+  bool get isEmpty => summary == null && alerts.isEmpty;
+}
+
 class PatientSmartContextCard extends StatelessWidget {
   final String patientId;
 
   const PatientSmartContextCard({super.key, required this.patientId});
 
   /// Essa função atua como o "Cérebro" (AI Engine)
-  /// Ela busca dados dispersos e cria um resumo narrativo.
-  Future<String?> _generateContextSummary() async {
+  /// Ela busca dados dispersos e cria um resumo narrativo + alertas.
+  /// Uma única leitura da anamnese alimenta strip e texto (sem duplicar).
+  Future<PatientContext> _loadContext() async {
     try {
       final firestore = FirebaseFirestore.instance;
       List<String> highlights = [];
@@ -30,30 +61,18 @@ class PatientSmartContextCard extends StatelessWidget {
         String proc = data['procedureName'] ?? 'Atendimento';
         DateTime date = (data['date'] as Timestamp).toDate();
         int daysAgo = DateTime.now().difference(date).inDays;
-        
+
         String timeStr = daysAgoLabel(daysAgo);
         highlights.add("Último atendimento foi $timeStr ($proc).");
       } else {
         highlights.add("Paciente ainda não possui histórico clínico registrado.");
       }
 
-      // 2. BUSCAR ALERTAS DE ANAMNESE (Saúde Crítica)
-      final anamnesisSnap = await firestore.collection('anamnesis').doc(patientId).get();
-      if (anamnesisSnap.exists) {
-        final data = anamnesisSnap.data()!;
-        List<String> healthAlerts = [];
-        
-        // Verifica alertas críticos
-        if (data['hasAllergies'] == true) healthAlerts.add("Alérgico(a): ${data['allergiesDesc']}");
-        if (data['conditions']?['Diabetes'] == true) healthAlerts.add("Diabético");
-        if (data['conditions']?['Hipertensão (Pressão Alta)'] == true) healthAlerts.add("Hipertenso");
-        if (data['conditions']?['Problemas Cardíacos'] == true) healthAlerts.add("Cardíaco");
-        if (data['pregnant'] == true) healthAlerts.add("Gestante");
-
-        if (healthAlerts.isNotEmpty) {
-          highlights.add("⚠️ ALERTA CLÍNICO: ${healthAlerts.join(', ')}.");
-        }
-      }
+      // 2. ALERTAS DE ANAMNESE (Saúde Crítica) — mesma fonte do strip.
+      final anamnesisSnap =
+          await firestore.collection('anamnesis').doc(patientId).get();
+      final alerts = clinicalAlerts(
+          anamnesisSnap.exists ? anamnesisSnap.data() : null);
 
       // 3. BUSCAR SITUAÇÃO FINANCEIRA (Inadimplência)
       final financialSnap = await SessionManager()
@@ -85,23 +104,31 @@ class PatientSmartContextCard extends StatelessWidget {
         }
       }
 
-      // Se não tiver nada relevante, retorna null para não exibir o card
-      if (highlights.isEmpty) return null;
+      // Se não tiver nada relevante, retorna contexto vazio (sem card).
+      if (highlights.isEmpty && alerts.isEmpty) {
+        return const PatientContext();
+      }
 
       // Junta tudo em um texto corrido
-      return highlights.join("\n");
+      return PatientContext(
+        summary: highlights.join("\n"),
+        alerts: alerts,
+      );
 
     } catch (e) {
-      return null; // Falha silenciosa
+      return const PatientContext(); // Falha silenciosa
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: _generateContextSummary(),
+    return FutureBuilder<PatientContext>(
+      future: _loadContext(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data == null) return const SizedBox();
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox();
+        }
+        final ctx = snapshot.data!;
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -125,47 +152,96 @@ class PatientSmartContextCard extends StatelessWidget {
               )
             ],
           ),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Ícone de "Brilho/IA"
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
+              // Faixa fixa de alertas clínicos (mesma fonte do resumo).
+              if (ctx.alerts.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.red.withValues(alpha: 0.35)),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: Colors.red, size: 18),
+                      for (final alert in ctx.alerts)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            alert,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-                child: const Icon(Icons.auto_awesome, color: Colors.indigo, size: 20),
-              ),
-              const SizedBox(width: 12),
-              
-              // Texto do Resumo
-              Expanded(
-                child: Column(
+                if (ctx.summary != null) const SizedBox(height: 12),
+              ],
+              // Resumo de contexto (wizard).
+              if (ctx.summary != null)
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "RESUMO DE CONTEXTO",
-                      style: TextStyle(
-                        fontSize: 10, 
-                        fontWeight: FontWeight.w900, 
-                        letterSpacing: 0.5,
-                        color: Colors.indigo
+                    // Ícone de "Brilho/IA"
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
                       ),
+                      child: const Icon(Icons.auto_awesome, color: Colors.indigo, size: 20),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      snapshot.data!,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500
+                    const SizedBox(width: 12),
+
+                    // Texto do Resumo
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "RESUMO DE CONTEXTO",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                              color: Colors.indigo
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            ctx.summary!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              height: 1.4,
+                              fontWeight: FontWeight.w500
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
             ],
           ),
         );
