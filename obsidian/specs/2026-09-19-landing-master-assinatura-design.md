@@ -7,6 +7,9 @@ aliases:
   - spec-landing-master
 name: spec-landing-master
 description: Trial com porteira, master e assinatura.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # Landing + Master + Assinatura (trial e cobrança por usuário) — Design
@@ -59,7 +62,7 @@ clínicas dele (owner não conta); débitos com toggle Pix (`platform_config`)
 
 ## Ver tamb�m
 
-- [[master-screen]] � abas Owners/D�bitos/Trials
-- [[assinatura-page]] � plano e trial com porteira
-- [[landing-page]] � porta de entrada
-- [[PRD]]
+- [[screens/admin/master-screen|master-screen]] � abas Owners/D�bitos/Trials
+- [[screens/admin/assinatura-page|assinatura-page]] � plano e trial com porteira
+- [[screens/admin/landing-page|landing-page]] � porta de entrada
+- [[foundation/01-prd|PRD]]

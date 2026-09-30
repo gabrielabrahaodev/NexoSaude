@@ -1,0 +1,60 @@
+---
+title: Backlog NexoSaúde
+type: epic
+status: draft
+updated: 2026-09-30
+tags:
+  - nexosaude
+---
+
+# Backlog NexoSaúde
+
+Fila priorizada (scrum). Épicos entregues em [[tasks/epics/E1-plataforma-assinatura|E1 - Plataforma e Assinatura]], [[tasks/epics/E2-portal-lgpd|E2 - Portal e LGPD]], [[tasks/epics/E3-atendimento-agenda|E3 - Atendimento e Agenda]], [[tasks/epics/E4-acesso-multiclinica|E4 - Acesso e Multiclínica]], [[tasks/epics/E5-cota-dados|E5 - Cota e Dados]], [[tasks/epics/E6-docs-vault|E6 - Docs e Vault]], [[tasks/epics/E7-avaliacoes-tecnicas|E7 - Avaliações Técnicas]]. Regra: todo item novo ganha `operonId` único (`nx-1xx`) e pai quando couber.
+
+## Agora (prioridade A)
+
+- [x] Mostrar nome do usuário logado junto ao "Sair do Sistema" no menu [[screens/reports/main-dashboard|main-dashboard]] {{operonId:: nx-116}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e4}} #nexosaude #area/app
+- [x] Agenda no celular: exibir o nome inteiro do paciente na célula [[screens/agenda/agenda-manager|agenda-manager]] {{operonId:: ox2veye}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/app {{datetimeModified:: 2026-09-29T01:23:07}}
+- [x] Agenda: filtro de profissional com largura reduzida (max 320px, alinhado à esquerda) [[screens/agenda/agenda-manager|agenda-manager]] {{operonId:: nx-118}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/agenda
+- [x] Padronizar cabeçalhos de todas as telas: seletor de mês no padrão arredondado de Relatórios + header moderno minimalista [[ui-consistency]] {{operonId:: nx-119}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e4}} #nexosaude #area/app
+- [x] Compactar visual global: headers 44px + fontes/paddings reduzidos (exceto agenda e pagamentos) [[ui-consistency]] {{operonId:: nx-120}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e4}} #nexosaude #area/app
+- [x] Remarcação do portal em laranja no atendimento/agenda com aceitar + WhatsApp + reflexo no portal [[screens/agenda/remarcar-dialog|remarcar-dialog]] {{operonId:: nx-121}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/agenda
+- [x] Parcelamento: status terminal, cancel em batch, vencimentos mensais editáveis, parcial x parcelar [[screens/clinical/patient-tabs|patient-tabs]] {{operonId:: nx-122}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
+- [x] Notícias científicas por tema da clínica (Europe PMC + Semantic Scholar) [[screens/clinical/ortho-news|ortho-news]] {{operonId:: nx-123}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e7}} #nexosaude #area/app
+- [x] Backup owner: tela Exportar (JSON/CSV, tudo marcado) + CPF duplicado + temp forte [[screens/reports/main-dashboard|main-dashboard]] {{operonId:: nx-124}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/app
+- [x] Atendimento sem novo lançamento; próxima sessão com dentista + horários livres [[screens/agenda/care-day|care-day]] {{operonId:: nx-125}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e3}} #nexosaude #area/atendimento
+- [x] Cobrança via WhatsApp registrada no prontuário (SIM-confirmado) [[screens/financial/collections|collections]] {{operonId:: nx-126}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
+- [x] Parcelas de cartão em modal da família (filhas fora da lista) [[screens/clinical/patient-tabs|patient-tabs]] {{operonId:: nx-134}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/financeiro
+- [x] Repetir próxima semana (+7 dias com choque) [[screens/agenda/care-day|care-day]] {{operonId:: nx-127}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s1}} #nexosaude #area/atendimento
+- [x] Cargas paralelas na ficha (Future.wait) [[screens/agenda/care-day|care-day]] {{operonId:: nx-128}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
+- [x] Sheet instantânea com shimmer no bloco de risco [[screens/agenda/agenda-manager|agenda-manager]] {{operonId:: nx-129}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
+- [x] Deep-links de volta (cobrança/ficha sem menu) [[screens/financial/collections|collections]] {{operonId:: nx-130}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/atendimento
+- [ ] Faixa fixa de alertas clínicos (dividir com wizard de contexto) [[screens/agenda/care-day|care-day]] {{operonId:: nx-131}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [ ] Próxima sessão sugerida (+7 dias validada) [[screens/agenda/care-day|care-day]] {{operonId:: nx-132}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [ ] Presença em massa no Meu dia [[screens/agenda/care-day|care-day]] {{operonId:: nx-133}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s3}} #nexosaude #area/atendimento
+- [x] Deploy da master em produção (build + hosting) e validar login owner {{operonId:: nx-101}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-e1}} {{dateDue:: 2026-10-03}} #nexosaude #area/entrega
+- [x] Commitar a fila pendente na master (código + vault já validados: analyze 0, testes verdes) {{operonId:: nx-102}} {{status:: Finished}} {{priority:: A}} {{dateDue:: 2026-10-02}} #nexosaude #area/entrega
+- [ ] Reconsentir os 45 pacientes sem aceite com consulta em 14 dias (filtro Sem aceite na lista + recepção reemite na ficha) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao
+- [ ] Validar trial ponta a ponta (pedir → aprovar no Master → entrar → portal) {{operonId:: nx-104}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e1}} #nexosaude #area/qualidade
+
+- [ ] Leads da avaliacao publica sem regra (deny padrao): clinics/id/leads nao tem match em firestore.rules; confirmar se gravacao esta quebrada e decidir entre adicionar regra ou remover escrita [[screens/portal/public-evaluation]] {{operonId:: nx-135}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/seguranca
+- [ ] Allowlist do portal sem propostasRecusadas: rules tem 4 chaves e vault citava 5; alinhar rule ou documentacao e confirmar onde a recusa e gravada [[data-model/security-rules]] {{operonId:: nx-136}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} #nexosaude #area/seguranca
+## Depois (prioridade B)
+
+- [ ] Decidir Blaze (US$ 1–3/mês) vs seguir no Spark {{operonId:: nx-105}} {{status:: Paused}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/decisao
+- [x] Trocar SALES_WHATSAPP placeholder na landing {{operonId:: nx-106}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e1}} #nexosaude #area/site
+- [x] Revisar bloqueios fundidos do Yervant com o dono {{operonId:: nx-107}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e3}} #nexosaude #area/dados
+- [x] Deploy de firestore.indexes.json pendente (nunca aceitar delete) {{operonId:: nx-108}} {{status:: Finished}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/infra
+- [x] Checagem de CPF duplicado no cadastro (query existe, bloqueio comentado) {{operonId:: nx-109}} {{status:: Finished}} {{priority:: B}} #nexosaude #area/app
+- [x] Higiene Cloudinary/API keys: restringir preset unsigned + chaves no console {{operonId:: nx-110}} {{status:: Finished}} {{priority:: B}} #nexosaude #area/seguranca
+- [ ] Cadastrar datas de nascimento (405/415 sem) para aniversariantes do KPI {{operonId:: nx-111}} {{status:: Planned}} {{priority:: B}} #nexosaude #area/operacao
+- [x] Alertas de exceção no KPI (pacientes/casos fora do esperado hoje) {{operonId:: nx-114}} {{status:: Finished}} {{priority:: B}} #nexosaude #area/app
+- [ ] Exclusão definitiva do projeto antigo (30 dias após shutdown) {{operonId:: nx-113}} {{status:: Planned}} {{priority:: B}} {{dateDue:: 2026-10-29}} {{parentTask:: nx-e5}} #nexosaude #area/infra
+
+- [ ] anticipations sem leitores, escritores ou bloco nas rules: confirmar remocao total ou re-adicionar regra [[data-model/collections]] {{operonId:: nx-137}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/dados
+- [ ] Campo formats inexistente no codigo (so em plugin de terceiros): checar documentos do Firestore e limpar se existir, senao encerrar [[integrations/europe-pmc]] {{operonId:: nx-138}} {{status:: Planned}} {{priority:: B}} #nexosaude #area/app
+- [ ] E1 cita 51 indices e firestore.indexes.json tem 53: identificar os 2 adicionados e atualizar o epico [[tasks/epics/E1-plataforma-assinatura]] {{operonId:: nx-139}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-e5}} #nexosaude #area/dados
+## Estacionado (n�o fazer sem decis�o expl�cita)
+
+- [ ] Inspetor workstation na agenda (revertido; retomar só com novo desenho) {{operonId:: nx-112}} {{status:: Paused}} {{priority:: C}} #nexosaude #estacionado #area/app
+- [ ] Automação WhatsApp (n8n/Apps Script/gateway) — arquivado por falta de infra {{operonId:: nx-115}} {{status:: Paused}} {{priority:: C}} #nexosaude #estacionado #area/automacao

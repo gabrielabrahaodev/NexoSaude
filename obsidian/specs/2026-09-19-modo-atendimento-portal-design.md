@@ -7,6 +7,9 @@ aliases:
   - spec-atendimento-portal
 name: spec-atendimento-portal
 description: Modo Atendimento e Portal do paciente.
+type: spec
+status: stable
+updated: 2026-09-30
 ---
 
 # Modo Atendimento + Portal do Paciente — Design

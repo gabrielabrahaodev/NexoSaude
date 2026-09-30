@@ -6,6 +6,9 @@ tags:
   - modules
 name: psychology-packages
 description: Pacotes e sessões de psicologia — geração mensal, monthlyPeriod e billing rateado por presença.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Pacotes / Sessões (Psicologia)
@@ -41,7 +44,7 @@ cancelamento de contrato (`_cancelSchedule` no form, modo edição).
 
 ## Ver também
 
-- [[psychology-kanban]] — acompanha os contratos ativos
-- [[psychology-schedule]] — form que gera os pacotes
+- [[screens/clinical/psychology-kanban|psychology-kanban]] — acompanha os contratos ativos
+- [[screens/clinical/psychology-schedule|psychology-schedule]] — form que gera os pacotes
 - [[financial]] — baixa e status dos lançamentos
-- [[PSYCHOLOGY_PACKAGES]] — documento do billing
+- [[modules/psychology-packages-billing|PSYCHOLOGY_PACKAGES]] — documento do billing

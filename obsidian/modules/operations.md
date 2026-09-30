@@ -6,6 +6,9 @@ tags:
   - modules
 name: operations-module
 description: Gestão operacional — estoque, fornecedores, catálogo de procedimentos e taxas de cartão/máquina.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Operações / Gestão
@@ -37,6 +40,6 @@ Estoque baixo, fornecedor, procedimento, antecipação de cartão.
 
 ## Ver também
 
-- [[operations-manager]] — shell com as abas
-- [[operations-tabs]] — as 5 abas (inclui Config)
-- [[employee-manager]] — cria `users` + vínculo `allowedClinics`
+- [[screens/operations/operations-manager|operations-manager]] — shell com as abas
+- [[screens/operations/operations-tabs|operations-tabs]] — as 5 abas (inclui Config)
+- [[screens/operations/employee-manager|employee-manager]] — cria `users` + vínculo `allowedClinics`

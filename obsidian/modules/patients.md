@@ -6,6 +6,9 @@ tags:
   - modules
 name: patients-module
 description: Cadastro de pacientes, perfil de risco por assiduidade e exclusão em cascata.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Pacientes
@@ -36,7 +39,7 @@ Busca/cadastro de paciente, `Hero` de avatar, exclusão, assiduidade.
 
 ## Ver também
 
-- [[patient-list]] — lista + busca + exclusão
-- [[patient-details]] — ficha completa
-- [[create-patient]] — cadastro com aceite LGPD
-- [[patient-tabs]] — as abas da ficha
+- [[screens/clinical/patient-list|patient-list]] — lista + busca + exclusão
+- [[screens/clinical/patient-details|patient-details]] — ficha completa
+- [[screens/clinical/create-patient|create-patient]] — cadastro com aceite LGPD
+- [[screens/clinical/patient-tabs|patient-tabs]] — as abas da ficha

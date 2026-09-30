@@ -6,6 +6,9 @@ tags:
   - modules
 name: reports-oracle-module
 description: Relatórios gerenciais, saúde financeira do paciente e snapshot mensal do oráculo.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Relatórios / Oráculo
@@ -41,5 +44,5 @@ KPI, antecipação de parcelas, mês fechado, score do paciente.
 
 ## Ver também
 
-- [[financial-report]] — extrato que consome a união
-- [[kpi-dashboard]] — KPIs do dia
+- [[screens/financial/financial-report|financial-report]] — extrato que consome a união
+- [[screens/reports/kpi-dashboard|kpi-dashboard]] — KPIs do dia

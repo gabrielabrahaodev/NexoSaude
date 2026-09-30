@@ -1,0 +1,28 @@
+---
+name: hub-atendimento
+description: Índice do Modo Atendimento + Portal (navegação do cluster).
+title: Atendimento (hub)
+tags:
+  - nexosaude
+  - brain
+  - hub
+  - atendimento
+type: flow
+status: stable
+updated: 2026-09-30
+---
+
+# Atendimento (hub)
+
+Índice do cluster Modo Atendimento + Portal do paciente.
+
+- [[screens/agenda/care-day|care-day]] — Meu dia: só hoje, filtro por profissional, selo Pago.
+- [[screens/agenda/remarcar-dialog|remarcar-dialog]] — decisão única aprovar/recusar (agenda + Meu dia).
+- [[portal-mirror]] — espelhos `portal/` + `portal_slots/` e sync best-effort.
+- [[screens/portal/portal-page|portal-page]] — `portal.html`: sessões, atrasos, Pix, painel de remarcação.
+- [[ui-consistency]] — `AppColors`, `StatusChip`, helpers com teste.
+- [[screens/agenda/agenda-manager|agenda-manager]] — agenda semanal, cache mensal, bloqueios (alimenta slots).
+- [[screens/financial/collections|collections]] — selo "Avisei que paguei" e baixa.
+- [[screens/clinical/patient-details|patient-details]] — link do portal (gerar/copiar/revogar) na aba Cadastro.
+
+Especificação viva em [[foundation/01-prd|PRD]] e [[2026-09-19-modo-atendimento-portal-design|spec atendimento-portal]].

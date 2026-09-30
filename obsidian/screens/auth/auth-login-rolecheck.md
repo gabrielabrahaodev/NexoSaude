@@ -1,0 +1,43 @@
+---
+title: Auth Login Rolecheck
+tags:
+  - nexosaude
+  - brain
+  - screens
+name: screen-auth
+description: Login/cadastro e resolução de papel e clínica pós-login.
+type: screen
+status: stable
+updated: 2026-09-30
+---
+
+# LoginScreen + RoleCheckScreen
+
+`lib/screens/auth/login_screen.dart`, `role_check_screen.dart`
+
+## O que é
+
+Email/senha (Firebase Auth) + **Entrar com Google** (popup Web / conta mobile);
+registro cria `users` pendente (`allowedClinics: []`, auto-cadastro na rule);
+`RoleCheckScreen` (loading) resolve clínica via `SessionManager().resolveClinic`.
+
+## Quando usar
+
+Auth, primeiro acesso, troca de papel, onboarding de funcionário.
+
+## Fluxos
+
+- Registro: `dentist` ou `receptionist`; owner vinculado depois.
+- `_initializeSession`: primeira `allowedClinics` → nome/tipo da clínica → `setUser`.
+- Sem role ou sem doc → logout com SnackBar.
+
+## Gotchas
+
+- `Radio groupValue/onChanged` depreciados aqui também.
+- `RoleCheckScreen` roda a cada start: manter só 2 gets (`users` + `clinics`).
+
+## Ver também
+
+- [[screens/reports/main-dashboard|main-dashboard]] — destino pós-login
+- [[session-multitenant]] — sessão, clínica e capacidades
+- [[screens/operations/employee-manager|employee-manager]] — onde o acesso do funcionário nasce

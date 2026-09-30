@@ -1,0 +1,20 @@
+name: Vault verification
+on:
+  pull_request:
+    paths: ['obsidian/**']
+  push:
+    branches: [master]
+    paths: ['obsidian/**']
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify vault
+        run: bash obsidian/_audit/verify.sh || test $? -eq 2
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-log
+          path: obsidian/_audit/verification-log.md

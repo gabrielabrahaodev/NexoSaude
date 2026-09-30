@@ -6,6 +6,9 @@ tags:
   - modules
 name: agenda-module
 description: Agendamentos, grade semanal, finalização com presença/atestado e repositório unificado dental+psico.
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Agenda
@@ -42,7 +45,7 @@ Grade, criar/editar/cancelar agendamento, presença, encaixe, disponibilidade.
 
 ## Ver também
 
-- [[agenda-manager]] — grade semanal (lê este domínio)
-- [[agenda-form]] — criação/edição com trava de choque
-- [[care-day]] — executa os agendamentos do dia
+- [[screens/agenda/agenda-manager|agenda-manager]] — grade semanal (lê este domínio)
+- [[screens/agenda/agenda-form|agenda-form]] — criação/edição com trava de choque
+- [[screens/agenda/care-day|care-day]] — executa os agendamentos do dia
 - [[portal-mirror]] — bloqueios viram slots livres/removidos

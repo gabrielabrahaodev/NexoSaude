@@ -7,6 +7,9 @@ tags:
   - brain
   - modules
   - portal
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # Espelhos do Portal
@@ -43,4 +46,4 @@ Sem Functions, o portal lê espelhos: `portal/{token}` (3 sessões + top-3 atras
 - Deploy completo: `powershell -File tool/bump_version.ps1` → `flutter build web` → sync `sistema-interno` → `firebase deploy --only hosting`. O app avisa "Nova versão" sozinho (`version.json` + localStorage).
 - Profissionais do espelho (`isPortalProfessional`, testado): papéis clínicos + owner em clínica psicológica (psicólogo atuante).
 
-Ver [[portal-page]], [[remarcar-dialog]], [[atendimento]].
+Ver [[screens/portal/portal-page|portal-page]], [[screens/agenda/remarcar-dialog|remarcar-dialog]], [[flows/atendimento|atendimento]].

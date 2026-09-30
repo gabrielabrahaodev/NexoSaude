@@ -6,6 +6,9 @@ tags:
   - modules
 name: ui-theme-module
 description: Tema global, estilos e widgets compartilhados (cards, kanban, contexto do paciente).
+type: module
+status: stable
+updated: 2026-09-30
 ---
 
 # UI / Tema
@@ -39,6 +42,6 @@ Nova tela, card, lista kanban, atalho de ação.
 
 ## Ver também
 
-- [[main-dashboard]] — shell que aplica o tema
-- [[agenda-manager]] — células com tipo adaptativo
-- [[care-day]] — cards translúcidos + ficha em modal
+- [[screens/reports/main-dashboard|main-dashboard]] — shell que aplica o tema
+- [[screens/agenda/agenda-manager|agenda-manager]] — células com tipo adaptativo
+- [[screens/agenda/care-day|care-day]] — cards translúcidos + ficha em modal

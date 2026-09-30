@@ -1,0 +1,36 @@
+---
+title: Financial Report
+tags:
+  - nexosaude
+  - brain
+  - screens
+name: screen-financial-report
+description: Posição financeira — transações, taxas e PDF (TableHelper).
+type: screen
+status: stable
+updated: 2026-09-30
+---
+
+# FinancialReportScreen
+
+`lib/screens/financial/financial_report_screen.dart`
+
+## O que é
+
+Extrato (`financial` + paciente via `patients`), cálculo de taxas do perfil da máquina e exportação.
+
+## Quando usar
+
+Fechamento, conferência de líquido, PDF.
+
+## Gotchas
+
+- `Table.fromTextArray` depreciado → `TableHelper.fromTextArray()`.
+- Variável `anchor` não usada — remover ao tocar.
+
+## Ver também
+
+- [[financial]] — lançamentos e status
+- [[reports-oracle]] — DRE/Livro com dedupe
+- [[screens/financial/expenses|expenses]] — despesas no extrato
+- [[screens/reports/reports|reports]] — antecipações e fechamento
