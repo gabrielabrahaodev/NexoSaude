@@ -41,3 +41,10 @@ O outro arquivo deve ter um `Ver também:` em vez de repetir.
 - Não editar `archive/`.
 - Não duplicar conteúdo entre níveis — linke.
 - Não inventar campos de Firestore ou nomes de arquivo `.dart`.
+
+## Gotchas de escrita
+
+- **Escape de `|` em tabelas**: ao escrever tabelas markdown, alguns
+  pipelines de transporte convertem `|` em `\|`. Após qualquer escrita em
+  lote, verificar se `|` não foi escapado indevidamente. Isso já ocorreu
+  em 2 arquivos durante a reorg de 2026-09-30.
