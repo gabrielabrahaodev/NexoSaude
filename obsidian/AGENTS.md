@@ -1,3 +1,13 @@
+---
+title: AGENTS
+type: spec
+status: stable
+updated: 2026-09-30
+tags:
+  - meta
+  - agents
+---
+
 # AGENTS.md — Guia de navegação do vault para agentes de IA
 
 ## Por onde começar
