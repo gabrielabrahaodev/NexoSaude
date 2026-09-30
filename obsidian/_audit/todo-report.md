@@ -42,3 +42,9 @@ Inventário inicial da Fase 4 (fora de _audit). Classificação: A código, B gi
 ## ADRs criados na Fase 6
 
 - (preencher na Fase 6)
+
+
+## Resultado Fase 5
+- Resolvidos: 10 (itens 2, 3, 4, 5, 6, 9, 11, 12, 13, 14)
+- Resolvido-parcial: 1 (item 8: chaves respondidas, limites viraram TODO residual em integrations/europe-pmc.md)
+- Bloqueados: 3 (itens 1, 7, 10, reformulados como acionáveis)
