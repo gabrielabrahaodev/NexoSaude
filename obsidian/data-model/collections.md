@@ -19,7 +19,7 @@ Agregado das coleções mencionadas em `modules/`. Fonte: [[modules/financial]],
 |---|---|---|
 | `appointments` | Agendamentos (`clinicId`, `patientId`, `dentistId`, `status`, `attendanceStatus`, `hasMedicalCertificate`, `scheduleId/planId`, `monthlyPeriod`, `durationMinutes`) | [[modules/agenda]] |
 | `patients` | Cadastro (`clinicId`, endereço/birthDate com parsing defensivo) | [[modules/patients]] |
-| `financial` | Receitas (`clinicId`, `billingKind: package_monthly\|session`, `monthlyPeriod`, `planId`) | [[modules/financial]] |
+| `financial` | Receitas (`clinicId`, `billingKind: package_monthly ou session`, `monthlyPeriod`, `planId`) | [[modules/financial]] |
 | `expenses` | Despesas (`clinicId`, recorrentes, taxa de antecipação) | [[modules/financial]] |
 | `clinical_records` | Evolução clínica | [[modules/clinical]] |
 | `treatments` / `treatment_plans` | Planos (`procedures[]`) e tratamentos | [[modules/clinical]] |

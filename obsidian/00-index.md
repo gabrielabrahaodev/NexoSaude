@@ -4,7 +4,7 @@ tags:
   - nexosaude
   - brain
 name: brain-index
-description: Mapa do vault obsidian — um arquivo por módulo, tela, mapa ou documento do NexoSaúde.
+description: Mapa do vault obsidian — um arquivo por módulo, tela, fluxo, decisão, integração ou documento do NexoSaúde.
 type: spec
 status: stable
 updated: 2026-09-30
@@ -12,67 +12,106 @@ updated: 2026-09-30
 
 # Obsidian — NexoSaúde
 
-Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma tela** (`screens/`), um **mapa** (`Maps/`), uma **spec** (`specs/`) ou um **documento** (raiz).
+Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma tela** (`screens/<domínio>/`), um **fluxo** (`flows/`), uma **decisão** (`decisions/`), uma **integração** (`integrations/`), um **runbook** (`runbooks/`).
 
-## Como usar
+## Comece aqui
 
-- Vai mexer numa tela? Leia `screens/<tela>.md` primeiro.
-- Vai mexer numa regra de negócio? Leia `modules/<dominio>.md` primeiro.
-- Arquivos citam paths reais, collections Firestore e gotchas; links entre notas conectam o grafo.
+- [[AGENTS]] — guia de navegação para agentes de IA (fonte de verdade, convenções).
+- [[CONTEXT]] — o NexoSaúde em 1 página.
+- [[glossary]] — termos do domínio em 1 linha cada.
+- [[CHANGELOG]] — histórico do vault.
 
-## Documentos
+## Foundation (intenção do produto)
 
 | Arquivo | Conteúdo |
 |---|---|
-| [[foundation/01-prd|PRD]] | Produto, histórias, riscos |
-| [[Requisitos]] | RN por módulo com referências de código |
-| [[foundation/02-use-cases|CASOS_DE_USO]] | Catálogo UC com atores |
-| [[foundation/03-sequence-diagrams|DIAGRAMAS_DE_SEQUENCIA]] | Fluxos em sequência |
-| [[PSYCHOLOGY_PACKAGES]] | Billing psico por presença |
+| [[foundation/01-prd|01-prd]] | Produto, histórias, riscos |
+| [[foundation/02-use-cases|02-use-cases]] | Catálogo UC com atores |
+| [[foundation/03-sequence-diagrams|03-sequence-diagrams]] | Fluxos em sequência |
 
-## Specs
-
-- [[spec-atendimento-portal]] — Modo Atendimento + Portal (decisão b).
-- [[spec-landing-master]] — Landing + master + assinatura (trial e cobrança por usuário).
-
-## Mapas
-
-- [[flows/atendimento|atendimento]] — Modo Atendimento + portal + remarcação (fio condutor).
-
-## Módulos (regras de negócio)
+## Módulos (como funciona hoje)
 
 | Arquivo | Domínio |
 |---|---|
-| [[session-multitenant]] | Sessão, multi-tenant, auth, capabilities, menu access |
-| [[agenda]] | Agendamentos, presença, atestado, bloqueios por intervalo |
-| [[patients]] | Pacientes, risco, cascata, LGPD do portal |
-| [[psychology-packages]] | Pacotes/sessões psico, billing por presença |
-| [[financial]] | Financeiro, cobrança, despesas, pagamentos |
-| [[clinical]] | Prontuário, tratamentos, orçamentos, lab |
-| [[operations]] | Estoque, fornecedores, procedimentos, taxas |
-| [[reports-oracle]] | Relatórios e oráculo financeiro |
-| [[comms]] | WhatsApp, documentos, notícias |
-| [[ui-theme]] | Tema e widgets compartilhados |
-| [[ui-consistency]] | Helpers puros testados (moeda, data, toast, slots) |
-| [[pix-brcode]] | Pix BR Code estático local |
-| [[portal-mirror]] | Espelhos `portal/` + `portal_slots/` |
+| [[modules/session-multitenant|session-multitenant]] | Sessão, multi-tenant, auth, capabilities, menu access |
+| [[modules/agenda|agenda]] | Agendamentos, presença, atestado, bloqueios por intervalo |
+| [[modules/patients|patients]] | Pacientes, risco, cascata, LGPD do portal |
+| [[modules/psychology-packages|psychology-packages]] | Pacotes/sessões psico, billing por presença |
+| [[modules/financial|financial]] | Financeiro, cobrança, despesas, pagamentos |
+| [[modules/clinical|clinical]] | Prontuário, tratamentos, orçamentos, lab |
+| [[modules/operations|operations]] | Estoque, fornecedores, procedimentos, taxas |
+| [[modules/reports-oracle|reports-oracle]] | Relatórios e oráculo financeiro |
+| [[modules/comms|comms]] | WhatsApp, documentos, notícias |
+| [[modules/ui-theme|ui-theme]] | Tema e widgets compartilhados |
+| [[modules/ui-consistency|ui-consistency]] | Helpers puros testados (moeda, data, toast, slots) |
+| [[modules/pix-brcode|pix-brcode]] | Redirecionamento → [[integrations/pix-brcode|pix-brcode]] |
+| [[modules/portal-mirror|portal-mirror]] | Espelhos `portal/` + `portal_slots/` |
 
-## Telas
+## Telas (por domínio)
 
-[[screens/agenda/agenda-manager|agenda-manager]], [[screens/agenda/agenda-form|agenda-form]], [[screens/auth/auth-login-rolecheck|auth-login-rolecheck]], [[screens/agenda/care-day|care-day]],
-[[screens/clinical/clinic-lab|clinic-lab]], [[screens/operations/clinic-management|clinic-management]], [[screens/financial/collections|collections]], [[screens/clinical/create-patient|create-patient]],
-[[screens/operations/employee-manager|employee-manager]], [[screens/financial/expenses|expenses]], [[screens/financial/financial-report|financial-report]], [[screens/reports/kpi-dashboard|kpi-dashboard]],
-[[screens/admin/landing-page|landing-page]], [[screens/admin/assinatura-page|assinatura-page]], [[screens/admin/master-screen|master-screen]], [[screens/reports/main-dashboard|main-dashboard]],
-[[screens/operations/operations-manager|operations-manager]], [[screens/operations/operations-tabs|operations-tabs]], [[screens/clinical/ortho-news|ortho-news]], [[screens/clinical/patient-list|patient-list]],
-[[screens/clinical/patient-details|patient-details]], [[screens/clinical/patient-tabs|patient-tabs]], [[screens/portal/portal-page|portal-page]], [[screens/clinical/psychology-kanban|psychology-kanban]],
-[[screens/clinical/psychology-schedule|psychology-schedule]], [[screens/portal/public-evaluation|public-evaluation]], [[screens/clinical/budget-wizard|budget-wizard]],
-[[screens/agenda/remarcar-dialog|remarcar-dialog]], [[screens/reports/reports|reports]].
+**auth/**: [[screens/auth/auth-login-rolecheck|auth-login-rolecheck]].
 
-## Gestão (Operon)
+**agenda/**: [[screens/agenda/agenda-manager|agenda-manager]], [[screens/agenda/agenda-form|agenda-form]], [[screens/agenda/care-day|care-day]], [[screens/agenda/remarcar-dialog|remarcar-dialog]].
 
-- Backlog e board: [[tasks/epics/sprint-backlog|Sprint - Backlog]] (como montar em [[tasks/leiame|LEIAME Kanban]])
-- Sprints de velocidade: [[tasks/epics/S1-economia-cliques|S1 - Economia de cliques]], [[tasks/epics/S2-tempo-janelas|S2 - Tempo entre janelas]], [[tasks/epics/S3-qualidade-atendimento|S3 - Qualidade do atendimento]]
-- Épicos entregues: [[tasks/epics/E1-plataforma-assinatura|E1 - Plataforma e Assinatura]], [[tasks/epics/E2-portal-lgpd|E2 - Portal e LGPD]], [[tasks/epics/E3-atendimento-agenda|E3 - Atendimento e Agenda]], [[tasks/epics/E4-acesso-multiclinica|E4 - Acesso e Multiclínica]], [[tasks/epics/E5-cota-dados|E5 - Cota e Dados]], [[tasks/epics/E6-docs-vault|E6 - Docs e Vault]], [[tasks/epics/E7-avaliacoes-tecnicas|E7 - Avaliações Técnicas]]
+**clinical/**: [[screens/clinical/patient-list|patient-list]], [[screens/clinical/patient-details|patient-details]], [[screens/clinical/patient-tabs|patient-tabs]], [[screens/clinical/create-patient|create-patient]], [[screens/clinical/budget-wizard|budget-wizard]], [[screens/clinical/clinic-lab|clinic-lab]], [[screens/clinical/psychology-kanban|psychology-kanban]], [[screens/clinical/psychology-schedule|psychology-schedule]], [[screens/clinical/ortho-news|ortho-news]].
+
+**financial/**: [[screens/financial/collections|collections]], [[screens/financial/expenses|expenses]], [[screens/financial/financial-report|financial-report]].
+
+**operations/**: [[screens/operations/operations-manager|operations-manager]], [[screens/operations/operations-tabs|operations-tabs]], [[screens/operations/employee-manager|employee-manager]], [[screens/operations/clinic-management|clinic-management]].
+
+**portal/**: [[screens/portal/portal-page|portal-page]], [[screens/portal/public-evaluation|public-evaluation]].
+
+**admin/**: [[screens/admin/landing-page|landing-page]], [[screens/admin/master-screen|master-screen]], [[screens/admin/assinatura-page|assinatura-page]].
+
+**reports/**: [[screens/reports/reports|reports]], [[screens/reports/kpi-dashboard|kpi-dashboard]], [[screens/reports/main-dashboard|main-dashboard]].
+
+## Fluxos
+
+- [[flows/atendimento|atendimento]] — Modo Atendimento + portal + remarcação (fio condutor).
+
+## Data-model
+
+- [[data-model/collections|collections]] — coleções Firestore.
+- [[data-model/indexes|indexes]] — índices compostos.
+- [[data-model/security-rules|security-rules]] — resumo das rules (+ TODO importar `firestore.rules`).
+- [[data-model/mirrors|mirrors]] — `portal/{token}` + `portal_slots`.
+
+## Decisões (ADRs)
+
+- [[decisions/0001-firestore-mirror|0001-firestore-mirror]] — espelhos para leitura barata no Spark.
+- [[decisions/0002-multitenant-session|0002-multitenant-session]] — `SessionManager` + `allowedClinics` + `applyFilter`.
+- [[decisions/0003-sem-cloud-functions|0003-sem-cloud-functions]] — plano Spark, sem backend.
+
+## Integrações
+
+- [[integrations/whatsapp|whatsapp]], [[integrations/cloudinary|cloudinary]], [[integrations/pix-brcode|pix-brcode]], [[integrations/europe-pmc|europe-pmc]].
+
+## Runbooks
+
+- [[runbooks/deploy|deploy]] (fragmentos + TODOs), [[runbooks/migracao-dados|migracao-dados]] (fragmentos + TODOs).
+
+## Specs
+
+- [[specs/2026-09-19-modo-atendimento-portal-design|spec atendimento-portal]] — Modo Atendimento + Portal (decisão b).
+- [[specs/2026-09-19-landing-master-assinatura-design|spec landing-master]] — Landing + master + assinatura (trial e cobrança por usuário).
+
+## Tasks
+
+- Board e guia: [[tasks/kanban|kanban]] (como montar em [[tasks/leiame|leiame]]).
+- Backlog: [[tasks/epics/sprint-backlog|sprint-backlog]].
+- Sprints de velocidade: [[tasks/epics/S1-economia-cliques|S1-economia-cliques]], [[tasks/epics/S2-tempo-janelas|S2-tempo-janelas]], [[tasks/epics/S3-qualidade-atendimento|S3-qualidade-atendimento]].
+- Épicos entregues: [[tasks/epics/E1-plataforma-assinatura|E1-plataforma-assinatura]], [[tasks/epics/E2-portal-lgpd|E2-portal-lgpd]], [[tasks/epics/E3-atendimento-agenda|E3-atendimento-agenda]], [[tasks/epics/E4-acesso-multiclinica|E4-acesso-multiclinica]], [[tasks/epics/E5-cota-dados|E5-cota-dados]], [[tasks/epics/E6-docs-vault|E6-docs-vault]], [[tasks/epics/E7-avaliacoes-tecnicas|E7-avaliacoes-tecnicas]].
+
+## Documentos raiz (legado, fora da árvore-alvo — preservados)
+
+- [[Requisitos]] — RN por módulo com referências de código.
+- [[PSYCHOLOGY_PACKAGES]] — billing psico por presença.
+
+## Templates e ferramentas
+
+- Templates: [[_templates/module|module]], [[_templates/screen|screen]], [[_templates/spec|spec]], [[_templates/adr|adr]], [[_templates/flow|flow]] (atalhos em [[modules/_module-template|_module-template]] e [[specs/_spec-template|_spec-template]]).
+- Ferramenta: [[_tools/operon|operon]] (doc do plugin, não é conteúdo do projeto).
+- Auditoria: [[_audit/empty-files|empty-files]], [[_audit/reorg-report|reorg-report]].
 
 ## Convenções globais (valem para tudo)
 
