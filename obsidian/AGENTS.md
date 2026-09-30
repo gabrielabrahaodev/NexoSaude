@@ -48,3 +48,14 @@ O outro arquivo deve ter um `Ver também:` em vez de repetir.
   pipelines de transporte convertem `|` em `\|`. Após qualquer escrita em
   lote, verificar se `|` não foi escapado indevidamente. Isso já ocorreu
   em 2 arquivos durante a reorg de 2026-09-30.
+
+## Verificação
+
+O vault tem verificação automatizada em `_audit/verify.sh`. Checa
+frontmatter, status, wikilinks, órfãos, TODOs, casing e escape de `|`.
+
+Rodar antes de qualquer PR que toque `obsidian/`:
+
+    bash obsidian/_audit/verify.sh
+
+Relatório: `_audit/verification-log.md`. CI: `.github/workflows/vault-verify.yml`.
