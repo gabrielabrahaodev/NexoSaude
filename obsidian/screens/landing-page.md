@@ -26,7 +26,7 @@ Porta de entrada + links "Minha assinatura" (rodapé). `deploy.bat` leva `logo` 
 > [!warning]
 > Claims do rascunho removidos (criptografia, confirmação automática, migração): só o que existe. Depoimentos/logos falsos: nunca.
 
-Ver [[assinatura-page]], [[portal-page]], [[PRD]].
+Ver [[assinatura-page]], [[portal-page]], [[foundation/01-prd|PRD]].
 
 ## Ver também
 

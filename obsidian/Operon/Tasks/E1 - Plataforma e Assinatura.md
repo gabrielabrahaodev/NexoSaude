@@ -23,4 +23,4 @@ tags:
 
 ## Ver também
 
-- [[spec-landing-master]], [[PRD]], [[Requisitos]], [[CASOS_DE_USO]]
+- [[spec-landing-master]], [[foundation/01-prd|PRD]], [[Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]]

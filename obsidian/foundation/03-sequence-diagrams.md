@@ -367,6 +367,6 @@ sequenceDiagram
 
 ## Ver tamb�m
 
-- [[PRD]] � produto e riscos
+- [[foundation/01-prd|PRD]] � produto e riscos
 - [[Requisitos]] � regras por tr�s dos fluxos
-- [[CASOS_DE_USO]] � atores de cada fluxo
+- [[foundation/02-use-cases|CASOS_DE_USO]] � atores de cada fluxo

@@ -21,10 +21,10 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 | Arquivo | Conteúdo |
 |---|---|
-| [[PRD]] | Produto, histórias, riscos |
+| [[foundation/01-prd|PRD]] | Produto, histórias, riscos |
 | [[Requisitos]] | RN por módulo com referências de código |
-| [[CASOS_DE_USO]] | Catálogo UC com atores |
-| [[DIAGRAMAS_DE_SEQUENCIA]] | Fluxos em sequência |
+| [[foundation/02-use-cases|CASOS_DE_USO]] | Catálogo UC com atores |
+| [[foundation/03-sequence-diagrams|DIAGRAMAS_DE_SEQUENCIA]] | Fluxos em sequência |
 | [[PSYCHOLOGY_PACKAGES]] | Billing psico por presença |
 
 ## Specs

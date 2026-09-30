@@ -22,4 +22,4 @@ tags:
 
 ## Ver também
 
-- [[00-index]], [[PRD]]
+- [[00-index]], [[foundation/01-prd|PRD]]

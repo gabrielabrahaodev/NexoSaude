@@ -26,4 +26,4 @@ Gestão comercial: provisionar, cobrar, suspender. Primeiro `superadmin` via con
 > [!warning]
 > Trial expirado OU `blockedByAdmin` barra o login (`role_check_screen`) — superadmin passa direto.
 
-Ver [[assinatura-page]], [[portal-mirror]], [[PRD]].
+Ver [[assinatura-page]], [[portal-mirror]], [[foundation/01-prd|PRD]].

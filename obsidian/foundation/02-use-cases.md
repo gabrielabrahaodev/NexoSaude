@@ -232,6 +232,6 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 | **Total** | **81 casos de uso** |
 ## Ver tamb�m
 
-- [[PRD]] � produto e riscos
+- [[foundation/01-prd|PRD]] � produto e riscos
 - [[Requisitos]] � RNs por tr�s dos UCs
 - [[atendimento]] � mapa do Modo Atendimento

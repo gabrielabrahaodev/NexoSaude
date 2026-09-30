@@ -62,4 +62,4 @@ clínicas dele (owner não conta); débitos com toggle Pix (`platform_config`)
 - [[master-screen]] � abas Owners/D�bitos/Trials
 - [[assinatura-page]] � plano e trial com porteira
 - [[landing-page]] � porta de entrada
-- [[PRD]]
+- [[foundation/01-prd|PRD]]

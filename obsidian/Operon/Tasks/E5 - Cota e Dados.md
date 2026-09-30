@@ -23,4 +23,4 @@ tags:
 
 ## Ver também
 
-- [[kpi-dashboard]], [[portal-mirror]], [[PRD]]
+- [[kpi-dashboard]], [[portal-mirror]], [[foundation/01-prd|PRD]]

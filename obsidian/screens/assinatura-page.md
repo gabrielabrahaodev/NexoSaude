@@ -26,4 +26,4 @@ Owner acompanha e paga a plataforma sem entrar no operacional.
 > [!tip]
 > Rules já cobriam: owner lê próprios débitos e atualiza só `avisoPagamento`. Zero mudança de rule.
 
-Ver [[master-screen]], [[portal-page]], [[PRD]].
+Ver [[master-screen]], [[portal-page]], [[foundation/01-prd|PRD]].

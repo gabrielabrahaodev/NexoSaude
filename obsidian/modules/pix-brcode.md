@@ -26,4 +26,4 @@ Qualquer cobrança com `pixKey` da clínica; nome/cidade via espelho (`clinicNam
 > [!warning]
 > Estático não confirma sozinho: continua valendo "Avisei que paguei" + baixa. Dinâmico com webhook exige PSP pago — fora de escopo.
 
-Ver [[portal-page]], [[portal-mirror]], [[PRD]].
+Ver [[portal-page]], [[portal-mirror]], [[foundation/01-prd|PRD]].

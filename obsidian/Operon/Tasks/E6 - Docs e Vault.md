@@ -22,4 +22,4 @@ tags:
 
 ## Ver também
 
-- [[00-index]], [[PRD]], [[Requisitos]], [[CASOS_DE_USO]]
+- [[00-index]], [[foundation/01-prd|PRD]], [[Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]]

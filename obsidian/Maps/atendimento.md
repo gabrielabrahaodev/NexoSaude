@@ -22,4 +22,4 @@ tags:
 - [[collections]] — selo "Avisei que paguei" e baixa.
 - [[patient-details]] — link do portal (gerar/copiar/revogar) na aba Cadastro.
 
-Especificação viva em [[PRD]] e [[2026-09-19-modo-atendimento-portal-design|spec atendimento-portal]].
+Especificação viva em [[foundation/01-prd|PRD]] e [[2026-09-19-modo-atendimento-portal-design|spec atendimento-portal]].

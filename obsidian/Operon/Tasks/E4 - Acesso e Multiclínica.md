@@ -23,4 +23,4 @@ tags:
 
 ## Ver também
 
-- [[operations-manager]], [[operations-tabs]], [[employee-manager]], [[clinic-management]], [[Requisitos]], [[CASOS_DE_USO]]
+- [[operations-manager]], [[operations-tabs]], [[employee-manager]], [[clinic-management]], [[Requisitos]], [[foundation/02-use-cases|CASOS_DE_USO]]
