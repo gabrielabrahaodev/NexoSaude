@@ -22,6 +22,23 @@ import '../../models/user_model.dart';
 import '../../services/block_interval.dart';
 import '../../utils/display.dart';
 import '../../utils/external_link.dart';
+import '../../widgets/shimmer_box.dart';
+
+/// Estado do bloco de risco na sheet (puro e testado): shimmer enquanto
+/// carrega, escondido em erro ou nível verde, conteúdo nos demais.
+enum RiskBlockView { shimmer, hidden, shown }
+
+RiskBlockView riskBlockView({
+  required bool waiting,
+  required bool hasData,
+  required String? level,
+  bool hasError = false,
+}) {
+  if (hasError) return RiskBlockView.hidden;
+  if (waiting || !hasData) return RiskBlockView.shimmer;
+  if (level == 'green') return RiskBlockView.hidden;
+  return RiskBlockView.shown;
+}
 
 class AgendaManagerScreen extends StatefulWidget {
   const AgendaManagerScreen({super.key});
@@ -615,11 +632,26 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 FutureBuilder<Map<String, dynamic>>(
                   future: _patientService.getPatientRiskProfile(appt.patientId),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const SizedBox();
-                    
+                    final view = riskBlockView(
+                      waiting: snapshot.connectionState ==
+                          ConnectionState.waiting,
+                      hasData: snapshot.hasData,
+                      level:
+                          snapshot.data?['level']?.toString(),
+                      hasError: snapshot.hasError,
+                    );
+                    if (view == RiskBlockView.shimmer) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: ShimmerBox(
+                            width: double.infinity, height: 64),
+                      );
+                    }
+                    if (view == RiskBlockView.hidden) {
+                      return const SizedBox();
+                    }
                     final risk = snapshot.data!;
-                    if (risk['level'] == 'green') return const SizedBox();
-                    
                     bool isRed = risk['level'] == 'red';
                     Color color = isRed ? Colors.red : Colors.orange;
                     String title = isRed ? "ALTO RISCO DE NO-SHOW" : "Atenção ao Histórico";
