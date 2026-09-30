@@ -24,6 +24,6 @@ Fragmentos que existem no vault (fonte: [[modules/portal-mirror]], `foundation/0
 
 - Inventário migrate/ em 2026-09-30: agenda-diag.js, count.js, debts-diag.js, migrate.js, portal-backfill.js, portal-diag.js, reset-password.js, rules-release.js, slots-backfill.js, slots-diag.js. Backfills de espelho: slots-backfill.js e portal-backfill.js (mesma regra isPortalProfessional do app).
 <!-- fonte: migrate/ -->
-- TODO: escrever procedimento padrão (backup, ordem, verificação).
+- Procedimento agregado do vault em 2026-09-30: 1 backfill (slots-backfill.js, portal-backfill.js) para reconstruir espelhos com a mesma regra do app; 2 rebuild de espelhos só em cadastro, revogação ou backfill, nunca como rotina; 3 migrações via scripts migrate/ com Admin SDK, em deltas com contagens batidas e sem sobrescrever o existente (exemplo E5: 10 pacientes + 58 agendamentos); 4 desligamento reversível do projeto antigo (rules deny-all + hosting off, dados intactos); 5 senhas via reset-senha.bat com temporária. Ver [[modules/portal-mirror]], [[data-model/mirrors]], [[tasks/epics/E5-cota-dados]].
 
 Ver [[modules/portal-mirror]], [[data-model/mirrors]].
