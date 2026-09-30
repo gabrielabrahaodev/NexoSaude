@@ -6,7 +6,7 @@ Preset criado em `.obsidian/plugins/operon/data.json`: pipeline Project, filtro 
 
 ## Opção 1 — board simples (plugin Kanban)
 
-Abra [[Kanban NexoSaúde]] com o plugin Kanban instalado: 4 colunas (A Fazer, Depois, Estacionado, Concluído), cards linkados aos épicos e ao backlog. Mover card = editar a linha (arrastar entre colunas move o `- [ ]`).
+Abra [[tasks/kanban|Kanban NexoSaúde]] com o plugin Kanban instalado: 4 colunas (A Fazer, Depois, Estacionado, Concluído), cards linkados aos épicos e ao backlog. Mover card = editar a linha (arrastar entre colunas move o `- [ ]`).
 
 ## Pipeline em uso (não inventar nomes!)
 
@@ -38,6 +38,6 @@ Os status usados aqui (`Aberto`, `Em andamento`, `Concluído`) precisam existir 
 
 ## Mapa
 
-- Backlog: [[Sprint - Backlog]]
-- Épicos: [[E1 - Plataforma e Assinatura]], [[E2 - Portal e LGPD]], [[E3 - Atendimento e Agenda]], [[E4 - Acesso e Multiclínica]], [[E5 - Cota e Dados]], [[E6 - Docs e Vault]], [[E7 - Avaliações Técnicas]]
+- Backlog: [[tasks/epics/sprint-backlog|Sprint - Backlog]]
+- Épicos: [[tasks/epics/E1-plataforma-assinatura|E1 - Plataforma e Assinatura]], [[tasks/epics/E2-portal-lgpd|E2 - Portal e LGPD]], [[tasks/epics/E3-atendimento-agenda|E3 - Atendimento e Agenda]], [[tasks/epics/E4-acesso-multiclinica|E4 - Acesso e Multiclínica]], [[tasks/epics/E5-cota-dados|E5 - Cota e Dados]], [[tasks/epics/E6-docs-vault|E6 - Docs e Vault]], [[tasks/epics/E7-avaliacoes-tecnicas|E7 - Avaliações Técnicas]]
 - Vault: [[00-index]]

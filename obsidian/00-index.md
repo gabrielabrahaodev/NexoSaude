@@ -67,9 +67,9 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 ## Gestão (Operon)
 
-- Backlog e board: [[Sprint - Backlog]] (como montar em [[LEIAME Kanban]])
-- Sprints de velocidade: [[S1 - Economia de cliques]], [[S2 - Tempo entre janelas]], [[S3 - Qualidade do atendimento]]
-- Épicos entregues: [[E1 - Plataforma e Assinatura]], [[E2 - Portal e LGPD]], [[E3 - Atendimento e Agenda]], [[E4 - Acesso e Multiclínica]], [[E5 - Cota e Dados]], [[E6 - Docs e Vault]], [[E7 - Avaliações Técnicas]]
+- Backlog e board: [[tasks/epics/sprint-backlog|Sprint - Backlog]] (como montar em [[tasks/leiame|LEIAME Kanban]])
+- Sprints de velocidade: [[tasks/epics/S1-economia-cliques|S1 - Economia de cliques]], [[tasks/epics/S2-tempo-janelas|S2 - Tempo entre janelas]], [[tasks/epics/S3-qualidade-atendimento|S3 - Qualidade do atendimento]]
+- Épicos entregues: [[tasks/epics/E1-plataforma-assinatura|E1 - Plataforma e Assinatura]], [[tasks/epics/E2-portal-lgpd|E2 - Portal e LGPD]], [[tasks/epics/E3-atendimento-agenda|E3 - Atendimento e Agenda]], [[tasks/epics/E4-acesso-multiclinica|E4 - Acesso e Multiclínica]], [[tasks/epics/E5-cota-dados|E5 - Cota e Dados]], [[tasks/epics/E6-docs-vault|E6 - Docs e Vault]], [[tasks/epics/E7-avaliacoes-tecnicas|E7 - Avaliações Técnicas]]
 
 ## Convenções globais (valem para tudo)
 
