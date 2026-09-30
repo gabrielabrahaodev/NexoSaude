@@ -29,4 +29,5 @@ Owner tem 1+ clínicas; staff restrito às suas. Toda query operacional precisa 
 
 ## Alternativas
 
-- TODO: alternativas anteriores não registradas no vault (se houve, documentar aqui).
+- Alternativas: histórico git de lib/services/session_manager.dart tem 3 commits e não registra designs alternativos. Registrar aqui se surgirem.
+<!-- fonte: git log --all --oneline -- lib/services/session_manager.dart -->
