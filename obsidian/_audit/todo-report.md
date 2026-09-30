@@ -41,7 +41,10 @@ Inventário inicial da Fase 4 (fora de _audit). Classificação: A código, B gi
 
 ## ADRs criados na Fase 6
 
-- (preencher na Fase 6)
+- decisions/0004-month-agenda-cache.md: janela deslizante sem TTL
+- decisions/0005-portal-write-conflicts.md: merge, deltas e slots atômicos
+- decisions/0006-ensurewindow-throttle.md: throttle de 6h no login
+- decisions/0002-multitenant-session.md: nota sobre sincronização entre abas (complemento, sem ADR novo)
 
 
 ## Resultado Fase 5

@@ -31,3 +31,8 @@ Owner tem 1+ clínicas; staff restrito às suas. Toda query operacional precisa 
 
 - Alternativas: histórico git de lib/services/session_manager.dart tem 3 commits e não registra designs alternativos. Registrar aqui se surgirem.
 <!-- fonte: git log --all --oneline -- lib/services/session_manager.dart -->
+
+<!-- fonte: lib/services/session_manager.dart:1-18 -->
+SessionManager é singleton ChangeNotifier puramente em memória (imports só de material e firestore, sem persistência). Reload perde a sessão e RoleCheckScreen re-resolve; abas não sincronizam sessão entre si, cada uma resolve a própria. O frescor dos DADOS vem dos streams do Firestore, não da sessão.
+
+## Sincronização entre abas e reload (levantado 2026-09-30)

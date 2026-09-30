@@ -83,6 +83,9 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 - [[decisions/0001-firestore-mirror|0001-firestore-mirror]] — espelhos para leitura barata no Spark.
 - [[decisions/0002-multitenant-session|0002-multitenant-session]] — `SessionManager` + `allowedClinics` + `applyFilter`.
 - [[decisions/0003-sem-cloud-functions|0003-sem-cloud-functions]] — plano Spark, sem backend.
+- [[decisions/0004-month-agenda-cache]] — janela deslizante de 3 meses sem TTL.
+- [[decisions/0005-portal-write-conflicts]] — merge, deltas e slots atômicos.
+- [[decisions/0006-ensurewindow-throttle]] — rebuild no login com throttle de 6h.
 
 ## Integrações
 
