@@ -1,5 +1,8 @@
 ---
 title: Pacotes Psicologia (billing)
+type: spec
+status: stable
+updated: 2026-09-30
 tags:
   - nexosaude
   - psicologia
@@ -8,9 +11,6 @@ aliases:
   - psychology-packages-doc
 name: psychology-packages-doc
 description: Billing mensal por presença (implementado).
-type: spec
-status: stable
-updated: 2026-09-30
 ---
 
 # Psychology Package Payment - Monthly Billing (IMPLEMENTED Sep 2026)
