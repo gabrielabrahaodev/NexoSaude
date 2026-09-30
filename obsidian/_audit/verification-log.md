@@ -1,19 +1,19 @@
 # Verification Log
 
-Ultima execucao: 2026-09-30T13:43:04Z
+Ultima execucao: 2026-09-30T14:02:40Z
 Vault: obsidian/
-Arquivos verificados: 94
+Arquivos verificados: 98
 
 ## Resultado
 
 | # | Checagem | Status | Detalhes |
 |---|---|---|---|
-| 1 | Frontmatter obrigatório | PASS | 75/75 |
+| 1 | Frontmatter obrigatório | PASS | 78/78 |
 | 2 | status na taxonomia | PASS | todos em draft/stable/deprecated |
 | 3 | type na taxonomia | PASS | todos na taxonomia |
 | 4 | Wikilinks quebrados | PASS | 0 |
 | 5 | Orfaos | PASS | 0 |
-| 6 | TODOs pendentes | WARN | 14 em 10 arquivos. Top: runbooks/migracao-dados.md (2);runbooks/deploy.md (2);integrations/europe-pmc.md (2);data-model/indexes.md (2);integrations/whatsapp.md (1);integrations/cloudinary.md (1);decisions/0002-multitenant-session.md (1);data-model/security-rules.md (1);data-model/collections.md (1);CONTEXT.md (1) |
+| 6 | TODOs pendentes | WARN | 4 em 4 arquivos. Top: integrations/whatsapp.md (1);integrations/europe-pmc.md (1);integrations/cloudinary.md (1);CONTEXT.md (1) |
 | 7 | Arquivos vazios | PASS | 0 |
 | 8 | Casing kebab-case | WARN | fora do padrao |
 | 9 | Escape de pipe | PASS | 0 |
@@ -39,4 +39,4 @@ Arquivos verificados: 94
 - check8: tasks/epics/S3-qualidade-atendimento.md nao e kebab-case
 
 ## Historico
-- 2026-09-30T13:43:04Z — PASS:8 WARN:2 FAIL:0
+- 2026-09-30T14:02:40Z — PASS:8 WARN:2 FAIL:0

@@ -12,8 +12,8 @@ tags:
 ## 2026-09-30 — Consolidação (ciclo atual)
 - Script de verificação automatizada `_audit/verify.sh` criado.
 - CI `vault-verify.yml` configurado.
-- <N> TODOs resolvidos a partir de código-fonte.
-- <M> ADRs derivados de decisões implícitas no código.
+- 9 TODOs resolvidos a partir de código-fonte (8 integrais + 1 parcial).
+- 3 ADRs derivados de decisões implícitas no código.
 - Relatório final em `_audit/consolidation-report.md`.
 
 ## 2026-09-30 — Fixups pós-reorg
