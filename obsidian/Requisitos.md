@@ -610,4 +610,4 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 
 - [[foundation/01-prd|PRD]] � produto e riscos
 - [[foundation/02-use-cases|CASOS_DE_USO]] � atores por regra
-- [[atendimento]] � mapa do Modo Atendimento
+- [[flows/atendimento|atendimento]] � mapa do Modo Atendimento

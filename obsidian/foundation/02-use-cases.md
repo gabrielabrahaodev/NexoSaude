@@ -234,4 +234,4 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 
 - [[foundation/01-prd|PRD]] � produto e riscos
 - [[Requisitos]] � RNs por tr�s dos UCs
-- [[atendimento]] � mapa do Modo Atendimento
+- [[flows/atendimento|atendimento]] � mapa do Modo Atendimento

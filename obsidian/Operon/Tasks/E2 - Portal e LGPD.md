@@ -24,4 +24,4 @@ tags:
 
 ## Ver também
 
-- [[portal-page]], [[patient-details]], [[create-patient]], [[atendimento]], [[Requisitos]]
+- [[portal-page]], [[patient-details]], [[create-patient]], [[flows/atendimento|atendimento]], [[Requisitos]]

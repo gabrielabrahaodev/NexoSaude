@@ -29,4 +29,4 @@ Selo "Decidir remarcação" (agenda) ou card destacado (Meu dia).
 > [!warning]
 > Recusa restaura `Aguardando Confirmação` (padrão do agendamento), nunca string inventada — o portal decide por conceito.
 
-Ver [[portal-mirror]], [[portal-page]], [[atendimento]].
+Ver [[portal-mirror]], [[portal-page]], [[flows/atendimento|atendimento]].

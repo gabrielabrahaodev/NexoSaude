@@ -28,4 +28,4 @@ Toda tela nova usa esses blocos; `grey[]`/`DateFormat`/`SnackBar` manual soltos 
 > [!tip]
 > Quirk documentado: `formatDateAs` reproduz `à0` (o `s` de "às" vira segundos no intl) — idêntico ao original, de propósito.
 
-Ver [[ui-theme]], [[atendimento]].
+Ver [[ui-theme]], [[flows/atendimento|atendimento]].

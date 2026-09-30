@@ -32,4 +32,4 @@ Link do paciente (c recentemente gerado na aba Cadastro). Condicão de botões p
 > [!warning]
 > `statusSessao` em mapa — objeto único fazia confirmações se alternarem. Sync com merge preserva campos do portal.
 
-Ver [[portal-mirror]], [[atendimento]].
+Ver [[portal-mirror]], [[flows/atendimento|atendimento]].

@@ -34,7 +34,7 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 ## Mapas
 
-- [[atendimento]] — Modo Atendimento + portal + remarcação (fio condutor).
+- [[flows/atendimento|atendimento]] — Modo Atendimento + portal + remarcação (fio condutor).
 
 ## Módulos (regras de negócio)
 

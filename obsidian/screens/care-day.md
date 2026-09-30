@@ -15,7 +15,7 @@ tags:
 
 ## O que é
 
-"Meu dia" do [[atendimento]]: só hoje da clínica; dentista/psicólogo vê só `dentistId == uid`; recepção vê todos + nome do profissional. Sem Bloqueado/Cancelado. Selo Pago via 1 query extra do dia.
+"Meu dia" do [[flows/atendimento|atendimento]]: só hoje da clínica; dentista/psicólogo vê só `dentistId == uid`; recepção vê todos + nome do profissional. Sem Bloqueado/Cancelado. Selo Pago via 1 query extra do dia.
 
 ## Quando usar
 
