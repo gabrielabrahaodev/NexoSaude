@@ -1,6 +1,6 @@
 ---
 operonId: nx-s1
-status: Finished
+status: stable
 priority: A
 tags:
   - nexosaude
