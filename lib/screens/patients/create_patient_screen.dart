@@ -54,27 +54,6 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
   /// desmarcado (consentimento livre); sem aceite, sem token no cadastro.
   bool _lgpdPortalConsent = false;
 
-  bool _isValidCPF(String? cpf) {
-    /*
-    if (cpf == null) return false;
-    var numbers = cpf.replaceAll(RegExp(r'[^0-9]'), '');
-    if (numbers.length != 11) return false;
-    if (RegExp(r'^(\d)\1*$').hasMatch(numbers)) return false; 
-    List<int> digits = numbers.split('').map((String d) => int.parse(d)).toList();
-    int calcDv1 = 0;
-    for (int i = 0; i < 9; i++) { calcDv1 += digits[i] * (10 - i); }
-    int dv1 = 11 - (calcDv1 % 11);
-    if (dv1 >= 10) dv1 = 0;
-    if (digits[9] != dv1) return false;
-    int calcDv2 = 0;
-    for (int i = 0; i < 10; i++) { calcDv2 += digits[i] * (11 - i); }
-    int dv2 = 11 - (calcDv2 % 11);
-    if (dv2 >= 10) dv2 = 0;
-    if (digits[10] != dv2) return false;
-    */
-    return true;
-  }
-
   Future<void> _savePatient() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -89,24 +68,8 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
 
   
     try {
-      // Bloqueio de CPF duplicado (APENAS NA CLÍNICA ATUAL; vazio não conta).
-      final cpfDigits = _cpfController.text.replaceAll(RegExp(r'[^\d]'), '');
-      if (cpfDigits.isNotEmpty) {
-        final cpfQuery = await FirebaseFirestore.instance
-            .collection('patients')
-            .where('clinicId', isEqualTo: clinicId) // Só importa se já existe AQUI
-            .where('cpf', isEqualTo: _cpfController.text.trim())
-            .get();
-        if (cpfQuery.docs.isNotEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Erro: Este CPF já está cadastrado nesta clínica."), backgroundColor: Colors.red),
-            );
-          }
-          setState(() => _isLoading = false);
-          return;
-        }
-      }
+      // Sem validação de CPF (decisão 01/10/2026): aceita qualquer valor,
+      // inclusive vazio ou duplicado.
 
       // Salva com o carimbo da clínica.
       // Psicologia: grava o estágio terapêutico escolhido (kanban lê direto).
@@ -205,11 +168,7 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
                       inputFormatters: [maskCPF],
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(labelText: "CPF", hintText: "000.000.000-00", border: OutlineInputBorder(), prefixIcon: Icon(Icons.badge)),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Obrigatório';
-                        if (!_isValidCPF(value)) return 'CPF Inválido';
-                        return null;
-                      },
+                      // Sem validator de CPF (decisão 01/10/2026).
                     ),
                   ),
                 ],
