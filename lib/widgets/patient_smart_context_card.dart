@@ -34,87 +34,139 @@ class PatientContext {
   bool get isEmpty => summary == null && alerts.isEmpty;
 }
 
-class PatientSmartContextCard extends StatelessWidget {
+/// Monta o [PatientContext] a partir dos 3 payloads já lidos.
+/// Função pura (data/hora via [now]) — mesma semântica do `_loadContext`
+/// antigo, agora com as leituras em paralelo via `Future.wait`.
+/// `latestClinical`: `{'procedureName', 'date'}` (DateTime ou Timestamp).
+/// `unpaid`: lista de `{'dueDate', 'amount'}` (formatos tolerados).
+PatientContext combinePatientContext({
+  required DateTime now,
+  Map<String, dynamic>? latestClinical,
+  Map<String, dynamic>? anamnesis,
+  List<Map<String, dynamic>> unpaid = const [],
+}) {
+  DateTime? asDate(dynamic v) {
+    if (v is DateTime) return v;
+    if (v is Timestamp) return v.toDate();
+    return null;
+  }
+
+  final highlights = <String>[];
+  if (latestClinical != null) {
+    final proc = latestClinical['procedureName'] ?? 'Atendimento';
+    final date = asDate(latestClinical['date']);
+    final daysAgo = date == null ? 0 : now.difference(date).inDays;
+    highlights.add(
+        "Último atendimento foi ${daysAgoLabel(daysAgo)} ($proc).");
+  } else {
+    highlights
+        .add("Paciente ainda não possui histórico clínico registrado.");
+  }
+
+  final alerts = clinicalAlerts(anamnesis);
+
+  var overdueCount = 0;
+  var overdueAmount = 0.0;
+  for (final doc in unpaid) {
+    final due = asDate(doc['dueDate']);
+    // Venceu antes de hoje (mesma regra anterior).
+    if (due != null &&
+        due.isBefore(now.subtract(const Duration(days: 1)))) {
+      overdueCount++;
+      final amount = doc['amount'];
+      overdueAmount += amount is num ? amount.toDouble() : 0.0;
+    }
+  }
+  if (overdueCount > 0) {
+    highlights.add(
+        "Possui $overdueCount pendência(s) vencida(s) totalizando ${formatBRL(overdueAmount)}.");
+  }
+
+  if (highlights.isEmpty && alerts.isEmpty) {
+    return const PatientContext();
+  }
+  return PatientContext(
+    summary: highlights.join("\n"),
+    alerts: alerts,
+  );
+}
+
+class PatientSmartContextCard extends StatefulWidget {
   final String patientId;
 
   const PatientSmartContextCard({super.key, required this.patientId});
 
+  @override
+  State<PatientSmartContextCard> createState() =>
+      _PatientSmartContextCardState();
+}
+
+class _PatientSmartContextCardState extends State<PatientSmartContextCard> {
+  // Carregado UMA vez por inserção: trocar de aba e voltar não refaz as
+  // 3 leituras nem remonta o card em pedacinhos (o `future:` inline
+  // anterior recriava a cada rebuild).
+  late final Future<PatientContext> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadContext();
+  }
+
   /// Essa função atua como o "Cérebro" (AI Engine)
   /// Ela busca dados dispersos e cria um resumo narrativo + alertas.
-  /// Uma única leitura da anamnese alimenta strip e texto (sem duplicar).
+  /// As 3 leituras rodam em paralelo (`Future.wait`); a montagem é a
+  /// função pura [combinePatientContext] (testada).
   Future<PatientContext> _loadContext() async {
     try {
       final firestore = FirebaseFirestore.instance;
-      List<String> highlights = [];
+      final now = DateTime.now();
 
-      // 1. BUSCAR ÚLTIMA EVOLUÇÃO CLÍNICA (O que foi feito por último?)
-      final clinicalSnap = await SessionManager()
-          .applyFilter(firestore
-              .collection('clinical_records')
-              .where('patientId', isEqualTo: patientId))
-          .orderBy('date', descending: true)
-          .limit(1)
-          .get();
+      final results = await Future.wait([
+        // 1. ÚLTIMA EVOLUÇÃO CLÍNICA (O que foi feito por último?)
+        SessionManager()
+            .applyFilter(firestore
+                .collection('clinical_records')
+                .where('patientId', isEqualTo: widget.patientId))
+            .orderBy('date', descending: true)
+            .limit(1)
+            .get(),
+        // 2. ANAMNESE (Saúde Crítica) — mesma fonte do strip.
+        firestore.collection('anamnesis').doc(widget.patientId).get(),
+        // 3. SITUAÇÃO FINANCEIRA (Inadimplência, apenas não pagos).
+        SessionManager()
+            .applyFilter(firestore
+                .collection('financial')
+                .where('patientId', isEqualTo: widget.patientId)
+                .where('isPaid', isEqualTo: false))
+            .get(),
+      ]);
 
-      if (clinicalSnap.docs.isNotEmpty) {
-        final data = clinicalSnap.docs.first.data();
-        String proc = data['procedureName'] ?? 'Atendimento';
-        DateTime date = (data['date'] as Timestamp).toDate();
-        int daysAgo = DateTime.now().difference(date).inDays;
-
-        String timeStr = daysAgoLabel(daysAgo);
-        highlights.add("Último atendimento foi $timeStr ($proc).");
-      } else {
-        highlights.add("Paciente ainda não possui histórico clínico registrado.");
-      }
-
-      // 2. ALERTAS DE ANAMNESE (Saúde Crítica) — mesma fonte do strip.
+      final clinicalSnap = results[0] as QuerySnapshot;
       final anamnesisSnap =
-          await firestore.collection('anamnesis').doc(patientId).get();
-      final alerts = clinicalAlerts(
-          anamnesisSnap.exists ? anamnesisSnap.data() : null);
+          results[1] as DocumentSnapshot<Map<String, dynamic>>;
+      final financialSnap = results[2] as QuerySnapshot;
 
-      // 3. BUSCAR SITUAÇÃO FINANCEIRA (Inadimplência)
-      final financialSnap = await SessionManager()
-          .applyFilter(firestore
-              .collection('financial')
-              .where('patientId', isEqualTo: patientId)
-              .where('isPaid', isEqualTo: false)) // Apenas não pagos
-          .get();
-
-      if (financialSnap.docs.isNotEmpty) {
-        double overdueAmount = 0;
-        int overdueCount = 0;
-        final now = DateTime.now();
-
-        for (var doc in financialSnap.docs) {
-          final data = doc.data();
-          if (data['dueDate'] != null) {
-            DateTime due = (data['dueDate'] as Timestamp).toDate();
-            // Se venceu antes de hoje
-            if (due.isBefore(now.subtract(const Duration(days: 1)))) {
-              overdueAmount += (data['amount'] ?? 0);
-              overdueCount++;
-            }
-          }
-        }
-
-        if (overdueCount > 0) {
-          highlights.add("Possui $overdueCount pendência(s) vencida(s) totalizando ${formatBRL(overdueAmount)}.");
-        }
+      Map<String, dynamic>? latestClinical;
+      if (clinicalSnap.docs.isNotEmpty) {
+        final data =
+            clinicalSnap.docs.first.data() as Map<String, dynamic>;
+        latestClinical = {
+          'procedureName': data['procedureName'] ?? 'Atendimento',
+          'date': data['date'],
+        };
       }
 
-      // Se não tiver nada relevante, retorna contexto vazio (sem card).
-      if (highlights.isEmpty && alerts.isEmpty) {
-        return const PatientContext();
-      }
-
-      // Junta tudo em um texto corrido
-      return PatientContext(
-        summary: highlights.join("\n"),
-        alerts: alerts,
+      return combinePatientContext(
+        now: now,
+        latestClinical: latestClinical,
+        anamnesis:
+            anamnesisSnap.exists ? anamnesisSnap.data() : null,
+        unpaid: [
+          for (final doc in financialSnap.docs)
+            (doc.data() as Map<String, dynamic>),
+        ],
       );
-
     } catch (e) {
       return const PatientContext(); // Falha silenciosa
     }
@@ -123,7 +175,7 @@ class PatientSmartContextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<PatientContext>(
-      future: _loadContext(),
+      future: _future,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox();

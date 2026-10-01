@@ -22,6 +22,7 @@ import '../../models/user_model.dart';
 import '../../services/block_interval.dart';
 import '../../utils/display.dart';
 import '../../utils/external_link.dart';
+import '../../utils/async_memo.dart';
 import '../../widgets/shimmer_box.dart';
 
 /// Estado do bloco de risco na sheet (puro e testado): shimmer enquanto
@@ -581,6 +582,10 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   }
 
   // --- MENU DE OPÇÕES (COM SCROLL) ---
+  // Risco memoizado por paciente: reabrir a sheet não refaz a query;
+  // ações que mudam presença invalidam a chave (ver Confirmar abaixo).
+  final _riskFutures = FutureMemo<Map<String, dynamic>>();
+
   void _showAppointmentOptions(AppointmentModel appt, int concurrentCount) {
     if (appt.status == 'Bloqueado') {
       showModalBottomSheet(context: context, builder: (ctx) {
@@ -608,6 +613,13 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     // Regra do Encaixe: Habilitado apenas se houver somente 1 evento (o próprio)
     bool canFitIn = concurrentCount == 1 && !isCancelled && !isFinished;
 
+    // Future capturado UMA vez por abertura: rebuilds da sheet não refazem
+    // a query (o `future:` inline anterior recriava a cada rebuild).
+    final riskFuture = _riskFutures.get(
+      appt.patientId,
+      () => _patientService.getPatientRiskProfile(appt.patientId),
+    );
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, 
@@ -630,7 +642,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 ),
 
                 FutureBuilder<Map<String, dynamic>>(
-                  future: _patientService.getPatientRiskProfile(appt.patientId),
+                  future: riskFuture,
                   builder: (context, snapshot) {
                     final view = riskBlockView(
                       waiting: snapshot.connectionState ==
@@ -641,11 +653,15 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       hasError: snapshot.hasError,
                     );
                     if (view == RiskBlockView.shimmer) {
+                      // Mesma altura total do bloco de conteúdo (88 + 16
+                      // de padding): sem pulo de layout ao resolver.
                       return const Padding(
                         padding: EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
-                        child: ShimmerBox(
-                            width: double.infinity, height: 64),
+                        child: Shimmer(
+                          child: ShimmerBox(
+                              width: double.infinity, height: 88),
+                        ),
                       );
                     }
                     if (view == RiskBlockView.hidden) {
@@ -660,6 +676,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.all(12),
+                      // Altura mínima = altura do shimmer (88): a sheet não
+                      // muda de tamanho quando o risco resolve.
+                      constraints: const BoxConstraints(minHeight: 64),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.1),
                         border: Border.all(color: color.withValues(alpha: 0.5)),
@@ -727,6 +746,8 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     await FirebaseFirestore.instance.collection('appointments').doc(appt.id).update({
                       'status': 'Confirmado'
                     });
+                    // Presença mudou: próxima abertura recalcula o risco.
+                    _riskFutures.invalidate(appt.patientId);
                     if (mounted) {
                       Navigator.pop(context);
                       toast(context, "Presença confirmada com sucesso!");
