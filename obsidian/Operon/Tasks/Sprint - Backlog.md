@@ -1,4 +1,4 @@
-﻿# Backlog NexoSaúde
+# Backlog NexoSaúde
 
 Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], [[E2 - Portal e LGPD]], [[E3 - Atendimento e Agenda]], [[E4 - Acesso e Multiclínica]], [[E5 - Cota e Dados]], [[E6 - Docs e Vault]], [[E7 - Avaliações Técnicas]]. Regra: todo item novo ganha `operonId` único (`nx-1xx`) e pai quando couber.
 
@@ -27,6 +27,23 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [x] Commitar a fila pendente na master (código + vault já validados: analyze 0, testes verdes) {{operonId:: nx-102}} {{status:: Finished}} {{priority:: A}} {{dateDue:: 2026-10-02}} #nexosaude #area/entrega
 - [ ] Reconsentir os 45 pacientes sem aceite com consulta em 14 dias (filtro Sem aceite na lista + recepção reemite na ficha) {{operonId:: nx-103}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e2}} {{dateDue:: 2026-10-06}} #nexosaude #area/operacao
 - [ ] Validar trial ponta a ponta (pedir → aprovar no Master → entrar → portal) {{operonId:: nx-104}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-e1}} #nexosaude #area/qualidade
+- [ ] PAG-01 — Estado VENCIDO há N dias (S) [[patient-tabs]] {{operonId:: nx-140}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s4}} #nexosaude #area/financeiro
+- [ ] PAG-02 — Chip só estado; parcelamento em subtítulo (M) [[patient-tabs]] {{operonId:: nx-141}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s4}} #nexosaude #area/financeiro
+- [ ] PAG-03 — Contagem nos totais + próximo vencimento (S) [[patient-details]] {{operonId:: nx-142}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s4}} #nexosaude #area/financeiro
+- [ ] PAG-04 — Formato de moeda pt-BR (S) [[ui-consistency]] {{operonId:: nx-143}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s4}} #nexosaude #area/financeiro
+- [ ] PAG-17 — Resumo sem conta dobrada pai + filhas (S) [[patient-details]] {{operonId:: nx-144}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s4}} #nexosaude #area/financeiro
+- [ ] PAG-05 — Data absoluta ao lado de "ontem" (S) [[patient-details]] {{operonId:: nx-145}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s5}} #nexosaude #area/financeiro
+- [ ] PAG-06 — WhatsApp com rótulo "Cobrar" (S) [[patient-tabs]] {{operonId:: nx-146}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s5}} #nexosaude #area/financeiro
+- [ ] PAG-07 — Cores semânticas distintas por dimensão (S) [[patient-tabs]] {{operonId:: nx-147}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s5}} #nexosaude #area/financeiro
+- [ ] PAG-08 — Zero em cor neutra (S) [[patient-details]] {{operonId:: nx-148}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s5}} #nexosaude #area/financeiro
+- [ ] PAG-09 — Reordenar cards por papel (S) [[patient-details]] {{operonId:: nx-149}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s5}} #nexosaude #area/financeiro
+- [ ] PAG-18 — Nó da timeline usa mesma regra do chip (S) [[patient-tabs]] {{operonId:: nx-150}} {{status:: Planned}} {{priority:: A}} {{parentTask:: nx-s5}} #nexosaude #area/financeiro
+- [ ] PAG-10 — Investigar "Sessão 1" triplicada (M) [[patient-tabs]] {{operonId:: nx-151}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
+- [ ] PAG-11 — Legenda dos nós (S) [[patient-tabs]] {{operonId:: nx-152}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
+- [ ] PAG-12 — Uso da área direita no desktop (M) [[patient-tabs]] {{operonId:: nx-153}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
+- [ ] PAG-13 — Progresso da família inline (M) [[patient-tabs]] {{operonId:: nx-154}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
+- [ ] PAG-14 — Contraste e alvos de toque (S) [[patient-tabs]] {{operonId:: nx-155}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
+- [ ] PAG-15 — Glifos distintos por estado (S) [[patient-tabs]] {{operonId:: nx-156}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
 
 ## Depois (prioridade B)
 

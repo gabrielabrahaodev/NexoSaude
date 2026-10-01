@@ -69,6 +69,7 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 - Backlog e board: [[Sprint - Backlog]] (como montar em [[LEIAME Kanban]])
 - Sprints de velocidade: [[S1 - Economia de cliques]], [[S2 - Tempo entre janelas]], [[S3 - Qualidade do atendimento]]
+- Sprints Pagamentos (aprovado, a fazer): [[S4 - Pagamentos criticos]], [[S5 - Pagamentos refinamentos]], [[S6 - Pagamentos polimento]]
 - Épicos entregues: [[E1 - Plataforma e Assinatura]], [[E2 - Portal e LGPD]], [[E3 - Atendimento e Agenda]], [[E4 - Acesso e Multiclínica]], [[E5 - Cota e Dados]], [[E6 - Docs e Vault]], [[E7 - Avaliações Técnicas]]
 
 ## Convenções globais (valem para tudo)
