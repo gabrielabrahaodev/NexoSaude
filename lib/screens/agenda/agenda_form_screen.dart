@@ -309,9 +309,20 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                       }
                       ..['portalToken'] = consent ? newPortalToken() : '';
 
-                    await FirebaseFirestore.instance
+                    final newRef = await FirebaseFirestore.instance
                         .collection('patients')
                         .add(data);
+
+                    // Com aceite, o doc portal/{token} já nasce construído:
+                    // sem isso, os deltas futuros (sessões) seriam
+                    // descartados por doc inexistente.
+                    if (consent) {
+                      try {
+                        await PortalMirrorSync.patient(newRef.id);
+                      } catch (e) {
+                        debugPrint("Espelho portal pós-cadastro: $e");
+                      }
+                    }
 
                     setState(() {
                       _selectedPatientName = _nameNewCtrl.text.trim();

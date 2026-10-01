@@ -313,7 +313,18 @@ class PortalMirrorSync {
     }
   }
 
-  static Future<void> _patchList(
+  /// Decide fallback do delta: com token mas sem doc, rebuild completo.
+  /// Puro e testado. Sem token = sem portal (LGPD), nunca rebuilda.
+  static bool needsFullRebuild(
+      {required String? token, required bool patched}) {
+    if (patched) return false;
+    return token != null && token.isNotEmpty;
+  }
+
+  /// Aplica o patch; retorna `false` quando o doc `portal/{token}` ainda
+  /// não existe (delta seria descartado → chamador faz rebuild).
+  /// Erro transitório retorna `true` (não rebuilda à toa).
+  static Future<bool> _patchList(
     String token,
     String key,
     List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) fn,
@@ -321,7 +332,7 @@ class PortalMirrorSync {
     try {
       final ref = _db.collection('portal').doc(token);
       final snap = await ref.get();
-      if (!snap.exists) return;
+      if (!snap.exists) return false;
       final data = snap.data() ?? {};
       final list = ((data[key] as List?) ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
@@ -330,12 +341,15 @@ class PortalMirrorSync {
         key: fn(list),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      return true;
     } catch (e) {
       debugPrint("PortalMirror delta falhou: $e");
+      return true;
     }
   }
 
   /// Delta de sessão (2 leituras + 1 escrita, sem scans).
+  /// Doc ausente com token válido → rebuild completo (reflete na hora).
   static Future<void> upsertSession({
     required String patientId,
     String? token,
@@ -343,8 +357,11 @@ class PortalMirrorSync {
   }) async {
     token ??= await _tokenOf(patientId);
     if (token == null || token.isEmpty) return;
-    await _patchList(
+    final patched = await _patchList(
         token, 'sessions', (l) => applySessionUpsert(l, session));
+    if (needsFullRebuild(token: token, patched: patched)) {
+      await patient(patientId);
+    }
   }
 
   /// Remove sessão do espelho.
@@ -355,11 +372,15 @@ class PortalMirrorSync {
   }) async {
     token ??= await _tokenOf(patientId);
     if (token == null || token.isEmpty) return;
-    await _patchList(
+    final patched = await _patchList(
         token, 'sessions', (l) => applySessionRemove(l, sessionId));
+    if (needsFullRebuild(token: token, patched: patched)) {
+      await patient(patientId);
+    }
   }
 
   /// Delta de débito (pago/cancelado vira remoção).
+  /// Doc ausente com token válido → rebuild completo (reflete na hora).
   static Future<void> upsertDebt({
     required String patientId,
     String? token,
@@ -367,8 +388,11 @@ class PortalMirrorSync {
   }) async {
     token ??= await _tokenOf(patientId);
     if (token == null || token.isEmpty) return;
-    await _patchList(
+    final patched = await _patchList(
         token, 'debts', (l) => applyDebtUpsert(l, debt));
+    if (needsFullRebuild(token: token, patched: patched)) {
+      await patient(patientId);
+    }
   }
 
   static Future<void> _slotOp({
