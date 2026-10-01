@@ -44,6 +44,8 @@ Fila priorizada (scrum). Épicos entregues em [[E1 - Plataforma e Assinatura]], 
 - [ ] PAG-13 — Progresso da família inline (M) [[patient-tabs]] {{operonId:: nx-154}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
 - [ ] PAG-14 — Contraste e alvos de toque (S) [[patient-tabs]] {{operonId:: nx-155}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
 - [ ] PAG-15 — Glifos distintos por estado (S) [[patient-tabs]] {{operonId:: nx-156}} {{status:: Planned}} {{priority:: B}} {{parentTask:: nx-s6}} #nexosaude #area/financeiro
+- [x] Sheet da agenda sem pulo de layout: risco com future memoizado + shimmer animado + altura fixa (follow-up S2) [[agenda-manager]] {{operonId:: nx-157}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/agenda
+- [x] Ficha do paciente monta sem pedacinhos: context card com Future.wait + combine puro testado (follow-up S2) [[patient-details]] {{operonId:: nx-158}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/app
 
 ## Depois (prioridade B)
 
