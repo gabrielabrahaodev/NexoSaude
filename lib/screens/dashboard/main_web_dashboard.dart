@@ -124,6 +124,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           final data = doc.data();
           setState(() {
             _userRole = data?['role'];
+            _userLoaded = true;
             _menuAccess = MenuAccess.parse(data?['menuAccess']);
             final allowed = data?['allowedClinics'];
             _allowedClinicIds = allowed is List
@@ -139,6 +140,15 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   /// Clínicas que o usuário pode acessar (troca no seletor).
   List<String> _allowedClinicIds = [];
+
+  /// Dados do usuário já carregados (evita flash de setup no login).
+  bool _userLoaded = false;
+
+  /// Onboarding: sem clínica vinculada (e não superadmin) → só Clínicas.
+  bool get _needsClinicSetup =>
+      _userLoaded &&
+      MenuAccess.needsClinicSetup(
+          role: _userRole, allowedClinics: _allowedClinicIds);
 
   /// Mostra o seletor p/ owner ou quem tem +1 clínica liberada.
   bool get _canSwitchClinic =>
@@ -207,15 +217,21 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   /// Visibilidade do item de menu p/ o usuário atual (aba Configurações).
   /// Owner vê tudo (menos Master); defaults por papel em `MenuAccess`.
-  bool _canShow(String menuKey) => MenuAccess.canShow(
-        isOwner: _userRole == 'owner',
-        role: _userRole,
-        menuKey: menuKey,
-        access: _menuAccess,
-      );
+  /// Em modo setup (sem clínica), só 'clinicas' passa.
+  bool _canShow(String menuKey) {
+    if (_needsClinicSetup && menuKey != 'clinicas') return false;
+    return MenuAccess.canShow(
+      isOwner: _userRole == 'owner',
+      role: _userRole,
+      menuKey: menuKey,
+      access: _menuAccess,
+    );
+  }
 
-  /// Índice efetivo: se a tela atual foi escondida do usuário, cai no Dashboard.
+  /// Índice efetivo: setup vai direto p/ Clínicas (8); se a tela atual
+  /// foi escondida do usuário, cai no Dashboard.
   int get _effectiveIndex {
+    if (_needsClinicSetup) return 8;
     final key = MenuAccess.indexKey[_selectedIndex];
     if (key != null && !_canShow(key)) return 0;
     return _selectedIndex;
@@ -254,6 +270,8 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   ];
 
   void _onMenuSelect(int index) {
+    // Em setup, só Clínicas (8) é navegável (KPI e atalhos respeitam).
+    if (_needsClinicSetup && index != 8) return;
     setState(() => _selectedIndex = index);
     // Checa versão a cada troca de menu (navegação explícita, sem risco
     // de interromper digitação); o aviso aparece 1x por sessão.
@@ -549,7 +567,16 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                     _canShow('exportar') ||
                     _canShow('gestao')) ...[
                   const Divider(height: 30, thickness: 1),
-                  if (!isCompact)
+                  // Setup (sem clínica): Clínicas direto, sem grupo recolhido.
+                  if (_needsClinicSetup)
+                    _buildMenuItem(
+                        8,
+                        "Clínicas",
+                        Icons.store_mall_directory,
+                        highlightColor,
+                        primaryColor,
+                        false),
+                  if (!isCompact && !_needsClinicSetup)
                     ExpansionTile(
                       leading: const Icon(
                           Icons.manage_accounts_outlined,

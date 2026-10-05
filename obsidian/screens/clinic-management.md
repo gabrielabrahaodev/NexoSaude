@@ -23,8 +23,10 @@ Nova clínica, renomear, trocar tipo dental/psicologia.
 ## Fluxos
 
 - Criar: `clinics.add` + update do usuário.
+- Primeira clínica: volta ao dashboard para sair do modo setup (só Clínicas).
 - `DropdownButtonFormField value` depreciado → `initialValue` ao tocar.
 - **Gerenciar troca de verdade**: `setClinic` + rebuild do dashboard na unidade (antes era só toast).
+- Excluir (owner, ícone vermelho no card): contagem + digitar o nome + cascata `ClinicDeleteService` (13 coleções com `clinicId`, anamnese/subs/docs dos pacientes, settings, slots, doc; staff só `arrayRemove`, nunca apaga usuário); apaga a atual → `clearClinic()`.
 
 ## Gotchas
 

@@ -4,6 +4,7 @@ import '../../widgets/page_header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/session_manager.dart';
+import '../../services/clinic_delete_service.dart';
 import '../../utils/display.dart';
 import '../dashboard/main_web_dashboard.dart'; 
 
@@ -161,14 +162,202 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
         'allowedClinics': FieldValue.arrayUnion([newClinicRef.id])
       });
 
+      final wasFirst = _myClinicIds.isEmpty;
       if (mounted) {
+        setState(() => _myClinicIds = [..._myClinicIds, newClinicRef.id]);
         toast(context, "Clínica de $type cadastrada com sucesso!");
+        // Primeira clínica: o menu estava em modo setup (só Clínicas);
+        // volta ao dashboard para recarregar o acesso completo.
+        if (wasFirst) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (c) => const MainWebDashboard()),
+            (route) => false,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         toast(context, "Erro ao cadastrar: $e");
       }
     }
+  }
+
+  // --- EXCLUSÃO EM CASCATA (owner; regras exigem isOwner nos deletes) ---
+  // Staff: só desvincilha (arrayRemove); usuário/login nunca apagados.
+  bool _deleting = false;
+
+  Future<Map<String, int>> _clinicCounts(String clinicId) async {
+    Future<int> count(String collection, {bool array = false}) async {
+      try {
+        final q = array
+            ? FirebaseFirestore.instance
+                .collection(collection)
+                .where('allowedClinics', arrayContains: clinicId)
+            : FirebaseFirestore.instance
+                .collection(collection)
+                .where('clinicId', isEqualTo: clinicId);
+        final c = await q.count().get();
+        return c.count ?? 0;
+      } catch (_) {
+        return 0;
+      }
+    }
+
+    final entries = await Future.wait([
+      count('patients'),
+      count('appointments'),
+      count('financial'),
+      count('budgets'),
+      count('users', array: true),
+    ]);
+    return {
+      'Pacientes': entries[0],
+      'Agendamentos': entries[1],
+      'Lançamentos': entries[2],
+      'Orçamentos': entries[3],
+      'Usuários vinculados': entries[4],
+    };
+  }
+
+  void _confirmDeleteClinic(String clinicId, String clinicName) {
+    final nameCtrl = TextEditingController();
+    final countsFuture = _clinicCounts(clinicId);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) {
+          final typedOk =
+              nameCtrl.text.trim() == clinicName.trim() && !_deleting;
+          return AlertDialog(
+            title: const Text("Excluir clínica PARA SEMPRE?",
+                style: TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      "Tudo abaixo de \"$clinicName\" será APAGADO e NÃO há reversão:"),
+                  const SizedBox(height: 8),
+                  FutureBuilder<Map<String, int>>(
+                    future: countsFuture,
+                    builder: (context, snap) {
+                      if (!snap.hasData) {
+                        return const Center(
+                            child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child:
+                                    CircularProgressIndicator()));
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final e in snap.data!.entries)
+                            Text("• ${e.key}: ${e.value}",
+                                style:
+                                    const TextStyle(fontSize: 13)),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                      "Inclui pacientes, prontuários, financeiro, agenda, estoque, fornecedores, espelhos do portal e taxas. Funcionários perdem o vínculo (o login é mantido).",
+                      style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText:
+                          "Digite \"$clinicName\" para confirmar",
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setDlg(() {}),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: _deleting ? null : () => Navigator.pop(ctx),
+                child: const Text("Voltar"),
+              ),
+              ElevatedButton(
+                onPressed: typedOk
+                    ? () {
+                        Navigator.pop(ctx);
+                        _runDeleteClinic(clinicId, clinicName);
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white),
+                child: const Text("EXCLUIR TUDO"),
+              ),
+            ],
+          );
+        },
+      ),
+    ).then((_) => nameCtrl.dispose());
+  }
+
+  Future<void> _runDeleteClinic(String clinicId, String clinicName) async {
+    if (_deleting) return;
+    setState(() => _deleting = true);
+    String stage = 'Iniciando...';
+    var started = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) {
+          // Trava anti-duplo-submit: rebuilds do progresso (setDlg) não
+          // re-disparam a cascata.
+          if (!started) {
+            started = true;
+            () async {
+              try {
+              await ClinicDeleteService().deleteClinic(clinicId,
+                  onStage: (s) {
+                stage = s;
+                if (ctx.mounted) setDlg(() {});
+              });
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (!mounted) return;
+              // Se apagou a atual, solta a sessão (seletor escolhe outra).
+              if (SessionManager().currentClinicId == clinicId) {
+                SessionManager().clearClinic();
+              }
+              toast(context, "Clínica \"$clinicName\" excluída.",
+                  ok: true);
+            } catch (e) {
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                toast(context, "Falha ao excluir: $e", error: true);
+              }
+            } finally {
+              if (mounted) setState(() => _deleting = false);
+            }
+            }();
+          }
+          return AlertDialog(
+            title: const Text("Excluindo..."),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const LinearProgressIndicator(),
+                const SizedBox(height: 12),
+                Text(stage, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -294,6 +483,21 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                                       ],
                                     ),
                                   ),
+                                  // Exclusão em cascata: só owner (regras
+                                  // exigem isOwner; superadmin não tem
+                                  // acesso aos deletes operacionais).
+                                  if (_isOwner)
+                                    IconButton(
+                                      icon: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.red),
+                                      tooltip: "Excluir clínica e todos os dados",
+                                      onPressed: _deleting
+                                          ? null
+                                          : () => _confirmDeleteClinic(
+                                              docs[index].id,
+                                              '${data['name'] ?? 'Clínica'}'),
+                                    ),
                                 ],
                               ),
                               const Divider(height: 20),

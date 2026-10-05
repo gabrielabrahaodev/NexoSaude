@@ -156,6 +156,14 @@ class MenuAccess {
   static String _normRole(String? role) =>
       (role ?? '').toLowerCase().trim();
 
+  /// Onboarding: sem clínica vinculada (e não superadmin) → mostra só o
+  /// menu Clínicas para criar a primeira. Puro e testado.
+  static bool needsClinicSetup(
+      {String? role, required List<String> allowedClinics}) {
+    if (_normRole(role) == 'superadmin') return false;
+    return allowedClinics.isEmpty;
+  }
+
   /// Normaliza mapa vindo do Firestore (dynamic → bool, só chaves válidas).
   static Map<String, bool> parse(dynamic raw) {
     final out = <String, bool>{};

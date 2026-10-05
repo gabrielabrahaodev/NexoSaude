@@ -45,6 +45,13 @@ class SessionManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Solta a clínica atual (ex.: foi excluída; o seletor escolhe outra).
+  void clearClinic() {
+    currentClinicId = null;
+    currentClinicName = null;
+    notifyListeners();
+  }
+
   Future<({String? id, String? name, String? type})> resolveClinic(
       String? clinicId) async {
     if (clinicId == null) return (id: null, name: null, type: null);
