@@ -132,14 +132,18 @@ class ClinicDeleteService {
 
   /// Apaga tudo da clínica em blocos de 450 (limite do batch).
   /// `onStage` recebe o rótulo da etapa p/ barra de progresso.
+  /// Erros saem rotulados com a etapa (`[ler X]`, `[apagar lote]`) para
+  /// diagnóstico — o toast da UI exibe onde negou.
   Future<void> deleteClinic(
     String clinicId, {
     void Function(String stage)? onStage,
   }) async {
     if (clinicId.isEmpty) throw ArgumentError('clinicId vazio');
-
-    // 1. Pacientes comprovados da clínica (base do resto do plano).
-    onStage?.call('Localizando pacientes...');
+    var stage = 'início';
+    try {
+      // 1. Pacientes comprovados da clínica (base do resto do plano).
+      stage = 'localizar pacientes';
+      onStage?.call('Localizando pacientes...');
     final pats = await _db
         .collection('patients')
         .where('clinicId', isEqualTo: clinicId)
@@ -157,31 +161,37 @@ class ClinicDeleteService {
         'etapa fora do escopo da clínica');
 
     // 2. Coleta referências (queries + docs + subs + vínculos).
+    stage = 'mapear dados';
     onStage?.call('Mapeando dados...');
     final toDelete = <DocumentReference>[];
     final arrayTargets = <DocumentReference>[];
     for (final step in plan) {
       switch (step.kind) {
         case ClinicDeleteStep.kQuery:
-          final snap = await _db
-              .collection(step.collection)
-              .where(step.field!, isEqualTo: step.value)
-              .get();
-          toDelete.addAll(snap.docs.map((d) => d.reference));
+        case ClinicDeleteStep.kArrayRemove:
+          stage =
+              'ler ${step.collection} (${step.field}=${step.value})';
+          final snap = step.kind == ClinicDeleteStep.kQuery
+              ? await _db
+                  .collection(step.collection)
+                  .where(step.field!, isEqualTo: step.value)
+                  .get()
+              : await _db
+                  .collection(step.collection)
+                  .where(step.field!, arrayContains: step.value)
+                  .get();
+          (step.kind == ClinicDeleteStep.kQuery
+                  ? toDelete
+                  : arrayTargets)
+              .addAll(snap.docs.map((d) => d.reference));
           break;
         case ClinicDeleteStep.kDoc:
           toDelete.add(_db.doc(step.path));
           break;
         case ClinicDeleteStep.kSubcollection:
+          stage = 'ler ${step.path}';
           final snap = await _db.collection(step.path).get();
           toDelete.addAll(snap.docs.map((d) => d.reference));
-          break;
-        case ClinicDeleteStep.kArrayRemove:
-          final snap = await _db
-              .collection(step.collection)
-              .where(step.field!, arrayContains: step.value)
-              .get();
-          arrayTargets.addAll(snap.docs.map((d) => d.reference));
           break;
         case ClinicDeleteStep.kPortalTokens:
           for (final token in portalTokens) {
@@ -194,6 +204,8 @@ class ClinicDeleteService {
     // 3. Deletes em blocos de 450.
     var done = 0;
     while (done < toDelete.length) {
+      stage =
+          'apagar lote ${done + 1}–${(done + 450).clamp(1, toDelete.length)} de ${toDelete.length}';
       onStage?.call(
           'Apagando ${done + 1}–${(done + 450).clamp(1, toDelete.length)} de ${toDelete.length}...');
       final batch = _db.batch();
@@ -208,6 +220,7 @@ class ClinicDeleteService {
     // 4. Desvínculo do staff (mantém usuários e logins).
     var undone = 0;
     while (undone < arrayTargets.length) {
+      stage = 'desvincular equipe';
       onStage?.call('Desvinculando equipe...');
       final batch = _db.batch();
       for (final ref
@@ -220,5 +233,8 @@ class ClinicDeleteService {
       undone += 450;
     }
     onStage?.call('Concluído.');
+    } catch (e) {
+      throw Exception('cascata [$stage]: $e');
+    }
   }
 }
