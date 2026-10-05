@@ -276,6 +276,13 @@ service cloud.firestore {
       allow read: if isAuthenticated() && !isSecretsPath(document);
       allow write: if isOwner() && !isSecretsPath(document);
     }
+    // Taxas da maquininha: regra explícita (leitura autenticado, escrita
+    // owner — mesmo intent do bloco acima, sem depender do curinga
+    // recursivo + função na condição; cobre doc fees e lista profiles).
+    match /clinics/{clinicId}/settings/fees/{doc=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner();
+    }
     match /clinics/{clinicId}/settings/integrations/{sub=**} {
       allow read, write: if isOwner();
     }
