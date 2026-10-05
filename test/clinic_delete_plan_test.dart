@@ -35,10 +35,16 @@ void main() {
         'procedures',
         'suppliers',
         'inventory',
-        'portal',
       ]) {
         expect(cols, contains(c), reason: c);
       }
+      // Portal: SEMPRE por token (regra não permite list; vazar tokens).
+      expect(cols, isNot(contains('portal')));
+      expect(
+          plan.any((s) =>
+              s.kind == ClinicDeleteStep.kPortalTokens &&
+              s.value == clinic),
+          isTrue);
       // Pacientes: nunca em lote (subcoleções primeiro, um a um).
       expect(cols, isNot(contains('patients')));
       final patientDocs = [

@@ -12,6 +12,10 @@ class ClinicDeleteStep {
   static const kSubcollection = 'subcollection';
   static const kArrayRemove = 'arrayRemove';
 
+  /// Espelhos `portal/{token}`: resolvidos via pacientes (a regra do
+  /// `portal/` permite get/delete, mas NÃO list — listar vazaria tokens).
+  static const kPortalTokens = 'portalTokens';
+
   final String kind;
 
   /// Coleção (`query`/`arrayRemove`) ou path completo (`doc`/`subcollection`).
@@ -37,6 +41,12 @@ class ClinicDeleteStep {
   const ClinicDeleteStep.arrayRemove(this.collection, this.field, this.value)
       : kind = ClinicDeleteStep.kArrayRemove;
 
+  const ClinicDeleteStep.portalTokens(String clinicId)
+      : kind = ClinicDeleteStep.kPortalTokens,
+        collection = 'portal',
+        field = 'clinicId',
+        value = clinicId;
+
   String get path => collection;
 
   String describe() => '$kind:$collection${field == null ? '' : '.$field=$value'}';
@@ -48,6 +58,11 @@ class ClinicDeleteStep {
     switch (kind) {
       case ClinicDeleteStep.kQuery:
         return field == 'clinicId' && value == clinicId;
+      case ClinicDeleteStep.kPortalTokens:
+        // Tokens resolvidos só dos pacientes comprovados da clínica.
+        return collection == 'portal' &&
+            field == 'clinicId' &&
+            value == clinicId;
       case ClinicDeleteStep.kArrayRemove:
         return collection == 'users' &&
             field == 'allowedClinics' &&
@@ -89,9 +104,10 @@ List<ClinicDeleteStep> clinicDeletePlan(
       'procedures',
       'suppliers',
       'inventory',
-      'portal',
     ])
       ClinicDeleteStep.query(c, clinicId),
+    // Portal por token (nunca por list — ver kPortalTokens).
+    ClinicDeleteStep.portalTokens(clinicId),
     for (final pid in patientIds)
       ClinicDeleteStep.doc('anamnesis/$pid'),
     for (final pid in patientIds)
@@ -129,6 +145,12 @@ class ClinicDeleteService {
         .where('clinicId', isEqualTo: clinicId)
         .get();
     final patientIds = [for (final d in pats.docs) d.id];
+    // Tokens dos espelhos (delete direto por id; list é negado pela regra).
+    final portalTokens = <String>{};
+    for (final d in pats.docs) {
+      final token = '${(d.data())['portalToken'] ?? ''}';
+      if (token.isNotEmpty) portalTokens.add(token);
+    }
     final plan = clinicDeletePlan(clinicId, patientIds);
     assert(
         plan.every((s) => s.scopedTo(clinicId, patientIds.toSet())),
@@ -160,6 +182,11 @@ class ClinicDeleteService {
               .where(step.field!, arrayContains: step.value)
               .get();
           arrayTargets.addAll(snap.docs.map((d) => d.reference));
+          break;
+        case ClinicDeleteStep.kPortalTokens:
+          for (final token in portalTokens) {
+            toDelete.add(_db.collection('portal').doc(token));
+          }
           break;
       }
     }
