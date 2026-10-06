@@ -54,6 +54,7 @@ Fila priorizada (scrum). Deploy: branch `producao` (= ao vivo); `master` = próx
 - [x] Estorno de parcial restaura valor cheio + apaga filha [[patient-tabs]] {{operonId:: nx-166}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
 - [x] Botão flutuante do relatório come a seta do mês [[financial-report]] {{operonId:: nx-167}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
 - [x] Excluir orçamento + cascata se aprovado (tratamentos, pagamentos, custos, filhas) [[budgets-tab]] {{operonId:: nx-168}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
+- [x] Financeiro sai do menu (só Livro Caixa) + 3 filtros no fluxo [[financial-report]] {{operonId:: nx-169}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
 - [x] Sheet da agenda sem pulo de layout: risco com future memoizado + shimmer animado + altura fixa (follow-up S2) [[agenda-manager]] {{operonId:: nx-157}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/agenda
 - [x] Ficha do paciente monta sem pedacinhos: context card com Future.wait + combine puro testado (follow-up S2) [[patient-details]] {{operonId:: nx-158}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/app
 

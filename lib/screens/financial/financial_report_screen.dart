@@ -32,6 +32,9 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
   final PaymentService _paymentService = PaymentService(); 
   DateTime _currentMonth = DateTime.now();
 
+  /// Filtro da lista (totais do mês não mudam).
+  FlowFilter _filter = FlowFilter.todos;
+
   void _changeMonth(int monthsToAdd) {
     setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + monthsToAdd, 1));
   }
@@ -373,20 +376,47 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                     ),
                   ),
                   const Divider(height: 1),
+                  Padding(
+                    padding:
+                        const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final entry in {
+                          FlowFilter.todos: 'Todos',
+                          FlowFilter.recebido: 'Recebido',
+                          FlowFilter.aReceber: 'A Receber',
+                          FlowFilter.inadimplente: 'Inadimplente',
+                        }.entries)
+                          ChoiceChip(
+                            label: Text(entry.value),
+                            selected: _filter == entry.key,
+                            onSelected: (_) => setState(
+                                () => _filter = entry.key),
+                          ),
+                      ],
+                    ),
+                  ),
                   Expanded(
-                    child: transactions.isEmpty 
-                      ? const Center(child: Text("Nenhuma movimentação neste mês.", style: TextStyle(color: Colors.grey)))
-                      : ListView.builder(
+                    child: Builder(builder: (context) {
+                      final visible = flowFilter(
+                          transactions, _filter, DateTime.now());
+                      if (transactions.isEmpty)
+                        return const Center(child: Text("Nenhuma movimentação neste mês.", style: TextStyle(color: Colors.grey)));
+                      if (visible.isEmpty)
+                        return const Center(child: Text("Nada neste filtro.", style: TextStyle(color: Colors.grey)));
+                      return ListView.builder(
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-                          itemCount: transactions.length,
+                          itemCount: visible.length,
                           itemBuilder: (context, index) {
-                            final item = transactions[index];
+                            final item = visible[index];
                             return _TransactionRow(
                               item: item, 
                               onLongPress: item.isPaid ? () => _confirmReversal(item) : null
                             );
                           },
-                        ),
+                        );
+                    }),
                   ),
                 ],
               ),

@@ -536,7 +536,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact, badge: _avisoStream),
                   if (_canShow('fluxo')) _buildMenuItem(11, "Fluxo Terapêutico", Icons.psychology,
                       highlightColor, Colors.purple, isCompact),
-                  if (_canShow('financeiro')) _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
+                  // Financeiro sai do menu: abre pelo Livro Caixa (Relatórios).
                   if (_canShow('relatorios')) _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
                   if (_canShow('noticias')) _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
                 ] else ...[
@@ -553,7 +553,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   // ----------------------------------------
 
                   if (_canShow('laboratorio')) _buildMenuItem(3, "Laboratório", Icons.science, highlightColor, primaryColor, isCompact),
-                  if (_canShow('financeiro')) _buildMenuItem(4, "Financeiro", Icons.credit_card_outlined, highlightColor, primaryColor, isCompact),
+                  // Financeiro sai do menu: abre pelo Livro Caixa (Relatórios).
                   if (_canShow('relatorios')) _buildMenuItem(5, "Relatórios", Icons.bar_chart_outlined, highlightColor, primaryColor, isCompact),
                   if (_canShow('noticias')) _buildMenuItem(6, "Notícias", Icons.newspaper, highlightColor, primaryColor, isCompact),
                   if (_canShow('cobrancas')) _buildMenuItem(7, "Cobranças", Icons.chat, highlightColor, Colors.green, isCompact, badge: _avisoStream),

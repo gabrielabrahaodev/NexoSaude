@@ -9,6 +9,7 @@ class TransactionItem {
   final String title; 
   final double amount;
   final DateTime date; 
+  final DateTime dueDate;
   final bool isIncome;
   final bool isPaid;
   final String category;
@@ -23,6 +24,7 @@ class TransactionItem {
     required this.title,
     required this.amount,
     required this.date,
+    required this.dueDate,
     required this.isIncome,
     required this.isPaid,
     required this.category,
@@ -30,6 +32,35 @@ class TransactionItem {
     this.paymentMethod = 'Dinheiro', 
     this.runningBalance = 0.0,
   });
+}
+
+/// Filtro da lista do Livro Caixa (totais do mês não mudam).
+enum FlowFilter { todos, recebido, aReceber, inadimplente }
+
+/// Inadimplente = pendente com vencimento antes de hoje (dia, sem hora).
+/// Puro e testado.
+bool isOverdueTx(TransactionItem t, DateTime now) {
+  if (t.isPaid) return false;
+  final day = DateTime(now.year, now.month, now.day);
+  return t.dueDate.isBefore(day);
+}
+
+/// Aplica o filtro (puro e testado).
+List<TransactionItem> flowFilter(
+    List<TransactionItem> items, FlowFilter f, DateTime now) {
+  switch (f) {
+    case FlowFilter.todos:
+      return List.of(items);
+    case FlowFilter.recebido:
+      return [for (final t in items) if (t.isPaid) t];
+    case FlowFilter.aReceber:
+      return [
+        for (final t in items)
+          if (!t.isPaid && !isOverdueTx(t, now)) t
+      ];
+    case FlowFilter.inadimplente:
+      return [for (final t in items) if (isOverdueTx(t, now)) t];
+  }
 }
 
 class OracleReportSnapshot {
@@ -154,6 +185,7 @@ class OracleReportService {
           title: patientName,
           amount: amount,
           date: effectiveDate,
+          dueDate: dueDate,
           isIncome: true,
           isPaid: isPaid,
           category: "Receita",
@@ -191,6 +223,7 @@ class OracleReportService {
           title: description,
           amount: amount,
           date: effectiveDate,
+          dueDate: dueDate,
           isIncome: false,
           isPaid: expIsPaid, 
           category: category,
