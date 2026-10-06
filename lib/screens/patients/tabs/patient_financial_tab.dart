@@ -1052,6 +1052,16 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       borderColor = Colors.green.withValues(alpha: 0.2);
     }
 
+    // Cards de fundo claro (pago/despesa/cancelado): texto escuro, senão
+    // o branco do tema some (ex.: título invisível no verde-claro).
+    final onLight =
+        ThemeData.estimateBrightnessForColor(bgColor) ==
+            Brightness.light;
+    final titleColor =
+        onLight ? const Color(0xFF1A1D21) : AppColors.textPrimary;
+    final subColor =
+        onLight ? Colors.grey[800]! : AppColors.textSecondary;
+
     // Variáveis visuais
     double taxVal = 0.0;
     double valorLiquido = 0.0;
@@ -1088,13 +1098,13 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
           child: Column(
             crossAxisAlignment: isIncome ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              Text(formatDateShort(date), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+              Text(formatDateShort(date), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: subColor)),
               const SizedBox(height: 4),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: isIncome ? TextAlign.right : TextAlign.left),
+              Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: titleColor), textAlign: isIncome ? TextAlign.right : TextAlign.left),
               
               if (isIncome)
                 Text((item as FinancialModel).description, 
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary), 
+                  style: TextStyle(fontSize: 11, color: subColor), 
                   textAlign: TextAlign.right
                 ),
 
