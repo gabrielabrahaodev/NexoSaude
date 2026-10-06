@@ -447,12 +447,16 @@ class _TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Inadimplente = pendente vencido (mesma regra do filtro).
+    final overdue = isOverdueTx(item, DateTime.now());
     // DETERMINAÇÃO DE CORES (Lógica Anti-Erro)
     Color statusColor = Colors.grey;
     if (item.isIncome) {
-      statusColor = item.isPaid ? Colors.green : Colors.orange;
+      statusColor =
+          item.isPaid ? Colors.green : (overdue ? Colors.red : Colors.orange);
     } else {
-      statusColor = item.isPaid ? Colors.red : Colors.orange;
+      statusColor =
+          item.isPaid ? Colors.red : (overdue ? Colors.red : Colors.orange);
     }
 
     return InkWell(
@@ -497,7 +501,9 @@ class _TransactionRow extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       // NOVA LÓGICA DE TAGS DE STATUS (Reconhece a Antecipação e evita o erro do ícone)
-                      if (item.isIncome && item.isPaid)
+                      if (overdue)
+                        const Text("INADIMPLENTE", style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold))
+                      else if (item.isIncome && item.isPaid)
                         const Text("RECEBIDO", style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold))
                       else if (item.isIncome && !item.isPaid)
                         const Text("PENDENTE", style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold))
