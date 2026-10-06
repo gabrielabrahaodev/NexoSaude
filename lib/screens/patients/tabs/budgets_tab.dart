@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../ui/app_theme.dart';
 import '../../../services/budget_service.dart';
+import '../../../services/budget_delete_service.dart';
 import '../../../services/procedure_service.dart'; 
 import '../../../services/session_manager.dart'; 
 import '../../../models/budget_model.dart';
@@ -296,6 +298,158 @@ class _BudgetsTabState extends State<BudgetsTab> {
     }
   }
 
+  // --- EXCLUSÃO (pendente: só o doc; aprovado: cadeia) ---
+  bool _deletingBudget = false;
+
+  void _confirmDeleteBudget(BudgetModel budget) {
+    final approved = budget.status == 'Aprovado';
+    final Future<Map<String, int>> countsFuture = approved
+        ? _readPlanId(budget.id)
+            .then<Map<String, int>>((planId) => planId.isEmpty
+                ? <String, int>{}
+                : BudgetDeleteService()
+                    .countChildren(budget.id, planId))
+        : Future.value(<String, int>{});
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Excluir orçamento?",
+            style:
+                TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!approved)
+                const Text(
+                    "Orçamento ainda pendente: apaga somente o orçamento. Nada mais será tocado.")
+              else ...[
+                const Text(
+                    "Orçamento APROVADO: apaga em cadeia tratamentos, pagamentos, custos e parcelas. NÃO há reversão:"),
+                const SizedBox(height: 8),
+                FutureBuilder<Map<String, int>>(
+                  future: countsFuture,
+                  builder: (context, snap) {
+                    if (!snap.hasData) {
+                      return const Center(
+                          child: Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator()));
+                    }
+                    if (snap.data!.isEmpty) {
+                      return const Text(
+                          "Nenhum vinculado encontrado (só o orçamento sai).",
+                          style: TextStyle(fontSize: 13));
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final e in snap.data!.entries)
+                          if (e.value > 0)
+                            Text("• ${e.key}: ${e.value}",
+                                style:
+                                    const TextStyle(fontSize: 13)),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Voltar"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _runDeleteBudget(budget, approved);
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white),
+            child: Text(approved ? "EXCLUIR TUDO" : "EXCLUIR"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String> _readPlanId(String budgetId) async {
+    try {
+      final d = await FirebaseFirestore.instance
+          .collection('budgets')
+          .doc(budgetId)
+          .get();
+      return '${(d.data() ?? {})['relatedPlanId'] ?? ''}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<void> _runDeleteBudget(
+      BudgetModel budget, bool approved) async {
+    if (_deletingBudget) return;
+    setState(() => _deletingBudget = true);
+    String stage = 'Iniciando...';
+    var started = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) {
+          if (!started) {
+            started = true;
+            () async {
+              try {
+                await BudgetDeleteService().deleteBudget(
+                  budgetId: budget.id,
+                  patientId: widget.patientId,
+                  approved: approved,
+                  onStage: (s) {
+                    stage = s;
+                    if (ctx.mounted) setDlg(() {});
+                  },
+                );
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  toast(context, "Orçamento excluído.", ok: true);
+                }
+              } catch (e) {
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  toast(context, "Falha ao excluir: $e",
+                      error: true);
+                }
+              } finally {
+                if (mounted) {
+                  setState(() => _deletingBudget = false);
+                }
+              }
+            }();
+          }
+          return AlertDialog(
+            title: const Text("Excluindo..."),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const LinearProgressIndicator(),
+                const SizedBox(height: 12),
+                Text(stage, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.patientId.isEmpty) {
@@ -368,6 +522,14 @@ class _BudgetsTabState extends State<BudgetsTab> {
                       leading: Icon(budget.status == 'Aprovado' ? Icons.check_circle : Icons.request_quote, color: budget.status == 'Aprovado' ? Colors.green : Colors.orange),
                       title: Text("Orçamento - ${formatDateFull(budget.date)}"),
                       subtitle: Text("Total: ${formatBRL(budget.total)} • ${budget.status}"),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            color: Colors.red, size: 22),
+                        tooltip: "Excluir orçamento",
+                        onPressed: _deletingBudget
+                            ? null
+                            : () => _confirmDeleteBudget(budget),
+                      ),
                       children: [
                         const Divider(),
                         ...budget.items.map((i) => ListTile(dense: true, title: Text(i['name'] ?? 'Procedimento'), trailing: Text("R\$ ${i['price'] ?? 0}"))),
