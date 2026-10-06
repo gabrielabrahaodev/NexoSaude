@@ -81,6 +81,28 @@ class FinancialService {
     return out;
   }
 
+  /// Saldo restante do pendente após baixa parcial.
+  /// Puro e testado. Ex.: 200 com 0 pagos + 150 agora = 50 no registro.
+  static double partialRemainder({
+    required double amount,
+    required double paidAmount,
+    required double payValue,
+  }) =>
+      (amount - paidAmount) - payValue;
+
+  /// Resumo de parcial p/ o card: (pagos, total) ou null sem filhas.
+  /// Funciona no formato novo (amount=resto, paidAmount=0) e no legado
+  /// (amount cheio + paidAmount). Puro e testado.
+  static ({double paid, double total})? partialSummary({
+    required double amount,
+    required double paidAmount,
+    required List<double> childrenAmounts,
+  }) {
+    if (childrenAmounts.isEmpty) return null;
+    final paid = childrenAmounts.fold<double>(0.0, (s, v) => s + v);
+    return (paid: paid, total: amount + paid - paidAmount);
+  }
+
   /// Família de parcelamento (puro e testado).
   /// Dada a lista cheia + um item, devolve o pai (null se avulso ou
   /// órfão de legado) e as filhas ordenadas por `i/N`.
@@ -356,16 +378,25 @@ class FinancialService {
     } else {
       // Parcelado ou parcial: original vira terminal (nunca delete —
       // histórico fiscal) ou segue pendente com o saldo aberto.
-      // Parcial (valor < saldo) não explode parcelas: quita sem parcelar.
+      // Parcial (valor < saldo) não explode parcelas: gera a filha quitada
+      // e o original fica com o RESTO (usuário vê o faltante no card).
       final sliced = isTotalPayment ? installments : 1;
+      final remainder = isTotalPayment
+          ? originalTransaction.amount
+          : FinancialService.partialRemainder(
+              amount: originalTransaction.amount,
+              paidAmount: originalTransaction.paidAmount,
+              payValue: payValue,
+            );
       batch.update(financialRef.doc(originalTransaction.id), {
         'isPaid': isTotalPayment ? (isPaid ?? true) : false,
         'status': isTotalPayment
             ? 'substituido (parcelado)'
             : 'pendente',
+        'amount': remainder,
         'paymentDate': paymentDate ?? FieldValue.serverTimestamp(),
         'paymentMethod': method,
-        'paidAmount': payValue,
+        'paidAmount': isTotalPayment ? payValue : 0.0,
       });
 
       final slices = FinancialService.computeInstallments(

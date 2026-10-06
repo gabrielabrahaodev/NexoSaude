@@ -48,6 +48,8 @@ Fila priorizada (scrum). Deploy: branch `producao` (= ao vivo); `master` = próx
 - [x] Excluir clínica com cascata total + aviso irreversível (só owner; staff só desvincilha, nunca apaga) [[clinic-management]] {{operonId:: nx-160}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/clinicas
 - [x] Usuário sem clínica vê só o menu Clínicas (criar a primeira) [[clinic-management]] {{operonId:: nx-161}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/clinicas
 - [x] Gestão usa a semana visível como data padrão + "liberar dia" diz a data pesquisada (bloqueio fantasma de 17/10 removido do banco) [[agenda-manager]] {{operonId:: nx-162}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/agenda
+- [x] Parcial abate o pendente (resto no registro) + faixa "parcial" no card [[patient-tabs]] {{operonId:: nx-163}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
+- [x] Estorno mudo: erro visível em vez de silêncio (descobrir a causa no aparelho) [[patient-tabs]] {{operonId:: nx-164}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
 - [x] Sheet da agenda sem pulo de layout: risco com future memoizado + shimmer animado + altura fixa (follow-up S2) [[agenda-manager]] {{operonId:: nx-157}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/agenda
 - [x] Ficha do paciente monta sem pedacinhos: context card com Future.wait + combine puro testado (follow-up S2) [[patient-details]] {{operonId:: nx-158}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/app
 

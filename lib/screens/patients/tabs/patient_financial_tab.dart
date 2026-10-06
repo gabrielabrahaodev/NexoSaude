@@ -417,10 +417,19 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       builder: (c) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Verifica Despesas e Pedidos de Lab vinculados
-    final related = await relatedDocs(id);
-    final relatedExpenses = related.expenses;
-    final relatedLabOrders = related.labOrders;
+    // Verifica Despesas e Pedidos de Lab vinculados (com erro visível:
+    // antes, falha aqui travava no loading sem dizer nada).
+    late final relatedResult;
+    try {
+      relatedResult = await relatedDocs(id);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Fecha loading
+      _toast("Falha ao verificar vinculados: $e", error: true);
+      return;
+    }
+    final relatedExpenses = relatedResult.expenses;
+    final relatedLabOrders = relatedResult.labOrders;
 
     if (!mounted) return;
     Navigator.pop(context); // Fecha loading
@@ -476,15 +485,19 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             onPressed: () async {
               Navigator.pop(ctx);
 
-              // Exclui despesas
-              for (var doc in relatedExpenses) { await doc.reference.delete(); }
-              // Exclui pedidos de lab
-              for (var doc in relatedLabOrders) { await doc.reference.delete(); }
+              try {
+                // Exclui despesas
+                for (var doc in relatedExpenses) { await doc.reference.delete(); }
+                // Exclui pedidos de lab
+                for (var doc in relatedLabOrders) { await doc.reference.delete(); }
 
-              // Executa o estorno
-              await _finService.voidPayment(id);
+                // Executa o estorno
+                await _finService.voidPayment(id);
 
-              _toast("Estorno realizado com sucesso!");
+                _toast("Estorno realizado com sucesso!");
+              } catch (e) {
+                _toast("Falha ao estornar: $e", error: true);
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text("CONFIRMAR ESTORNO"),
@@ -493,10 +506,15 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             onPressed: () async {
               Navigator.pop(ctx);
 
-              // Mesmo zeramento do estorno...
-              for (var doc in relatedExpenses) { await doc.reference.delete(); }
-              for (var doc in relatedLabOrders) { await doc.reference.delete(); }
-              await _finService.voidPayment(id);
+              try {
+                // Mesmo zeramento do estorno...
+                for (var doc in relatedExpenses) { await doc.reference.delete(); }
+                for (var doc in relatedLabOrders) { await doc.reference.delete(); }
+                await _finService.voidPayment(id);
+              } catch (e) {
+                _toast("Falha ao estornar: $e", error: true);
+                return;
+              }
 
               // ...mas já reabre o recebimento pré-preenchido para corrigir
               if (mounted) {
@@ -1083,16 +1101,37 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
               if (isIncome && allDocs != null)
                 Builder(builder: (_) {
                   final fin = item as FinancialModel;
-                  final n = FinancialService.familyOf(allDocs, fin)
-                      .children
-                      .length;
-                  if (n == 0) return const SizedBox.shrink();
+                  final fam =
+                      FinancialService.familyOf(allDocs, fin);
+                  final kids = fam.children;
+                  if (kids.isEmpty) return const SizedBox.shrink();
+                  // Parcelamento (pai substituído): link p/ o modal.
+                  if (isReplaced) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text("${kids.length} parcelas — toque para ver",
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.right),
+                    );
+                  }
+                  // Parcial: pai segue pendente com o resto; mostra o pago.
+                  if (isPaid) return const SizedBox.shrink();
+                  final s = FinancialService.partialSummary(
+                    amount: fin.amount,
+                    paidAmount: fin.paidAmount,
+                    childrenAmounts: [for (final k in kids) k.amount],
+                  );
+                  if (s == null) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text("$n parcelas — toque para ver",
-                        style: TextStyle(
+                    child: Text(
+                        "Parcial: ${formatBRL(s.paid)} pagos de ${formatBRL(s.total)}",
+                        style: const TextStyle(
                             fontSize: 11,
-                            color: AppColors.primary,
+                            color: Colors.orange,
                             fontWeight: FontWeight.w600),
                         textAlign: TextAlign.right),
                   );
