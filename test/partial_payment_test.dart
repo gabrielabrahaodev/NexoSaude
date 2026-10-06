@@ -43,4 +43,34 @@ void main() {
       expect(s.total, 200.0);
     });
   });
+  group('restoredAmount', () {
+    test('parcial nova: resto + filha = cheio', () {
+      expect(
+        FinancialService.restoredAmount(
+            amount: 50, paidAmount: 0, kidsSum: 150),
+        200.0,
+      );
+    });
+
+    test('parcial legada: amount ja cheio prevalece', () {
+      expect(
+        FinancialService.restoredAmount(
+            amount: 200, paidAmount: 150, kidsSum: 150),
+        200.0,
+      );
+    });
+
+    test('a vista / filha paga: proprio amount', () {
+      expect(
+        FinancialService.restoredAmount(
+            amount: 200, paidAmount: 200, kidsSum: 0),
+        200.0,
+      );
+      expect(
+        FinancialService.restoredAmount(
+            amount: 150, paidAmount: 150, kidsSum: 0),
+        150.0,
+      );
+    });
+  });
 }

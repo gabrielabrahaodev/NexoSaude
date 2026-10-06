@@ -342,6 +342,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
         iconTheme: IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
+      // Imprimir fica no canto inferior (antes cobria a seta do mês).
       body: StreamBuilder<OracleReportSnapshot>(
         stream: _service.getMonthOverview(_currentMonth),
         builder: (context, snapshot) {
@@ -376,7 +377,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                     child: transactions.isEmpty 
                       ? const Center(child: Text("Nenhuma movimentação neste mês.", style: TextStyle(color: Colors.grey)))
                       : ListView.builder(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
                           itemCount: transactions.length,
                           itemBuilder: (context, index) {
                             final item = transactions[index];
@@ -390,14 +391,16 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                 ],
               ),
               Positioned(
-                top: 10,
-                right: 10,
+                bottom: 16,
+                right: 16,
                 child: FloatingActionButton.small(
-        backgroundColor: AppColors.surface,
+                  backgroundColor: AppColors.surface,
+                  tooltip: "Imprimir",
                   child: const Icon(Icons.print, color: Colors.blueGrey),
-                  onPressed: () => _exportReceitaSaude(transactions, data),
+                  onPressed: () =>
+                      _exportReceitaSaude(transactions, data),
                 ),
-              )
+              ),
             ],
           );
         },

@@ -51,6 +51,8 @@ Fila priorizada (scrum). Deploy: branch `producao` (= ao vivo); `master` = próx
 - [x] Parcial abate o pendente (resto no registro) + faixa "parcial" no card [[patient-tabs]] {{operonId:: nx-163}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
 - [x] Estorno mudo: erro visível em vez de silêncio (descobrir a causa no aparelho) [[patient-tabs]] {{operonId:: nx-164}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
 - [x] Letras escuras nos cards claros da timeline (pago/despesa) [[patient-tabs]] {{operonId:: nx-165}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
+- [x] Estorno de parcial restaura valor cheio + apaga filha [[patient-tabs]] {{operonId:: nx-166}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
+- [x] Botão flutuante do relatório come a seta do mês [[financial-report]] {{operonId:: nx-167}} {{status:: Finished}} {{priority:: A}} #nexosaude #area/financeiro
 - [x] Sheet da agenda sem pulo de layout: risco com future memoizado + shimmer animado + altura fixa (follow-up S2) [[agenda-manager]] {{operonId:: nx-157}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/agenda
 - [x] Ficha do paciente monta sem pedacinhos: context card com Future.wait + combine puro testado (follow-up S2) [[patient-details]] {{operonId:: nx-158}} {{status:: Finished}} {{priority:: A}} {{parentTask:: nx-s2}} #nexosaude #area/app
 

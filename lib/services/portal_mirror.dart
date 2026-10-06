@@ -379,6 +379,18 @@ class PortalMirrorSync {
     }
   }
 
+  /// Remove débito do espelho (ex.: filha apagada no estorno de parcial).
+  static Future<void> removeDebt({
+    required String patientId,
+    String? token,
+    required String debtId,
+  }) async {
+    token ??= await _tokenOf(patientId);
+    if (token == null || token.isEmpty) return;
+    await _patchList(token, 'debts',
+        (l) => [for (final e in l) if ('${e['id']}' != debtId) e]);
+  }
+
   /// Delta de débito (pago/cancelado vira remoção).
   /// Doc ausente com token válido → rebuild completo (reflete na hora).
   static Future<void> upsertDebt({

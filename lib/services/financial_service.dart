@@ -103,6 +103,17 @@ class FinancialService {
     return (paid: paid, total: amount + paid - paidAmount);
   }
 
+  /// Valor a restaurar no estorno: volta ao cheio.
+  /// Parcial nova (amount=resto): soma as filhas; legada (amount cheio +
+  /// paidAmount): o amount já é o cheio; à vista/filha: próprio amount.
+  /// Puro e testado.
+  static double restoredAmount({
+    required double amount,
+    required double paidAmount,
+    required double kidsSum,
+  }) =>
+      (paidAmount > 0 && kidsSum > 0) ? amount : amount + kidsSum;
+
   /// Família de parcelamento (puro e testado).
   /// Dada a lista cheia + um item, devolve o pai (null se avulso ou
   /// órfão de legado) e as filhas ordenadas por `i/N`.
@@ -196,11 +207,43 @@ class FinancialService {
             .toList());
   }
 
-  // Estornar pagamento (volta a pendente, mantém histórico)
+  // Estornar pagamento (volta a pendente, mantém histórico).
+  // Parcial: filhas apagadas + original restaurado ao cheio.
+  // Parcelado (substituído): só zera o pai (parcelas são dívida real).
   Future<void> voidPayment(String id) async {
-    await _db.collection('financial').doc(id).update({
+    final ref = _db.collection('financial').doc(id);
+    final snap = await ref.get();
+    final m = snap.data();
+    final amount = (m?['amount'] as num?)?.toDouble() ?? 0.0;
+    final paidAmount = (m?['paidAmount'] as num?)?.toDouble() ?? 0.0;
+    final status = '${m?['status'] ?? ''}';
+    final pid = '${m?['patientId'] ?? ''}';
+
+    final kids = FinancialModel.isReplaced(status)
+        ? <QueryDocumentSnapshot<Map<String, dynamic>>>[]
+        : (await _db
+                .collection('financial')
+                .where('parentId', isEqualTo: id)
+                .get())
+            .docs;
+    var kidsSum = 0.0;
+    for (final k in kids) {
+      kidsSum += (k.data()['amount'] as num?)?.toDouble() ?? 0.0;
+    }
+    final restore = FinancialService.restoredAmount(
+      amount: amount,
+      paidAmount: paidAmount,
+      kidsSum: kidsSum,
+    );
+
+    final batch = _db.batch();
+    for (final k in kids) {
+      batch.delete(k.reference);
+    }
+    batch.update(ref, {
       'status': 'pendente',
       'isPaid': false,
+      'amount': restore,
       'paidAmount': 0.0,
       'paymentDate': null,
       'paymentMethod': null,
@@ -210,6 +253,17 @@ class FinancialService {
       'valorLiquido': 0.0,
       'netAmount': 0.0,
     });
+    await batch.commit();
+
+    // Espelho: filhas saem, pai ressincroniza como pendente.
+    if (pid.isNotEmpty) {
+      for (final k in kids) {
+        try {
+          await PortalMirrorSync.removeDebt(
+              patientId: pid, debtId: k.id);
+        } catch (_) {}
+      }
+    }
     await _syncDebtOfCharge(id);
   }
 
