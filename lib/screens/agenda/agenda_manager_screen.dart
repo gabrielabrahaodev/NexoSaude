@@ -285,7 +285,10 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        if (mounted) toast(context, "Nenhum bloqueio encontrado para esta data.");
+        if (mounted) {
+          toast(context,
+              "Nenhum bloqueio encontrado em ${formatDateFull(start)}.");
+        }
         return;
       }
 
@@ -333,7 +336,11 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   }
 
   void _showManagementMenu() {
-    DateTime targetDate = DateTime.now();
+    // Padrão = semana visível (não o hoje): evita "liberar" o dia errado.
+    DateTime targetDate = managementInitialDate(
+      now: DateTime.now(),
+      weekStart: _currentWeekStart,
+    );
 
     showModalBottomSheet(
       context: context,

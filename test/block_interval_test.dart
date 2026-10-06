@@ -127,4 +127,29 @@ void main() {
       );
     });
   });
+
+  group('data inicial do menu Gestão', () {
+    final seg = DateTime(2026, 10, 12); // segunda da semana visível
+    test('hoje dentro da semana visível → hoje', () {
+      expect(
+        managementInitialDate(
+            now: DateTime(2026, 10, 14, 18, 51), weekStart: seg),
+        DateTime(2026, 10, 14),
+      );
+    });
+    test('hoje antes da semana → segunda visível', () {
+      expect(
+        managementInitialDate(
+            now: DateTime(2026, 10, 6), weekStart: seg),
+        seg,
+      );
+    });
+    test('hoje depois da semana → segunda visível', () {
+      expect(
+        managementInitialDate(
+            now: DateTime(2026, 10, 25), weekStart: seg),
+        seg,
+      );
+    });
+  });
 }

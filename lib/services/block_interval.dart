@@ -74,3 +74,15 @@ bool isNoOp({
     overlappedCount == 1 &&
     mergedStart == existingStart &&
     mergedEnd == existingEnd;
+
+/// Data inicial do menu Gestão: hoje se dentro da semana visível
+/// (segunda `weekStart` + 6 dias), senão a segunda visível.
+/// Evita o "liberar dia" agir no hoje quando se olha outra semana.
+DateTime managementInitialDate(
+    {required DateTime now, required DateTime weekStart}) {
+  final today = DateTime(now.year, now.month, now.day);
+  final start = DateTime(weekStart.year, weekStart.month, weekStart.day);
+  final end = start.add(const Duration(days: 6));
+  if (!today.isBefore(start) && !today.isAfter(end)) return today;
+  return start;
+}
