@@ -26,6 +26,7 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 | [[CASOS_DE_USO]] | Catálogo UC com atores |
 | [[DIAGRAMAS_DE_SEQUENCIA]] | Fluxos em sequência |
 | [[PSYCHOLOGY_PACKAGES]] | Billing psico por presença |
+| [[APP_FLOW]] | Mapa de fluxos do app (telas, rotas, F1–F10) |
 
 ## Specs
 
