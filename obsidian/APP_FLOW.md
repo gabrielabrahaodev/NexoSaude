@@ -1,92 +1,85 @@
-# App Flow — NexoSaúde
+# App Flow — NexoSaúde (tela a tela)
 
-Mapa de navegação e fluxos do sistema interno (`/sistema-interno/`) e do portal do paciente (`portal.html?t=TOKEN`). Cada fluxo cita telas reais (`screens/`), regras (`modules/`) e tarefas Operon quando houver.
+Transições reais verificadas no código (`Navigator` + menu `_screens`).
+Seta `A → B (ação)` = na tela A, a ação abre a tela B. `□` = diálogo/sheet
+(volta para a origem). Ver também: [[PRD]], [[CASOS_DE_USO]].
 
-Ver também: [[PRD]], [[CASOS_DE_USO]], [[DIAGRAMAS_DE_SEQUENCIA]], [[00-index]].
-
-## Rotas e portas de entrada
-
-| Entrada | O quê | Público |
-|---|---|---|
-| `landing.html` (raiz `/`) | Site + pedido de trial | Sim |
-| `/sistema-interno/` | App (login → dashboard) | Login |
-| `portal.html?t=TOKEN` | Portal do paciente | Token |
-| `anamnese.html` | Anamnese online (prefill + envio) | Link |
-| `confirmar.html` | Confirmação de presença | Token |
-| `assinatura.html` | Assinatura do plano (owner) | Owner |
-| `master.html` | Dono da plataforma (trials, owners, débitos) | Superadmin |
-
-Papéis: `superadmin` (plataforma) · `owner` (clínica) · `dentista`/`psicologo` · `recepcionista`. Menu e abas filtrados por `MenuAccess` + tipo da clínica (`dental` | `psychology`). Sem clínica vinculada (e não superadmin): só o menu **Clínicas** (nx-161).
-
-## F1 — Trial até a primeira clínica
+## Entrada
 
 ```mermaid
 flowchart LR
-    L[landing: pedir trial] --> M[master: aprovar]
-    M --> O[owner: login]
-    O --> C[só menu Clínicas]
-    C --> N[Nova unidade]
-    N --> D[dashboard completo]
+    Login --> RoleCheck --> Dashboard
+    Dashboard -->|sem clínica| Clínicas
+    Clínicas -->|Gerenciar| Dashboard
 ```
 
-Owner aprovado entra e vê só Clínicas; ao criar a primeira unidade, volta ao dashboard com o menu cheio. Staff (`pending_approval`) espera o owner liberar (`allowedClinics`).
+- `Login → RoleCheck → MainWebDashboard` (pushReplacement; sem clínica e não superadmin, o menu mostra **só Clínicas** — nx-161).
+- `Clínicas → Dashboard` ("Gerenciar": `setClinic` + rebuild zerando a pilha).
+- Primeira unidade criada → volta sozinha ao Dashboard.
 
-## F2 — Dia a dia: Agenda
+## Menu (índices fixos do `_screens`)
 
-`AgendaManagerScreen` (semana por profissional) → toque no evento abre a sheet:
+| # | Tela | Chave | Como chega além do menu |
+|---|---|---|---|
+| 0 | Dashboard (KPI) | `dashboard` | fallback de índice escondido |
+| 1 | Agenda | `agenda` | — |
+| 2 | Pacientes (lista) | `pacientes` | — |
+| 3 | Laboratório | `laboratorio` | — |
+| 4 | Financeiro (Fluxo de Caixa) | `financeiro` | **só** pelo Livro Caixa (fora do menu — nx-169) |
+| 5 | Relatórios | `relatorios` | — |
+| 6 | Notícias | `noticias` | — |
+| 7 | Cobranças | `cobrancas` | KPI (atalhos inadimplência/agenda) |
+| 8 | Clínicas | `clinicas` | modo setup trava aqui |
+| 9 | Funcionários | `funcionarios` | — |
+| 10 | Gestão | `gestao` | — |
+| 11 | Fluxo Terapêutico | `fluxo` | — |
+| 12 | Atendimento (Meu dia) | `atendimento` | — |
+| 13 | Master | `master` | só superadmin |
+| 14 | Exportar | `exportar` | só owner |
 
-- Abrir Paciente (deep-link sem menu) · Confirmar Presença · WhatsApp · Finalizar → evolução · Editar (data/hora respeitando livres) · Encaixe · Cancelar (motivo + registro)
-- Bloco de risco no-show (shimmer → conteúdo); remarcação do portal decide aqui
-- Novo agendamento: busca paciente / cadastro rápido (com aceite LGPD) → grade de horários livres → salvar espelha portal (`sessions` + `slots`)
-- Gestão da agenda: bloquear Manhã/Tarde/Dia/intervalo (funde adjacentes), Liberar Dia (usa a **semana visível** como data padrão — nx-162)
+KPI usa `onNavigate`: avisos → 7 (Cobranças), agenda → 1. Setup (`_onMenuSelect`) bloqueia tudo exceto 8.
 
-## F3 — Atendimento (Meu dia)
+## Saídas por tela
 
-`CareDayScreen` → presença em massa (checkbox + barra Confirmar) → ficha em 3 blocos:
+**Dashboard (0):** → 7, → 1 (atalhos do KPI).
 
-1. Evolução clínica (vai ao prontuário)
-2. Cobrança **somente** de lançamento existente (nunca cria novo)
-3. Próxima sessão: repetir +7d · sugestão validada contra a grade · agendar com profissional/horários livres
+**Agenda (1):**
+- → Ficha do Paciente (toque → sheet → "Abrir Paciente"; deep-link `openPatient`)
+- → Novo Agendamento / Alterar / Encaixe (`AgendaFormScreen`)
+- □ sheet do evento: Confirmar, WhatsApp, Finalizar→evolução, Editar, Cancelar (motivo), Desbloquear, Decidir remarcação
+- □ Gestão da agenda: bloquear intervalos, Liberar Dia
 
-Finalizar gera `attendanceStatus` (alimenta assiduidade e o bloco de risco).
+**Pacientes (2):** → Ficha (`PatientDetailsScreen`) · → Novo Paciente (`CreatePatientScreen`) · long-press exclui (cascata do paciente).
 
-## F4 — Cobrança e Pagamentos
+**Ficha do Paciente (detalhe, sem rota própria — via push/deep-link):**
+- Abas internas (sem navegação): Cadastro · Anamnese · Tratamentos · Prontuário · Documentação · Pagamentos · Orçamentos
+- Saídas: □ wizard de recebimento · □ dialogs (estorno/cancelar/editar/recriar) · □ modal da família · □ wizard de aprovação de orçamento · ← Voltar (pilha)
 
-- `CollectionsScreen` → Receber: à vista · **parcial** (gera filha quitada + pendente fica com o resto, faixa "Parcial: X pagos de Y") · parcelado no cartão (pai vira terminal, filhas são a dívida)
-- Estorno: pago volta a pendente; **parcial estornada restaura o cheio e apaga a filha** (parcelamento preserva as parcelas); erro sempre visível em toast
-- Cancelar: soft-delete (`cancelado`, família toda se parcelado); Corrigir e relançar; Editar valor/vencimento de pendente
-- Aba Pagamentos do paciente: resumo (A Receber com próximo vencimento, Recebido, Custo, Assiduidade) + contexto + timeline por estado (PAGO/A VENCER/VENCIDO há N dias) + WhatsApp "Cobrar" com confirmação registrada no prontuário
-- Tudo pago/parcelado reflete no portal na hora (delta com fallback p/ rebuild — nx-159)
+**Laboratório (3):** interno (pedidos, interações). **Notícias (6):** leitura.
 
-## F5 — Paciente (ficha)
+**Relatórios (5):** → Financeiro/Livro Caixa (push direto) · → Despesas (`ExpensesScreen`).
 
-Lista (busca + filtro "Sem aceite LGPD") → ficha em abas: Cadastro · Anamnese (+ strip de alertas) · Tratamentos · Prontuário (evoluções, selos Cobrança/Atendimento) · Documentação · **Pagamentos** · Orçamentos. Cartão de contexto (último atendimento + vencidas) monta em paralelo e uma vez por sessão.
+**Financeiro (4):** □ imprimir · long-press estorna (com confirmação).
 
-## F6 — Orçamento até o tratamento
+**Cobranças (7):** → Ficha do paciente (ícone pessoa, deep-link) · □ receber/confirmar.
 
-Novo orçamento (itens do catálogo) → **Aprovar** (wizard: mensalidades de ortodontia, custo automático) → cria plano (`treatment_plans.budgetId`), financeiros (`planId`) e custos (`relatedPlanId`) → Excluir: pendente apaga só o doc; **aprovado apaga em cadeia** (plano, pagamentos, custos, filhas) com contagem e progresso (nx-168).
+**Atendimento/Meu dia (12):** □ ficha de atendimento (`CareVisitPanel` em sheet 92%: evolução + cobrança existente + próxima sessão) · → Ficha do paciente (deep-link).
 
-## F7 — Portal do paciente
+**Clínicas (8):** → Dashboard ("Gerenciar") · □ nova unidade · □ excluir em cascata (contagem + digitar nome + progresso).
 
-Link com token (só nasce com aceite LGPD) → sessões, dívidas com Pix, confirmar presença, **pedir remarcação** (vira pendência laranja na agenda), **avisar pagamento** (selo p/ tesouraria). Espelhos `portal/{token}` (delta por escrita) + `portal_slots/{clinicId}` (grade livre). Sem aceite = sem link; revogar limpa o token.
+**Funcionários (9):** interno (criar, papéis, `menuAccess`). **Gestão (10):** 5 abas internas (Procedimentos, Estoque, Fornecedores, Cartões, Config) — sem saída. **Fluxo (11):** kanban interno. **Master (13):** trials, owners, débitos. **Exportar (14):** download.
 
-## F8 — Gestão operacional
+## Camada deep-link (sem menu)
 
-Procedimentos · Estoque · Fornecedores · Cartões (perfis de taxa da maquininha) · Configurações (Pix, grade, acessos por flag). Catálogo global + escopo por clínica conforme a coleção.
+`openPatient(patientId, name)` → Ficha, usado por: sheet da Agenda, Cobranças (ícone), Meu dia. A Ficha nunca está no menu — sempre por push.
 
-## F9 — Clínicas e equipe
+## Páginas web externas (fora do app)
 
-- Clínicas: criar · Gerenciar (troca a sessão) · **Excluir em cascata** (contagem + digitar o nome; apaga tudo com o `clinicId`, staff só desvincilha, sem reversão — nx-160). Regras exigem owner.
-- Funcionários: criar, papéis, `menuAccess` por chave; pendentes aguardam liberação.
+`portal.html?t=TOKEN` (sessões, dívidas/Pix, confirmar, pedir remarcação, avisar pagamento) · `anamnese.html` · `confirmar.html` · `assinatura.html` · `landing.html` · `master.html`. Sem navegação de volta ao app (contextos separados).
 
-## F10 — Relatórios e backup
+## Convenções
 
-- Fluxo de Caixa Real (via **Livro Caixa** em Relatórios; fora do menu — nx-169): seletor de mês, filtros Todos/Recebido/A Receber/**Inadimplente** (tag vermelha), imprimir, estorno por long-press.
-- Exportar (owner): backup JSON/CSV das coleções.
-
-## Convenções que atravessam os fluxos
-
+- Voltar (`pop`) retorna à origem; "Gerenciar" e login zeram a pilha.
+- Diálogos de confirmação antes de: excluir (clínica/orçamento/paciente), estornar, cancelar família, confirmar presença em massa.
 - Plano Spark: sem Functions — tudo é clique no app ou script `migrate/` com Admin SDK.
-- Multi-tenant por `clinicId` via `SessionManager().applyFilter()`; nunca confiar no formato do banco (`fromMap` defensivo).
-- Toda escrita relevante atualiza o espelho do portal (sessões, dívidas, slots).
-- PWA versionado (`version.json` + checagem a cada troca de menu, 1x por sessão); deploy só via `deploy.bat` da branch `producao`.
+- Deploy só via `deploy.bat` da branch `producao`.
