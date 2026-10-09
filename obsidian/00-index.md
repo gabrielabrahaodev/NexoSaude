@@ -27,6 +27,7 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 | [[DIAGRAMAS_DE_SEQUENCIA]] | Fluxos em sequência |
 | [[PSYCHOLOGY_PACKAGES]] | Billing psico por presença |
 | [[APP_FLOW]] | Mapa de fluxos do app (telas, rotas, F1–F10) |
+| [[LGPD]] | Análise e sugestões de adequação (decidir depois) |
 
 ## Specs
 
