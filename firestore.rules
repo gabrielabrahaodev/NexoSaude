@@ -416,13 +416,15 @@ service cloud.firestore {
     // D. EXCEÇÃO: CONFIRMAÇÃO VIA WHATSAPP / PORTAL (reavaliação).
     // Fonte única = token ATUAL em `patients/{patientId}.portalToken`.
     // Revogar (girar o token do paciente) INVALIDA links antigos: o token
-    // copiado dentro do agendamento NÃO vale sozinho (P1). Staff SÓ com
-    // acesso à clínica. Sem token = negado (fallback WhatsApp).
+    // copiado dentro do agendamento NÃO vale sozinho (P1). Prova SÓ
+    // anônima: autenticado sem clínica usa o escopo (sem piggyback).
+    // Staff SÓ com acesso à clínica. Sem token = negado (WhatsApp).
     function apptTokenOk() {
       let sent = request.resource.data.get('portalToken', '');
       let pid = resource.data.get('patientId', '');
       let pref = /databases/$(database)/documents/patients/$(pid);
-      return sent is string && sent.size() > 0 &&
+      return !isAuthenticated() &&
+        sent is string && sent.size() > 0 &&
         pid is string && pid != '' && exists(pref) &&
         sent == get(pref).data.get('portalToken', '');
     }
@@ -459,9 +461,10 @@ service cloud.firestore {
           clinicScoped(resource.data.get('clinicId', ''));
       allow update: if (isAuthenticated() &&
           clinicScoped(_docClinic(resource.data, request.resource.data))) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
-        ]);
+        (!isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
+          ]));
     }
     match /portal_slots/{clinicId} {
       allow get: if true;
@@ -470,14 +473,14 @@ service cloud.firestore {
     }
 
     // Portal: "avisei que paguei" (selo p/ tesouraria dar baixa ou
-    // dispensar). Staff escopado (antes: qualquer autenticado alterava
-    // financeiro de qualquer clínica); anônimo via allowlist (link do
+    // dispensar). Staff escopado; anônimo SÓ via allowlist (link do
     // portal; ids imprevisíveis — residual documentado).
     match /financial/{docId} {
       allow update: if (isAuthenticated() &&
           clinicScoped(_docClinic(resource.data, request.resource.data))) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-          ['avisoPagamento', 'updatedAt']);
+        (!isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['avisoPagamento', 'updatedAt']));
     }
 
     // E. ANAMNESE ONLINE (P0 reavaliação: SEM leitura pública do prontuário).
@@ -520,11 +523,13 @@ service cloud.firestore {
     }
     match /anamnesis/{patientId} {
       allow get, list: if patientClinicOk(patientId);
+      // Prova SÓ anônima (!auth): autenticado sem clínica usa o escopo
+      // (sem piggyback do token persistido — reavaliação P1).
       allow create: if patientClinicOk(patientId) ||
-        (_anamProof() && _anamFieldsOk(
+        (!isAuthenticated() && _anamProof() && _anamFieldsOk(
           request.resource.data, request.resource.data.keys()));
       allow update, delete: if patientClinicOk(patientId) ||
-        (_anamProof() && _anamFieldsOk(request.resource.data,
+        (!isAuthenticated() && _anamProof() && _anamFieldsOk(request.resource.data,
           request.resource.data.diff(resource.data).affectedKeys()));
     }
 

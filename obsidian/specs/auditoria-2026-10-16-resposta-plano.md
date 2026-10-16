@@ -74,6 +74,12 @@ Estado: rules ARQUIVO (não publicado; ao vivo segue `f50ad0ac` até matriz + or
 | P2 higiene | ✅ `node_modules/` raiz + cache hosting fora do índice; `.gitignore` cobre |
 | P2 Cloudinary órfãos | ✅ rotina documentada em `nx-174` (limpeza manual periódica) |
 
+### Achados da matriz 2º lote (16/10 noite, 20/20 verde local)
+- **Poluição entre testes:** T9 bloqueava `clinics/A` e não restaurava — quebrava T15/T17 em cascata. Corrigido com restore no próprio teste (lição: teste que muta estado compartilhado restaura).
+- **Piggyback de token persistido (buraco REAL):** `proofToken`/`portalToken` gravado no doc validava writes futuros sem o link (merge). Fechado em 3 camadas: (1) ramos anônimos exigem `!isAuthenticated()` (staff usa escopo); (2) app NÃO carimba mais `portalToken` (fonte única = cadastro) + script `migrate/limpar-portalToken-appointments.js` (dry-run default; rodar com `--apply` sob ordem); (3) matriz cobre omitir-token e link velho.
+- **`ownerId` no blocklist do create (buraco REAL):** ownerId é prova de posse no create, não campo admin — validador separado `_noTrialKeys`; update mantém `_noClinicAdminKeys` (com `ownerId`).
+- Armadilha de diagnóstico: "evaluation error" no log do emulador aparece em TODO deny (é trace verboso, não exceção) — o que vale é o veredito allow/deny por assert; localização por linha/coluna não é precisa.
+
 ## Reavaliação 16/10 (tarde, `reavaliacao-2026-10-16`) — primeira leva (PUBLICADA em `f50ad0ac`)
 
 Arquivo: [[reavaliacao-2026-10-16]] (fotografia histórica).

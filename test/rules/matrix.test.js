@@ -48,6 +48,11 @@ async function seed(admin) {
     clinicId: A, portalToken: 'tok123', anamnesisToken: 'ana456',
   });
   await db.doc(`appointments/ap1`).set({
+    clinicId: A, patientId: 'p1', status: 'Agendado', portalToken: null,
+  });
+  // Legado com token obsoleto carimbado (limpeza pendente): omitir o token
+  // NÃO confirma (fonte única = cadastro atual).
+  await db.doc(`appointments/ap2`).set({
     clinicId: A, patientId: 'p1', status: 'Agendado', portalToken: 'oldTok',
   });
   // Anamnese: doc id == patientId (como o app grava).
@@ -111,15 +116,22 @@ describe('matriz reavaliação P0/P1', () => {
     await assertFails(db.doc('financial/f1').update({ amount: 1 }));
   });
 
-  it('P1-5: anônimo confirma COM token ATUAL; token antigo revogado nega', async () => {
+  it('P1-5: anônimo confirma COM token ATUAL; sem token e velho negam', async () => {
     const db = ctx(null).firestore();
-    // Link antigo (token copiado no agendamento, já girado no paciente).
+    // Link válido (token atual do cadastro).
+    await assertSucceeds(db.doc('appointments/ap1').update({
+      status: 'Confirmado', portalToken: 'tok123',
+    }));
+    // Omitir o token NÃO confirma, mesmo com carimbo obsoleto no doc.
+    await assertFails(db.doc('appointments/ap2').update({
+      status: 'Confirmado', confirmationDate: new Date(),
+    }));
+    // Link antigo (token girado) NÃO confirma nem remarca.
     await assertFails(db.doc('appointments/ap1').update({
       status: 'Confirmado', portalToken: 'oldTok',
     }));
-    // Link novo (token atual do cadastro).
-    await assertSucceeds(db.doc('appointments/ap1').update({
-      status: 'Confirmado', portalToken: 'tok123',
+    await assertFails(db.doc('appointments/ap1').update({
+      status: 'remarcar', proposedDate: new Date(), portalToken: 'oldTok',
     }));
     await assertFails(db.doc('appointments/ap1').update({
       status: 'Confirmado', portalToken: '',
@@ -144,6 +156,10 @@ describe('matriz reavaliação P0/P1', () => {
     const root = ctx('root').firestore();
     await assertSucceeds(
       root.doc(`clinics/${A}`).update({ blockedByAdmin: true }));
+    // Higiene: restaura a clínica p/ os testes seguintes (bloqueio ativo
+    // negaria todo acesso operacional da clínica A adiante).
+    await assertSucceeds(
+      root.doc(`clinics/${A}`).update({ blockedByAdmin: false, name: 'A' }));
   });
 
   it('P1-3: trava enforceable — clínica bloqueada nega operacional', async () => {

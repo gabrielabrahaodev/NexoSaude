@@ -13,6 +13,8 @@ verde no emulator + ordem explícita (workflow manual `ci-manual`).
 - [x] Matriz `test/rules/matrix.test.js` no emulator (14 casos P0/P1) → tudo verde. **Bloqueia o release.**
 - [x] `node migrate/rules-validate.js` → SINTAXE OK (sem release).
 - CI verde em 16/10 (~20:38Z, run `38963424437`): jobs `flutter` (analyze 0 erros + suite +177) e `rules` (matriz 14/14 no emulator) ✓. No caminho, a matriz pegou 2 defeitos reais já corrigidos: `Set.toSet()` no team-manage (negava tudo) e massa do trial fora da allowlist.
+- [x] Emulador LOCAL funcional (Java 21 Temurin instalado 16/10 noite): iteração em segundos via `firebase emulators:exec --only firestore "npm --prefix test/rules test"`.
+- [ ] Matriz 2º lote (20 casos: anamnese token, create clínica, menuAccess, status, revogação, reset, public_clinics, leads) → VERDE local 16/10 noite; falta verde no CI + release.
 
 ## 1. Fase 1 — diálogos em telas pequenas
 

@@ -201,18 +201,6 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
       };
     }).toList();
 
-    // Vínculo do portal nos agendamentos (confirmar.html valida o token
-    // contra o cadastro; reavaliação §5). Uma leitura p/ o lote todo.
-    String? patientToken;
-    try {
-      final p = await FirebaseFirestore.instance
-          .collection('patients')
-          .doc(schedule.patientId)
-          .get();
-      final t = '${(p.data() ?? {})['portalToken'] ?? ''}';
-      if (t.isNotEmpty) patientToken = t;
-    } catch (_) {}
-
     batch.set(planRef, {
       'clinicId': clinicId,
       'patientId': schedule.patientId,      'patientName': schedule.patientName,
@@ -331,9 +319,8 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
         scheduleId: scheduleId,
         planId: planRef.id,
         monthlyPeriod: monthKey,
-        portalToken: patientToken,
       );
-      batch.set(apptRef, appt.toMap());
+      batch.set(apptRef, appt.toMap()..remove('portalToken'));
     }
 
     await batch.commit();

@@ -58,27 +58,12 @@ class AppointmentService {
     return busy;
   }
 
-  /// Token do espelho do paciente (fonte única p/ confirmar.html).
-  /// Reavaliação §5: o agendamento carimba o token ao gravar; a regra
-  /// aceita o do agendamento OU o do cadastro (cobre fluxos antigos).
-  Future<String?> _patientToken(String patientId) async {
-    try {
-      final d = await FirebaseFirestore.instance
-          .collection('patients')
-          .doc(patientId)
-          .get();
-      final t = '${(d.data() ?? {})['portalToken'] ?? ''}';
-      return t.isEmpty ? null : t;
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<void> add(AppointmentModel appointment) async {
-    // Convertemos o model para mapa, removendo o ID que será gerado
+    // Convertemos o model para mapa, removendo o ID que será gerado.
+    // SEM carimbo de portalToken (fonte única = patients/{id}.portalToken;
+    // carimbar permitiria confirmar sem o link — reavaliação P1).
     var map = appointment.toMap();
-    map['portalToken'] =
-        await _patientToken(appointment.patientId) ?? map['portalToken'];
+    map.remove('portalToken');
     final ref = _collection.doc();
     await ref.set(map);
     // Espelho (delta, sem scan): a sessão entra com os dados em mãos.
@@ -101,13 +86,10 @@ class AppointmentService {
 
   Future<void> update(AppointmentModel appointment) async {
     var map = appointment.toMap();
+    // Nunca (re)carimba nem apaga token pelo app (ver `add`).
+    map.remove('portalToken');
     final old = (await _collection.doc(appointment.id).get()).data()
         as Map<String, dynamic>?;
-    // Preserva o vínculo do portal: carimba o atual; sem leitura, mantém o
-    // gravado (nunca apaga com null em edição).
-    map['portalToken'] = await _patientToken(appointment.patientId) ??
-        old?['portalToken'] ??
-        map['portalToken'];
     // Em update, removemos campos que não queremos sobrescrever acidentalmente, ou enviamos tudo
     await _collection.doc(appointment.id).update(map);
     // Troca de data/dentista: libera o slot antigo, ocupa o novo.
