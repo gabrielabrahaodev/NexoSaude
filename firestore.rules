@@ -147,17 +147,28 @@ service cloud.firestore {
     }
 
     // D. EXCEÇÃO: CONFIRMAÇÃO VIA WHATSAPP / PORTAL
+    // Escrita pública vinculada ao token: anônimo só com o token do
+    // paciente (confirmar.html e portal enviam `portalToken`); staff/owner
+    // autenticado mantém o fluxo do app. Sem token = negado.
+    function tokenMatches() {
+      return request.resource.data.portalToken is string &&
+          request.resource.data.portalToken.size() > 0 &&
+          request.resource.data.portalToken ==
+              resource.data.portalToken;
+    }
     match /appointments/{appointmentId} {
-      allow update: if 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 
-'confirmationDate']) &&
-        request.resource.data.status == 'Confirmado';
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status',
+'confirmationDate', 'portalToken']) &&
+        request.resource.data.status == 'Confirmado' &&
+        (isAuthenticated() || tokenMatches());
       // Portal: pedido de remarcação (vira pendência p/ recepção).
       // Leva a data proposta + token (o app interno lê tudo do agendamento).
       allow update: if
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(
           ['status', 'proposedDate', 'portalToken']) &&
-        request.resource.data.status == 'remarcar';
+        request.resource.data.status == 'remarcar' &&
+        (isAuthenticated() || tokenMatches());
     }
 
     // A4. PORTAL DO PACIENTE (espelhos; sem Functions).
@@ -175,7 +186,10 @@ service cloud.firestore {
         ]);
     }
     match /portal_slots/{clinicId} {
-      allow read: if true;
+      // Só get por doc (o app e o portal nunca listam; `read` permitiria
+      // enumerar horários de todas as clínicas).
+      allow get: if true;
+      allow list: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 

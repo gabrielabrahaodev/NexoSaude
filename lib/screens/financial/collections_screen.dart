@@ -481,10 +481,13 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
     List<AppointmentModel> sessions = [];
 
     if (planId != null && planId.isNotEmpty) {
-      final snap = await db
+      var q = db
           .collection('appointments')
-          .where('planId', isEqualTo: planId)
-          .get();
+          .where('planId', isEqualTo: planId);
+      if (clinicId != null && clinicId.isNotEmpty) {
+        q = q.where('clinicId', isEqualTo: clinicId);
+      }
+      final snap = await q.get();
       sessions = snap.docs
           .map((d) =>
               AppointmentModel.fromMap(d.id, d.data()))
@@ -715,20 +718,17 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                               totalAmount: packageAmount,
                               fullAmount: packageAmount,
                               billingDetail:
-                                  "Cálculo indisponível no momento",
+                                  "Cálculo indisponível no momento — toque para tentar de novo (sem cobrança)",
                               contactedToday: contactedToday,
                               onOpenPatient: () => Navigator.push(
                                   context,
                                   openPatient(patientId, patientName)),
-                              onTap: () => _handleMonthlyPackageCharge({
-                                'patientId': patientId,
-                                'patientName': patientName,
-                                'monthlyPeriod': monthlyPeriod,
-                                'totalAmount': packageAmount,
-                                'fullAmount': packageAmount,
-                                'billingDetail': null,
-                                'items': items,
-                              }),
+                              // Gate anti-cobrança no cheio: erro de cálculo
+                              // NUNCA autoriza cobrar; só tenta de novo.
+                              onTap: () {
+                                toast(context, "Recalculando...");
+                                setState(() {});
+                              },
                             );
                           }
                           final bill = billSnap.data!;

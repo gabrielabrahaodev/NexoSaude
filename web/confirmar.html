@@ -44,6 +44,7 @@
             async function confirmar() {
                 const params = new URLSearchParams(window.location.search);
                 const id = params.get('id');
+                const token = params.get('t') || '';
                 const contentDiv = document.getElementById('content');
 
                 if (!id) {
@@ -52,10 +53,12 @@
                 }
 
                 try {
-                    // Tenta atualizar DIRETO (sem ler antes, para não dar erro de permissão)
+                    // Tenta atualizar DIRETO (sem ler antes, para não dar erro de permissão).
+                    // Envia o token do portal: a regra exige o vínculo (sem token = negado).
                     await db.collection('appointments').doc(id).update({
                         status: 'Confirmado',
-                        confirmationDate: new Date()
+                        confirmationDate: new Date(),
+                        portalToken: token
                     });
 
                     contentDiv.innerHTML = `

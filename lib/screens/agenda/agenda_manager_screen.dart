@@ -466,16 +466,19 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     // matar; a URL chega após buscar o telefone.
     final blankTab = openBlankTab();
     String? phoneRaw;
+    String portalToken = '';
     try {
       toast(context, "Buscando contato...", duration: const Duration(milliseconds: 500));
       final patientDoc = await FirebaseFirestore.instance.collection('patients').doc(appt.patientId).get();
       if (patientDoc.exists) {
         final data = patientDoc.data();
         phoneRaw = data?['phone'] ?? data?['celular'] ?? data?['whatsapp'];
+        portalToken = '${data?['portalToken'] ?? ''}';
       }
     } catch (e) { /* ignore */ }
 
-    String link = "https://nexosaude.web.app/confirmar.html?id=${appt.id}";
+    // Token no link: a regra exige o vínculo (anônimo sem token é negado).
+    String link = "https://nexosaude.web.app/confirmar.html?id=${appt.id}&t=$portalToken";
     String message = "Olá ${appt.patientName}, por favor confirme sua consulta para o dia ${formatDateAs(appt.date)} clicando neste link: $link";
     final ok = await openWhatsAppSafe(context, blankTab,
         phone: phoneRaw ?? '', message: message);

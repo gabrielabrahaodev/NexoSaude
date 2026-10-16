@@ -213,12 +213,15 @@ class PortalMirrorSync {
   static final _db = FirebaseFirestore.instance;
 
   /// Reescreve `portal/{token}` do paciente. Cria o token se não existir
-  /// (autocura de pacientes antigos).
-  static Future<void> patient(String patientId) async {
+  /// (autocura de pacientes antigos). Retorna `false` em falha (o chamador
+  /// decide; antes o erro morria em `debugPrint` e o espelho ficava velho).
+  static Future<bool> patient(String patientId) async {
     try {
       await _patientUnsafe(patientId);
+      return true;
     } catch (e) {
       debugPrint("PortalMirror paciente falhou: $e");
+      return false;
     }
   }
 
@@ -238,12 +241,24 @@ class PortalMirrorSync {
       await pRef.update({'portalToken': token});
     }
     final now = DateTime.now();
-    // Limites altos de propósito: pacote psico gera ~52 appointments/ano;
-    // limit baixo + sem orderBy truncava futuros (portal sem psicologia).
-    final appts = await _db
+    // Escopo da clínica (índices publicados: patientId+clinicId e
+    // clinicId+patientId+date DESC). Sem clinicId no cadastro (legado),
+    // cai no comportamento anterior.
+    final scopeClinic = '${pdata['clinicId'] ?? ''}';
+    // Limites documentados (auditoria 16/10): janela de sessões a partir
+    // do mês passado; débitos sem corte de data (inadimplência antiga
+    // precisa aparecer), teto 200.
+    final monthStart = DateTime(now.year, now.month - 1, 1);
+    var apptsQuery = _db
         .collection('appointments')
-        .where('patientId', isEqualTo: patientId)
-        .limit(100)
+        .where('patientId', isEqualTo: patientId);
+    if (scopeClinic.isNotEmpty) {
+      apptsQuery = apptsQuery.where('clinicId', isEqualTo: scopeClinic);
+    }
+    final appts = await apptsQuery
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(monthStart))
+        .orderBy('date', descending: true)
+        .limit(200)
         .get();
     final sessions = <Map<String, dynamic>>[];
     for (final d in appts.docs) {
@@ -261,11 +276,13 @@ class PortalMirrorSync {
         'status': '${m['status'] ?? ''}',
       });
     }
-    final fins = await _db
+    var finsQuery = _db
         .collection('financial')
-        .where('patientId', isEqualTo: patientId)
-        .limit(100)
-        .get();
+        .where('patientId', isEqualTo: patientId);
+    if (scopeClinic.isNotEmpty) {
+      finsQuery = finsQuery.where('clinicId', isEqualTo: scopeClinic);
+    }
+    final fins = await finsQuery.limit(200).get();
     final debts = <Map<String, dynamic>>[];
     for (final d in fins.docs) {
       final m = d.data();

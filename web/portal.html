@@ -276,7 +276,7 @@
 
     async function confirmar(id) {
         try {
-            await db.collection('appointments').doc(id).update({status: 'Confirmado', confirmationDate: new Date()});
+            await db.collection('appointments').doc(id).update({status: 'Confirmado', confirmationDate: new Date(), portalToken: token});
             await mirrorRef.update({statusSessao: setOverride(id, 'Confirmado'), updatedAt: new Date()});
             render();
             toast('Presença confirmada!');

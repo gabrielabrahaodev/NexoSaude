@@ -1,7 +1,30 @@
 # LGPD — NexoSaúde (análise e sugestões)
 
-Documento para análise posterior. Nada aqui foi implementado — são sugestões
-aguardando decisão. Data da análise: 2026-10-05.
+Documento para análise posterior. Data da análise: 2026-10-05; revisão
+pós-auditoria externa em 16/10/2026.
+
+## A. Controles verificados no código
+
+- Consentimento portal/WhatsApp explícito, default desmarcado,
+  `accepted/at/via/by`; sweep apagou 415 espelhos sem aceite (E2).
+- Revogação efetiva (mata link + espelho, `accepted:false`/`revokedAt`).
+- Rules por `clinicId` nas coleções operacionais — COM as exceções amplas
+  abaixo (ver B): `owner` global, `users`/`clinics` leitura auth, estoque e
+  fornecedores sem escopo.
+- Anamnese pública restrita a allowlist de 14 campos; segredos só owner.
+- Cascatas de eliminação (paciente, clínica nx-160, orçamento nx-168).
+- Token opaco de 32 chars, sem dado sensível em URL.
+- Chaves de serviço (`migrate/*-key.json`) fora do git (ignoradas).
+
+## B. Controles que dependem de produção/configuração
+
+- Rules EFETIVAMENTE publicadas (verificar via `rules-inspect.js`; repo ≠ prova).
+- Contratos com suboperadores (Google DPA padrão; Meta/Cloudinary a verificar).
+- Backups/export sob guarda do owner; retenção praticada pela clínica.
+
+## C. Propostas ainda não implementadas
+
+Ver tabela de sugestões abaixo (coluna Decisão).
 
 ## Papéis
 

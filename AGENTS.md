@@ -45,7 +45,7 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 | `lib/screens/auth/role_check_screen.dart` | Post-login role/clinic resolution |
 | `lib/ui/app_theme.dart` | Colors, text styles, ThemeData builder |
 | `firestore.rules` | Security rules (owner vs staff, clinic isolation) |
-| `lib/services/document_service.dart` | Upload Cloudinary + metadados; destroy via Function `destroyCloudinaryFile` |
+| `lib/services/document_service.dart` | Upload Cloudinary + metadados; destroy remoto DESABILITADO (retorna `false`, órfãos manuais — sem Function no Spark) |
 | `lib/services/package_billing.dart` | `PackageBilling.compute` puro (billing psico por presença) |
 | `lib/screens/psychology/psychology_schedule_form_screen.dart` | Geração de pacote/avulsa + cancelamento de contrato |
 
