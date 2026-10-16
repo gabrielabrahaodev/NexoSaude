@@ -3,15 +3,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- FUNÇÕES AUXILIARES DE SEGURANÇA ---
-    
+    // Modelo (reavaliação 16/10): sem poder global de owner. Owner age SÓ
+    // na própria clínica (ownsClinic) ou na equipe dela (team-manage);
+    // plataforma = superadmin. Listas são tudo-ou-nada: restrição que a
+    // query não prova nega a LISTA inteira (nunca filtrar via lista).
+
     // Verifica se o usuário está logado
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // 1. Verifica se é a Dra. Lauciele (Super Admin)
+    // 1. Papel owner (plataforma antiga: Dra. Lauciele). NÃO usar sozinho
+    // como autorização de dados de clínica (global). Uso restante: casos
+    // sem clinicId (ex.: password_reset sem clínica) + telas owner-only.
     function isOwner() {
-      return isAuthenticated() && 
+      return isAuthenticated() &&
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner';
     }
@@ -29,19 +35,31 @@ service cloud.firestore {
              resource.data.ownerId == request.auth.uid;
     }
 
-    // 2. Verifica se a funcionária tem permissão para a clínica do documento
-    function hasClinicAccess(clinicId) {
-      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
-
-      return isAuthenticated() &&
-             exists(userDocPath) &&
-             get(userDocPath).data.allowedClinics != null &&
-             (clinicId in get(userDocPath).data.allowedClinics);
+    // 1d. Doc do atualizador (com guarda: sem doc = mapa vazio).
+    function _updater() {
+      let p = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isAuthenticated() && exists(p)
+        ? get(p).data
+        : {'role': '', 'allowedClinics': []};
     }
 
-    // 2b. Dono DAQUELA clínica (ownerId) — não basta ser owner em geral
-    // (auditoria 16/10: `isOwner()` global permitia ler outra clínica).
-    // Custo só no fallback: o caminho comum (`hasClinicAccess`) resolve antes.
+    function _updaterRole() {
+      return _updater().get('role', '');
+    }
+
+    function _updaterClinics() {
+      let c = _updater().get('allowedClinics', []);
+      return c is list ? c : [];
+    }
+
+    // 2. Verifica se a funcionária tem permissão para a clínica do documento
+    function hasClinicAccess(clinicId) {
+      return isAuthenticated() &&
+             clinicId is string && clinicId != '' &&
+             _updaterClinics().hasAny([clinicId]);
+    }
+
+    // 2b. Dono DAQUELA clínica (ownerId) — não basta ser owner em geral.
     function ownsClinic(clinicId) {
       return isAuthenticated() &&
              clinicId is string && clinicId != '' &&
@@ -49,29 +67,47 @@ service cloud.firestore {
              get(/databases/$(database)/documents/clinics/$(clinicId)).data.ownerId == request.auth.uid;
     }
 
-    // 2c. Acesso operacional a UMA clínica: plataforma, dono dela ou staff.
+    // 2c. Clínica ATIVA (trava de assinatura enforceable no servidor,
+    // reavaliação §3): bloqueada pelo Master OU trial vencido = sem acesso
+    // operacional (staff e owner; superadmin passa direto). Sem trialEndsAt
+    // = ativa (legadas + 2ª unidade criada no app; migração: backfill).
+    function clinicActive(clinicId) {
+      let c = get(/databases/$(database)/documents/clinics/$(clinicId));
+      let trial = c.data.get('trialEndsAt', null);
+      return c.data.get('blockedByAdmin', false) != true &&
+        (trial == null || trial > request.time);
+    }
+
+    // 2d. Acesso operacional a UMA clínica: plataforma, ou (dono dela ou
+    // staff dela) COM a clínica ativa. Custo: gets extras por avaliação;
+    // base pequena (mono-digit clínicas) — aceito e documentado.
     function clinicScoped(clinicId) {
       return isSuperAdmin() ||
-             hasClinicAccess(clinicId) ||
-             ownsClinic(clinicId);
+        ((hasClinicAccess(clinicId) || ownsClinic(clinicId)) &&
+         clinicActive(clinicId));
     }
 
-    // 2d. Mesma clínica entre usuários: RESERVADO p/ leituras por doc
-    // (get). NÃO usar em LISTAS: rules são tudo-ou-nada e a query inteira
-    // nega (visto em 16/10 no dropdown da agenda). Listas de `users`
-    // seguem autenticadas (ver regra A); o app sempre filtra por clínica.
+    // 2e. Mesma clínica entre usuários: SÓ para leituras por doc (get).
+    // NUNCA em LISTAS (tudo-ou-nada nega a query inteira — visto em 16/10
+    // no dropdown da agenda). Listas de `users` seguem autenticadas.
     function sharesClinic(targetAllowed) {
-      let mine = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('allowedClinics', []);
       return isAuthenticated() &&
-             targetAllowed is list && mine is list &&
-             mine.hasAny(targetAllowed);
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             targetAllowed is list &&
+             _updaterClinics().hasAny(targetAllowed);
     }
 
-    // 2e. Clínica do paciente pai (subcoleções sem clinicId próprio).
+    // 2f. Clínica do paciente pai (subcoleções sem clinicId próprio).
     function patientClinicOk(patientId) {
       let pref = /databases/$(database)/documents/patients/$(patientId);
       return exists(pref) &&
              clinicScoped(get(pref).data.clinicId);
+    }
+
+    // 2g. clinicId efetivo p/ update/delete (cura legados sem o campo: vale
+    // o novo quando o antigo não existe; doc sem nenhum = negado).
+    function _docClinic(oldData, newData) {
+      return oldData.get('clinicId', newData.get('clinicId', ''));
     }
 
     // 3. Caminho de segredos dentro de settings (ex.: integrations/cloudinary)
@@ -79,94 +115,252 @@ service cloud.firestore {
       return document == 'integrations' || document.matches('integrations/.*');
     }
 
+    // 3b. Campos administrativos de clínica: SÓ superadmin (reavaliação §3).
+    // Recebe o Set de chaves afetadas (diff().affectedKeys()).
+    function _noClinicAdminKeys(affected) {
+      return !affected.hasAny(['trialEndsAt', 'blockedByAdmin', 'ownerId']);
+    }
+
+    // 3c. Papéis de equipe (nunca owner/superadmin via cliente).
+    function _isStaffRole(role) {
+      return role in ['dentista', 'dentist', 'recepcionista', 'receptionist',
+        'psicologo', 'gerente'];
+    }
+
     // --- REGRAS DE COLEÇÕES ---
 
-    // A. USUÁRIOS (leitura autenticada — auditoria 16/10; escrita inalterada).
-    // Escopo por sobreposição QUEBROU listas (tudo-ou-nada nega a query
-    // inteira: dropdown da agenda, ensureWindow). Mitigações mantidas:
-    // UIDs imprevisíveis, app sempre filtra por clínica, sem credenciais
-    // nos docs. Reavaliar com espelho por clínica se preciso.
+    // A. USUÁRIOS (reavaliação P0-1: sem escrita global de owner; `role`
+    // IMUTÁVEL via cliente — só superadmin promove; escalada p/ superadmin
+    // pelo próprio doc, fechada).
+    // GET escopado (próprio/superadmin/mesma clínica); LIST autenticada
+    // (dropdowns + ensureWindow exigem; app sempre filtra por clínica;
+    // UIDs imprevisíveis, sem credenciais nos docs — residual documentado).
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner() || isSuperAdmin();
-      // Auto-cadastro (email/Google): o próprio usuário cria o doc,
-      // sem clínica e sem poder virar owner (owner libera depois).
+      allow get: if isAuthenticated() &&
+          (request.auth.uid == userId || isSuperAdmin() ||
+           sharesClinic(resource.data.get('allowedClinics', [])));
+      allow list: if isAuthenticated();
+      // Auto-cadastro (email/Google): o próprio uid, pendente, sem clínica,
+      // sem cargo de poder, allowlist de campos de perfil.
       allow create: if isAuthenticated() && request.auth.uid == userId
-          && request.resource.data.role in
-             ['dentist', 'dentista', 'receptionist', 'recepcionista', 'psicologo']
+          && request.resource.data.keys().hasOnly(['email', 'name', 'role',
+            'allowedClinics', 'status', 'createdAt', 'created_at',
+            'whatsapp', 'phone', 'authProvider'])
+          && _isStaffRole(request.resource.data.get('role', ''))
           && request.resource.data.allowedClinics == []
-          && request.resource.data.status == 'pending_approval';
-      // Trial com porteira: o próprio usuário cria o doc como owner
-      // PENDENTE (sem clínica, sem trial). Superadmin aprova e provisiona.
+          && request.resource.data.status == 'pending_approval'
+          && request.resource.data.get('email', '') is string;
+      // Trial com porteira: o próprio cria o doc owner PENDENTE (sem
+      // clínica, sem trial). Superadmin aprova e provisiona.
       allow create: if isAuthenticated() && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['email', 'name', 'role',
+            'allowedClinics', 'status', 'createdAt', 'created_at',
+            'whatsapp', 'phone'])
           && request.resource.data.role == 'owner'
           && request.resource.data.allowedClinics == []
           && request.resource.data.status == 'pending_approval'
-          && !('trialEndsAt' in request.resource.data.keys());
+          && !('trialEndsAt' in request.resource.data.keys())
+          && request.resource.data.get('email', '') is string;
+      // Equipe (Funcionários): owner/superadmin vincula staff à PRÓPRIA
+      // clínica (subconjunto das suas + exceção p/ clínica recém-criada
+      // que ele own; nunca owner/superadmin como alvo).
+      allow create: if _teamUserCreate();
+      // Plataforma (Master provisiona owner + clínica).
+      allow create: if isSuperAdmin();
+      // Update: superadmin tudo; próprio SÓ perfil (cargo, clínicas e
+      // status travados); gestor administra a equipe da própria clínica.
+      allow update: if isSuperAdmin() || _selfProfileUpdate() || _teamUserManage();
+      // Delete: SÓ plataforma, + auto-limpeza do próprio cadastro pendente
+      // (falha no trial: apaga o doc órfão para tentar de novo).
+      allow delete: if isSuperAdmin() ||
+          (isAuthenticated() && request.auth.uid == userId &&
+           resource.data.get('status', '') == 'pending_approval' &&
+           resource.data.get('allowedClinics', []) == []);
     }
 
-    // A1b. PEDIDOS DE TRIAL (porteira do teste grátis). Create público com
-    // allowlist; leitura/escrita só superadmin (vê no Master e aprova).
+    // A0. Criação de vínculo de equipe pelo gestor.
+    function _teamUserCreate() {
+      let ur = _updaterRole();
+      let mine = _updaterClinics();
+      let t = request.resource.data;
+      let clinics = t.get('allowedClinics', []);
+      return isAuthenticated() &&
+        (ur == 'owner' || ur == 'superadmin') &&
+        t.keys().hasOnly(['name', 'cpf', 'email', 'role', 'allowedClinics',
+          'createdAt', 'created_at', 'status', 'phone', 'whatsapp']) &&
+        _isStaffRole(t.get('role', '')) &&
+        t.get('status', '') in ['Ativo', 'pending_approval'] &&
+        t.get('email', '') is string &&
+        clinics is list && clinics.size() > 0 &&
+        (ur == 'superadmin' ||
+         clinics.toSet().difference(mine.toSet()).size() == 0 ||
+         (clinics.size() == 1 && ownsClinic(clinics[0])));
+    }
+
+    // A0b. Próprio usuário: só campos de perfil (nunca role/clínicas/status).
+    function _selfProfileUpdate() {
+      return isAuthenticated() && request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['name', 'email', 'phone', 'whatsapp', 'cpf', 'theme',
+           'menuAccess', 'createdAt', 'created_at', 'authProvider',
+           'updatedAt']) &&
+        request.resource.data.get('role', '') ==
+          resource.data.get('role', '') &&
+        request.resource.data.get('allowedClinics', []) ==
+          resource.data.get('allowedClinics', []) &&
+        request.resource.data.get('status', '') ==
+          resource.data.get('status', '');
+    }
+
+    // A0c. Gestão de equipe: owner/superadmin, alvo nunca superadmin, cargo
+    // imutável, alvo da mesma clínica (ou pendente sem clínica); inclusões
+    // novas restritas às clínicas do gestor + 2ª unidade recém-criada que
+    // ele own (fora das suas, no máx. 1 por operação).
+    function _teamUserManage() {
+      let ur = _updaterRole();
+      let mine = _updaterClinics();
+      let old = resource.data;
+      let t = request.resource.data;
+      let oldClinics = old.get('allowedClinics', []);
+      let newClinics = t.get('allowedClinics', []);
+      let added = newClinics.toSet().difference(
+        oldClinics is list ? oldClinics.toSet() : [].toSet());
+      let outside = added.toSet().difference(mine.toSet());
+      return isAuthenticated() &&
+        (ur == 'owner' || ur == 'superadmin') &&
+        old.get('role', '') != 'superadmin' &&
+        t.get('role', '') == old.get('role', '') &&
+        newClinics is list &&
+        (ur == 'superadmin' ||
+         ((!(oldClinics is list) || oldClinics.size() == 0 ||
+           oldClinics.toSet().hasAny(mine.toSet())) &&
+          (outside.size() == 0 ||
+           (outside.size() == 1 && ownsClinic(outside.toList()[0])))));
+    }
+
+    // A1b. PEDIDOS DE TRIAL (porteira do teste grátis). Create autenticado
+    // (conta recém-criada) COM uid vinculado (reavaliação §4: antes o `uid`
+    // era negado pela allowlist e o pedido se perdia); leitura/escrita só
+    // superadmin (vê no Master e aprova pelo `uid`).
     match /trial_requests/{docId} {
-      allow create: if request.resource.data.keys().hasOnly(
-            ['nome', 'whatsapp', 'email', 'clinicName', 'type', 'status', 'createdAt'])
-          && request.resource.data.status == 'solicitado'
-          && request.resource.data.nome is string
-          && request.resource.data.nome.size() > 1
-          && request.resource.data.nome.size() < 100
-          && request.resource.data.email is string
-          && request.resource.data.email.size() > 3
-          && request.resource.data.email.size() < 100;
+      allow create: if isAuthenticated() &&
+          request.resource.data.keys().hasOnly(
+            ['nome', 'whatsapp', 'email', 'clinicName', 'type', 'uid',
+             'status', 'createdAt']) &&
+          request.resource.data.status == 'solicitado' &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.nome is string &&
+          request.resource.data.nome.size() > 1 &&
+          request.resource.data.nome.size() < 100 &&
+          request.resource.data.whatsapp is string &&
+          request.resource.data.whatsapp.size() >= 8 &&
+          request.resource.data.whatsapp.size() < 20 &&
+          request.resource.data.email is string &&
+          request.resource.data.email.size() > 3 &&
+          request.resource.data.email.size() < 100 &&
+          request.resource.data.clinicName is string &&
+          request.resource.data.clinicName.size() > 1 &&
+          request.resource.data.clinicName.size() < 100 &&
+          request.resource.data.type in ['dental', 'psychology', 'multi'];
       allow read, update, delete: if isSuperAdmin();
     }
 
-    // A2. PREFERÊNCIAS DO USUÁRIO (ex.: tema) — o próprio usuário ou owner.
+    // A2. PREFERÊNCIAS DO USUÁRIO (ex.: tema) — o próprio ou plataforma
+    // (antes: qualquer owner lia/escrevia prefs alheias).
     match /user_prefs/{uid} {
       allow read, write: if isAuthenticated() &&
-          (isOwner() || request.auth.uid == uid);
+          (request.auth.uid == uid || isSuperAdmin());
     }
 
-    // A3. PEDIDOS DE RESET DE SENHA (sem e-mail automatico: e-mails
-    // genericos nao tem caixa de entrada). Create PUBLICO (pedido feito
-    // deslogado na tela de login, allowlist rigida); leitura, update e
-    // delete SO owner. Staff nao le: o doc nao tem clinicId, entao o
-    // hasClinicAccess do catch-all F retorna false.
+    // A3. PEDIDOS DE RESET DE SENHA (sem e-mail automático). Create PÚBLICO
+    // (deslogado, allowlist rígida). Leitura/update/delete: plataforma, ou
+    // owner — escopado quando o pedido tem clínica (criado em Funcionários),
+    // global quando anônimo no login (só e-mail transitório; o app apaga
+    // após processar — residual documentado, reavaliação §7).
     match /password_reset_requests/{docId} {
       allow create: if request.resource.data.keys().hasOnly(
-            ['email', 'createdAt', 'status'])
-          && request.resource.data.status == 'pending'
-          && request.resource.data.email is string
-          && request.resource.data.email.size() > 3
-          && request.resource.data.email.size() < 100;
-      allow read, update, delete: if isOwner();
+            ['email', 'createdAt', 'status', 'clinicId']) &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.email is string &&
+          request.resource.data.email.size() > 3 &&
+          request.resource.data.email.size() < 100 &&
+          (!('clinicId' in request.resource.data) ||
+           request.resource.data.clinicId is string);
+      allow read, update, delete: if isSuperAdmin() ||
+          (isOwner() && (!('clinicId' in resource.data) ||
+            clinicScoped(resource.data.clinicId)));
     }
 
-    // B. CLÍNICAS (trialEndsAt + blockedByAdmin: só superadmin escreve)
+    // B. CLÍNICAS (reavaliação §3: owner NÃO escreve trial/bloqueio/dono).
     // Operacional (pixKey/gradeConfig/whatsappNumber): staff da clínica
-    // COM a flag g_pix/g_grade/g_clinica no mapa; resto segue owner.
+    // COM a flag g_pix/g_grade/g_clinica; resto segue owner (sem admin).
+    // LIST autenticada mantida (role_check, assinatura e mainView listam as
+    // PRÓPRIAS por ownerId — inexprimível em lista; metadados sem dado de
+    // paciente; residual documentado).
     match /clinics/{clinicId} {
-      // Leitura autenticada mantida (avaliação pública usa este doc sem
-      // login; restringir quebraria `/avaliacao` — risco residual aceito:
-      // IDs imprevisíveis, sem listagem).
-      allow read: if isAuthenticated();
-      allow create: if isOwner() || isSuperAdmin();
-      // Excluir: SÓ o dono DA clínica (auditoria 16/10).
+      allow get, list: if isAuthenticated();
+      // Create: plataforma livre; owner SÓ a própria (ownerId == uid) e sem
+      // campos administrativos (trial/bloqueio vêm do Master na aprovação).
+      allow create: if isSuperAdmin() ||
+          (isAuthenticated() &&
+           request.resource.data.get('ownerId', '') == request.auth.uid &&
+           _noClinicAdminKeys(request.resource.data) &&
+           request.resource.data.get('name', '') is string);
+      // Excluir: SÓ o dono DA clínica.
       allow delete: if ownsClinic(clinicId) || isSuperAdmin();
-      allow update: if ownsClinic(clinicId) || isSuperAdmin() ||
+      // Update: plataforma tudo; dono SEM admin-keys; staff operacional.
+      allow update: if isSuperAdmin() ||
+        (ownsClinic(clinicId) &&
+         _noClinicAdminKeys(
+           request.resource.data.diff(resource.data).affectedKeys())) ||
         (hasClinicAccess(clinicId) && _clinicOpAllowed());
     }
 
     function _clinicOpAllowed() {
       let affected =
         request.resource.data.diff(resource.data).affectedKeys();
-      let u = get(
-        /databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let u = _updater();
       let flags = 'menuAccess' in u ? u.menuAccess : {};
       return affected.hasOnly(
           ['pixKey', 'gradeConfig', 'whatsappNumber', 'updatedAt']) &&
         (!('pixKey' in affected) || flags['g_pix'] == true) &&
         (!('gradeConfig' in affected) || flags['g_grade'] == true) &&
         (!('whatsappNumber' in affected) || flags['g_clinica'] == true);
+    }
+
+    // B1b. PROJEÇÃO PÚBLICA p/ avaliação online (reavaliação §6): get
+    // público (só nome + WhatsApp; sem listagem = sem enumeração); escrita
+    // do dono/superadmin com allowlist estrita. O app espelha ao criar a
+    // clínica (ver clinic_management_screen).
+    match /public_clinics/{clinicId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if (ownsClinic(clinicId) || isSuperAdmin()) &&
+          request.resource.data.keys().hasOnly(
+            ['name', 'whatsappNumber', 'updatedAt']) &&
+          request.resource.data.get('name', '') is string;
+      allow delete: if isSuperAdmin();
+    }
+
+    // B1c. LEADS da avaliação (anônimo cria com allowlist; equipe lê).
+    match /public_clinics/{clinicId}/leads/{leadId} {
+      allow create: if request.resource.data.keys().hasOnly(
+            ['answers', 'score', 'createdAt', 'origin', 'status']) &&
+          request.resource.data.status == 'new_lead' &&
+          request.resource.data.origin == 'web_form' &&
+          request.resource.data.score is number &&
+          request.resource.data.score >= 0 &&
+          request.resource.data.score <= 200 &&
+          request.resource.data.answers is list &&
+          request.resource.data.answers.size() <= 10;
+      allow read, update, delete: if clinicScoped(clinicId);
+    }
+
+    // B1d. Leads LEGADOS em clinics/{id}/leads (tela antiga): leitura da
+    // equipe p/ histórico; escrita NOVA só pela via pública (B1c).
+    match /clinics/{clinicId}/leads/{leadId} {
+      allow read: if isAuthenticated() && clinicScoped(clinicId);
+      allow write: if false;
     }
 
     // B2. ASSINATURA DA PLATAFORMA (cobrança por usuário do owner).
@@ -183,195 +377,208 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(
             ['avisoPagamento', 'updatedAt']));
     }
-    
-    // C. NOTÍCIAS
+
+    // C. NOTÍCIAS (catálogo global, fonte = APIs externas; escrita SÓ
+    // plataforma — antes qualquer owner publicava no catálogo global).
     match /news/{newsId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner();
+      allow write: if isSuperAdmin();
     }
 
-    // D. EXCEÇÃO: CONFIRMAÇÃO VIA WHATSAPP / PORTAL
-    // Escrita pública vinculada ao token: anônimo só com o token do
-    // paciente (confirmar.html e portal enviam `portalToken`); staff/owner
-    // autenticado mantém o fluxo do app. Sem token = negado.
-    function tokenMatches() {
-      return request.resource.data.portalToken is string &&
-          request.resource.data.portalToken.size() > 0 &&
-          request.resource.data.portalToken ==
-              resource.data.portalToken;
+    // D. EXCEÇÃO: CONFIRMAÇÃO VIA WHATSAPP / PORTAL (reavaliação §5).
+    // Fonte única de verdade = `patients/{patientId}.portalToken` (o app
+    // carimba o token no agendamento ao criar — AppointmentService; regra
+    // aceita AMBOS p/ cobrir legados). Anônimo SÓ com token; staff SÓ com
+    // acesso à clínica (antes: qualquer autenticado confirmava/remarcava
+    // consulta de qualquer clínica). Sem token = negado (fallback WhatsApp).
+    function apptTokenOk() {
+      let sent = request.resource.data.get('portalToken', '');
+      let ownTok = resource.data.get('portalToken', '');
+      let pid = resource.data.get('patientId', '');
+      let pref = /databases/$(database)/documents/patients/$(pid);
+      return sent is string && sent.size() > 0 && (
+        (ownTok is string && ownTok.size() > 0 && sent == ownTok) ||
+        (pid is string && pid != '' && exists(pref) &&
+         sent == get(pref).data.get('portalToken', '')));
+    }
+    function _apptStaff() {
+      return clinicScoped(_docClinic(resource.data, request.resource.data));
     }
     match /appointments/{appointmentId} {
       allow update: if
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status',
 'confirmationDate', 'portalToken']) &&
         request.resource.data.status == 'Confirmado' &&
-        (isAuthenticated() || tokenMatches());
+        (_apptStaff() || apptTokenOk());
       // Portal: pedido de remarcação (vira pendência p/ recepção).
-      // Leva a data proposta + token (o app interno lê tudo do agendamento).
       allow update: if
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(
           ['status', 'proposedDate', 'portalToken']) &&
         request.resource.data.status == 'remarcar' &&
-        (isAuthenticated() || tokenMatches());
+        (_apptStaff() || apptTokenOk());
     }
 
     // A4. PORTAL DO PACIENTE (espelhos; sem Functions).
-    // portal/{token}: get público (doc opaco, só com o link); escrita sem
-    // login SOMENTE via allowlist (pedidos do paciente); create/delete e
-    // demais escritas: autenticado (o app escreve via syncPortalMirror).
+    // portal/{token}: get público (doc opaco, só com o link); escrita
+    // autenticada ESCOPADA pela clínica do espelho (cura legados sem
+    // clinicId pelo campo novo); anônimo SOMENTE via allowlist (pedidos).
     // portal_slots/{clinicId}: get público (só horários livres, sem dado
-    // de paciente); escrita só autenticado (app mantém via arrayUnion).
+    // de paciente); SEM listagem (o app/portal nunca listam); escrita
+    // escopada (antes: qualquer autenticado reescrevia slots de qualquer
+    // clínica).
     match /portal/{token} {
       allow get: if true;
-      allow create, delete: if isAuthenticated();
-      allow update: if isAuthenticated() ||
+      allow create: if isAuthenticated() &&
+          clinicScoped(request.resource.data.get('clinicId', ''));
+      allow delete: if isAuthenticated() &&
+          clinicScoped(resource.data.get('clinicId', ''));
+      allow update: if (isAuthenticated() &&
+          clinicScoped(_docClinic(resource.data, request.resource.data))) ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
         ]);
     }
     match /portal_slots/{clinicId} {
-      // Só get por doc (o app e o portal nunca listam; `read` permitiria
-      // enumerar horários de todas as clínicas).
       allow get: if true;
-      allow list: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow list: if false;
+      allow write: if isAuthenticated() && clinicScoped(clinicId);
     }
 
-    // Portal: "avisei que paguei" (selo p/ tesouraria dar baixa ou dispensar).
+    // Portal: "avisei que paguei" (selo p/ tesouraria dar baixa ou
+    // dispensar). Staff escopado (antes: qualquer autenticado alterava
+    // financeiro de qualquer clínica); anônimo via allowlist (link do
+    // portal; ids imprevisíveis — residual documentado).
     match /financial/{docId} {
-      allow update: if isAuthenticated() ||
+      allow update: if (isAuthenticated() &&
+          clinicScoped(_docClinic(resource.data, request.resource.data))) ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(
           ['avisoPagamento', 'updatedAt']);
     }
 
-    // E. ANAMNESE ONLINE
+    // E. ANAMNESE ONLINE (reavaliação P0-2: equipe via clínica do paciente
+    // pai; sem delete amplo).
     // get público: prefill do anamnese.html (sem login).
-    // Escrita pública RESTRITA aos 14 campos do formulário (allowlist);
-    // staff autenticado mantém acesso total (prontuário no app).
+    // Escrita pública RESTRITA aos 14 campos do formulário (allowlist).
     match /anamnesis/{patientId} {
       allow get: if true;
-      allow delete: if isAuthenticated();
-      allow create: if isAuthenticated() || request.resource.data.keys().hasOnly([
-        'patientId', 'updatedAt',
-        'underMedicalTreatment', 'medicalTreatmentDesc',
-        'takingMedication', 'medicationDesc',
-        'hasAllergies', 'allergiesDesc',
-        'conditions', 'smoker', 'alcohol', 'bruxism', 'pregnant',
-        'observations'
-      ]);
-      allow update: if isAuthenticated() || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'patientId', 'updatedAt',
-        'underMedicalTreatment', 'medicalTreatmentDesc',
-        'takingMedication', 'medicationDesc',
-        'hasAllergies', 'allergiesDesc',
-        'conditions', 'smoker', 'alcohol', 'bruxism', 'pregnant',
-        'observations'
-      ]);
+      allow create: if patientClinicOk(patientId) ||
+        request.resource.data.keys().hasOnly([
+          'patientId', 'updatedAt',
+          'underMedicalTreatment', 'medicalTreatmentDesc',
+          'takingMedication', 'medicationDesc',
+          'hasAllergies', 'allergiesDesc',
+          'conditions', 'smoker', 'alcohol', 'bruxism', 'pregnant',
+          'observations'
+        ]);
+      allow update, delete: if patientClinicOk(patientId) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'patientId', 'updatedAt',
+          'underMedicalTreatment', 'medicalTreatmentDesc',
+          'takingMedication', 'medicationDesc',
+          'hasAllergies', 'allergiesDesc',
+          'conditions', 'smoker', 'alcohol', 'bruxism', 'pregnant',
+          'observations'
+        ]);
     }
 
-    // F. DADOS OPERACIONAIS (escopo por clínica, sem owner global).
-    // Auditoria 16/10: `isOwner()` sozinho liberava qualquer clínica para
-    // qualquer owner. Agora: plataforma, dono DA clínica ou staff dela.
-    // Views sem filtro retornam o subconjunto permitido (sem erro).
+    // F. DADOS OPERACIONAIS (escopo por clínica + clínica ativa; sem owner
+    // global). Cura legados sem clinicId pelo campo novo no update/delete
+    // (leitura de legado sem clínica = negada; base verificada com campo).
     match /{collection}/{docId} {
-      allow read, update, delete: if 
+      allow read: if
           isAuthenticated() &&
           (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
-          clinicScoped(resource.data.clinicId);
-      
-      allow create: if 
+          clinicScoped(resource.data.get('clinicId', ''));
+
+      allow update, delete: if
+          isAuthenticated() &&
+          (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
+          clinicScoped(_docClinic(resource.data, request.resource.data));
+
+      allow create: if
           isAuthenticated() &&
           (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
           clinicScoped(request.resource.data.clinicId);
     }
 
-    // --- MÓDULO DE GESTÃO (escopo por clínica; catálogo legado sem
-    // clinicId continua legível — decisão de negócio documentada) ---
+    // --- MÓDULO DE GESTÃO (escopo por clínica) ---
+    // procedures: catálogo GLOBAL intencional (itens sem clinicId legíveis;
+    // auditoria 16/10: sem dado particular — nome/preço/duração).
+    // inventory/suppliers: clinicId OBRIGATÓRIO (base verificada em 16/10:
+    // 0 + 12 docs, todos COM clinicId — sem legado).
     match /procedures/{document=**} {
       allow read: if isAuthenticated() && (isSuperAdmin() ||
           !('clinicId' in resource.data) ||
-          hasClinicAccess(resource.data.clinicId) ||
-          ownsClinic(resource.data.clinicId));
+          clinicScoped(resource.data.clinicId));
       allow write: if isAuthenticated() && (isSuperAdmin() ||
           (('clinicId' in request.resource.data) &&
-           (hasClinicAccess(request.resource.data.clinicId) ||
-            ownsClinic(request.resource.data.clinicId))));
+            clinicScoped(request.resource.data.clinicId)));
     }
 
     match /inventory/{document=**} {
-      allow read: if isAuthenticated() && (isSuperAdmin() ||
-          !('clinicId' in resource.data) ||
-          hasClinicAccess(resource.data.clinicId) ||
-          ownsClinic(resource.data.clinicId));
-      allow write: if isAuthenticated() && (isSuperAdmin() ||
-          (('clinicId' in request.resource.data) &&
-           (hasClinicAccess(request.resource.data.clinicId) ||
-            ownsClinic(request.resource.data.clinicId))));
+      allow read: if isAuthenticated() &&
+          clinicScoped(resource.data.get('clinicId', ''));
+      allow write: if isAuthenticated() &&
+          clinicScoped(request.resource.data.get('clinicId', ''));
     }
 
     match /suppliers/{document=**} {
-      allow read: if isAuthenticated() && (isSuperAdmin() ||
-          !('clinicId' in resource.data) ||
-          hasClinicAccess(resource.data.clinicId) ||
-          ownsClinic(resource.data.clinicId));
-      allow write: if isAuthenticated() && (isSuperAdmin() ||
-          (('clinicId' in request.resource.data) &&
-           (hasClinicAccess(request.resource.data.clinicId) ||
-            ownsClinic(request.resource.data.clinicId))));
+      allow read: if isAuthenticated() &&
+          clinicScoped(resource.data.get('clinicId', ''));
+      allow write: if isAuthenticated() &&
+          clinicScoped(request.resource.data.get('clinicId', ''));
     }
 
-    // --- DESPESAS E LAB (escopo por clínica, espelha regra F) ---
-    // Todas as leituras do app filtram por clinicId e todos os creates
-    // gravam clinicId (verificado em expense_service, reports, fin_tab,
-    // lab_service, patient_lab_tab). Queries sem clinicId serão negadas.
+    // --- DESPESAS E LAB (escopo por clínica + ativa, espelha regra F) ---
     match /expenses/{docId} {
-      allow read, update, delete: if isAuthenticated() &&
-          clinicScoped(resource.data.clinicId);
+      allow read: if isAuthenticated() &&
+          clinicScoped(resource.data.get('clinicId', ''));
+      allow update, delete: if isAuthenticated() &&
+          clinicScoped(_docClinic(resource.data, request.resource.data));
       allow create: if isAuthenticated() &&
           clinicScoped(request.resource.data.clinicId);
     }
 
     match /lab_orders/{orderId} {
-      allow read, update, delete: if isAuthenticated() &&
-          clinicScoped(resource.data.clinicId);
+      allow read: if isAuthenticated() &&
+          clinicScoped(resource.data.get('clinicId', ''));
+      allow update, delete: if isAuthenticated() &&
+          clinicScoped(_docClinic(resource.data, request.resource.data));
       allow create: if isAuthenticated() &&
           clinicScoped(request.resource.data.clinicId);
     }
 
-    // (blocos plans/anticipations removidos — ver nota abaixo)
+    // (blocos plans/anticipations removidos — sem escritores/leitores no
+    // app; sem regra, o acesso é negado por padrão.)
 
-    // REMOVIDOS os blocos amplos de financial/treatments/treatment_plans:
-    // redundantes com a regra F (já exige owner OU acesso à clínica) e
-    // apenas alargavam o acesso. Sem eles, vale a regra F.
-
-    // REMOVIDOS `plans/**` e `anticipations/**`: sem escritores/leitores
-    // no app (verificado) — sem regra, o acesso é negado por padrão.
-    
     // --- CONFIGURAÇÕES DA CLÍNICA (fees + integrations) ---
-    // settings/*: leitura p/ qualquer autenticado (telas leem perfil de
-    // taxas), escrita SÓ owner.
-    // settings/integrations/**: SÓ owner (higiene p/ segredos futuros;
-    // plano Spark não tem backend — nada no app lê este caminho hoje).
+    // settings/*: leitura da EQUIPE da clínica (antes: qualquer
+    // autenticado); escrita owner-da-clínica/superadmin fora de segredos.
     match /clinics/{clinicId}/settings/{document=**} {
-      allow read: if isAuthenticated() && !isSecretsPath(document);
+      allow read: if isAuthenticated() && !isSecretsPath(document) &&
+          (hasClinicAccess(clinicId) || ownsClinic(clinicId) ||
+           isSuperAdmin());
       allow write: if (ownsClinic(clinicId) || isSuperAdmin()) && !isSecretsPath(document);
     }
-    // Taxas da maquininha: regra explícita (leitura autenticado, escrita
-    // owner — mesmo intent do bloco acima, sem depender do curinga
-    // recursivo + função na condição; cobre doc fees e lista profiles).
+    // Taxas da maquininha: leitura da equipe (card/fees + financeiro leem);
+    // escrita dono-da-clínica/superadmin.
     match /clinics/{clinicId}/settings/fees/{doc=**} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() &&
+          (hasClinicAccess(clinicId) || ownsClinic(clinicId) ||
+           isSuperAdmin());
       allow write: if ownsClinic(clinicId) || isSuperAdmin();
     }
+    // Segredos: SÓ dono DA clínica ou plataforma (antes: qualquer owner
+    // global lia/escrevia segredos de qualquer clínica).
     match /clinics/{clinicId}/settings/integrations/{sub=**} {
-      allow read, write: if isOwner();
+      allow read, write: if ownsClinic(clinicId) || isSuperAdmin();
     }
-    
+
     // ---------------------------------------------------------
     // 3. SUBCOLEÇÕES (Odontograma, Prontuário dentro de Paciente)
     // ---------------------------------------------------------
     match /patients/{patientId}/{subcollection}/{docId} {
-       allow read, write: if 
+       allow read, write: if
           isAuthenticated() &&
           exists(/databases/$(database)/documents/patients/$(patientId)) &&
           patientClinicOk(patientId);

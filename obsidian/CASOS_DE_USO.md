@@ -162,7 +162,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 
 | # | Caso de Uso | Ator | Resumo | Ref. |
 |---|-------------|------|--------|------|
-| UC-77 | **Confirmação de consulta via link público** | Paciente | Link `confirmar.html?id=<appt>` permite atualizar status para "Confirmado" (regra específica no Firestore). | `firestore.rules`; `agenda_manager_screen.dart:546-554` |
+| UC-77 | **Confirmação de consulta via link público** | Paciente | Link `confirmar.html?id=<appt>&t=<token>` permite atualizar status para "Confirmado" (regra exige o token do paciente; sem token cai no "avise no WhatsApp"). | `firestore.rules`; `agenda_manager_screen.dart:546-554` |
 | UC-78 | **Anamnese pública** | Paciente | Write público em `anamnesis/{patientId}` via WhatsApp link. | `firestore.rules`; `anamnesis_tab.dart:170-184` |
 | UC-79 | **Avaliação digital de leads (rota /avaliacao)** | Paciente | Questionário com score por resposta; grava em `clinics/{cid}/leads` e redireciona ao WhatsApp da clínica. Sem `?cid=` → "Clínica não encontrada" (sem fallback). | `screens/public/public_evaluation_screen.dart:69-97` |
 
@@ -203,7 +203,7 @@ Catálogo completo de casos de uso levantados pelo exame do código-fonte. Cada 
 
 ## Observações Transversais
 
-1. **Isolamento multitenant:** services usam `SessionManager().applyFilter()` (budget, clinical_record, oracle, inventory, supplier, procedure, patient risk/list, financial por paciente, treatment plans, lab por paciente, smart-card, abas Pagamentos). **Restam sem filtro**: `product_service` (legado), `procedures` (global por desenho), leituras de gestão amplas nas rules (decisão documentada).
+1. **Isolamento multitenant:** services usam `SessionManager().applyFilter()` (budget, clinical_record, oracle, inventory, supplier, procedure, patient risk/list, financial por paciente, treatment plans, lab por paciente, smart-card, abas Pagamentos). **Restam sem filtro**: `product_service` (legado), `procedures` (global por desenho). Rules (reavaliação 16/10, ARQUIVO): sem poder global de owner, `role` imutável, trava de assinatura enforceable; residuais documentados (`users`/`clinics` list autenticadas — tudo-ou-nada).
 2. **Soft delete vs exclusão física:** agenda psicologia e schedules usam `status='cancelled'`; inventário/fornecedores/procedimentos deletam o doc; paciente usa cascata de delete.
 3. **Duplicação de lógica:** verificação de disponibilidade existe duplicada no service (`getBusySlots`) e inline nos dois formulários de agenda (padrão duplicação em 3 lugares).
 4. **Código morto identificado:** `budgets_tab._showMonthlyValueDialog` (:299-322) e `patient_financial_tab._checkForGroupPayment` (:979-1013) nunca são chamados.

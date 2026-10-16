@@ -17,7 +17,8 @@ import '../../../utils/display.dart';
 /// - Tema claro/escuro: preferência do usuário (ver `ThemeController`).
 /// - Acesso: owner marca o que cada usuário da clínica vê no menu lateral
 ///   (campo `menuAccess` no doc do usuário; ausente = tudo visível;
-///   owner ignora restrições). Escrita em `users` exige owner (rules).
+///   owner ignora restrições). Escrita em `users` exige owner da clínica
+///   (team-manage nas rules; cargo e clínicas travados).
 class SettingsTab extends StatefulWidget {
   /// Mapa de acesso do usuário atual (carregado pela Gestão) p/ portas
   /// por aba/seção. Nulo + owner = tudo (comportamento antigo).

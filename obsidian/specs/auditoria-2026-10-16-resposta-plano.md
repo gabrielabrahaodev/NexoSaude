@@ -52,3 +52,25 @@ Avaliação ponto a ponto contra o código atual (`remodelagem-gpt` ≈ `master`
 ## O que a auditoria errou ou exagerou
 - Rebuild "negado p/ staff": o mecanismo descrito não procede (avaliação é por documento); os defeitos reais são observabilidade e limite — menores e já endereçados acima.
 - `debtsTotal`, README e parte do portal: apontados como pendentes, mas já implementados na remodelagem — o gap é merge, não código.
+
+## Reavaliação 16/10 (noite) — disposição item a item
+
+Arquivo: [[reavaliacao-2026-10-16]]. Ao vivo segue `d28dd75b`; abaixo = ARQUIVO (não publicado). Sintaxe validada (ruleset sem release); `flutter analyze` 0 erros; `flutter test` +176 -1.
+
+| Item | Disposição |
+|---|---|
+| P0-1 owner→superadmin | ✅ `role` imutável via cliente; update/delete de `users` por papéis (self-perfil, team-manage, superadmin); create com allowlist |
+| P0-2 financial/appointments/portal/anamnesis | ✅ staff exige `clinicScoped`; anônimo só allowlist + token; delete anamnese escopado |
+| P1-3 trial/bloqueio | ✅ owner sem admin-keys (create e update); `clinicActive` enforceable nas rules; `role_check` fail-closed (tela indisponível + retry) |
+| P1-4 trial `uid` | ✅ rule aceita `uid == auth.uid` + validações; `assinatura.html` valida WhatsApp e limpa órfãos (doc pendente apagável pelo próprio) |
+| P1-5 token confirmação | ✅ app carimba `portalToken` (service + psico batch); regra aceita token do agendamento OU do cadastro |
+| P1-6 avaliação pública | ✅ `public_clinics/{id}` (get público, sem list) + leads anônimos validados; tela migrada; clínica espelha ao criar |
+| P1-7 residuais | ✅ slots sem list + escrita escopada; inventory/suppliers exigem `clinicId` (base verificada: 0+12 com campo); settings/fees/integrations escopados; news só superadmin; reset escopado quando tem clínica |
+| P2-8 slots parcial | ✅ ver acima |
+| P2-9 espelho | ✅ ASC + índice novo em `indexes.json`; financial teto 500 + `debtsTruncated`; sem-clínica = erro observável; 5 chamadores com toast |
+| P2-10 gate pacote | ✅ teste widget do card de erro (`monthly_package_card_test.dart`); manual registrado no plano §6 |
+| P2-11 Cloudinary | ✅ `AGENTS.md` afirmação única correta (sem Function; destroy desabilitado; órfãos manuais) |
+| P2-12 docs/release | ✅ README + plano de testes atualizados; `migrate/rules-*.js` portáteis e versionados (chave ignorada); Kanban nx-103 reagendado |
+| P2-13 rules/CI | ✅ matriz `test/rules/matrix.test.js` (14 casos) + `firebase.json` emulators + workflow CI (flutter + rules) |
+
+**Desvios assumidos (documentados nas rules):** `users` list e `clinics` list seguem autenticadas (tudo-ou-nada + fluxos `role_check`/assinatura/mainView exigem; sem dado de paciente); trial `null` = ativa (legadas + 2ª unidade; backfill pendente); links antigos sem `t` caem no WhatsApp (sem segredo, sem auth); reset anônimo do login segue visível a owner (só e-mail transitório, app apaga após processar).

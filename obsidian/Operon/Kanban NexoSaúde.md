@@ -7,8 +7,11 @@ kanban-plugin-created: 2026-09-29
 
 ## A Fazer
 
-- [ ] Reconsentir os 53 pacientes com consulta em 14 dias [[Sprint - Backlog]] `nx-103` (venceu 06/10 — reagendar ou executar)
-- [ ] Validar trial ponta a ponta [[Sprint - Backlog]] `nx-104`
+- [ ] Reconsentir os 53 pacientes com consulta em 14 dias [[Sprint - Backlog]] `nx-103` (venceu 06/10 — REAGENDADO p/ 23/10)
+- [ ] Validar trial ponta a ponta [[Sprint - Backlog]] `nx-104` (inclui pedido com `uid` + aprovação Master + relógio 7d)
+- [ ] Matriz de rules no emulator + release `rules/indexes` (reavaliação 16/10) `nx-171`
+- [ ] Backfill `trialEndsAt` legadas + política trial null (reavaliação §3) `nx-172`
+- [ ] Backfill `clinicId` pacientes sem clínica, se houver (reavaliação §9) `nx-173`
 
 
 ## Depois

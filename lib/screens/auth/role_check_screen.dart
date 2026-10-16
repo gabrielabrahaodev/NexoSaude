@@ -88,7 +88,15 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
           _showErrorAndLogout("Usuário não encontrado.");
         }
       } catch (e) {
-        _showErrorAndLogout("Erro de conexão: $e");
+        // Falha de leitura (rede/permissão) NÃO entra no sistema: tela de
+        // indisponibilidade com retry (fail-closed; reavaliação §3). Antes
+        // o erro caía em "Cadastro incompleto"/logout ou liberava.
+        if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (c) => const _UnavailableScreen()),
+            );
+        }
       }
     }
   }
@@ -126,12 +134,59 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
       }
       return "Período de teste encerrado. Fale com o suporte para continuar.";
     } catch (_) {
-      return null; // Erro de leitura não bloqueia (fail-open pontual).
+      // Erro de leitura da trava NÃO libera (fail-closed): o chamador
+      // mostra a tela de indisponibilidade em vez do dashboard.
+      rethrow;
     }
   }
 
   @override
   Widget build(BuildContext context) => const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
+
+/// Tela de indisponibilidade (falha de leitura no login): não entra no
+/// sistema nem desloga; tenta de novo (fail-closed, reavaliação §3).
+class _UnavailableScreen extends StatelessWidget {
+  const _UnavailableScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_off_outlined,
+                    size: 56, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text("Não foi possível carregar seus dados",
+                    style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                const Text(
+                    "Verifique sua conexão e tente de novo. Por segurança, o acesso só libera após a leitura.",
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                          builder: (_) => const RoleCheckScreen()),
+                    );
+                  },
+                  child: const Text("Tentar de novo"),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Tela de bloqueio da assinatura (trial expirado ou suspensão manual).

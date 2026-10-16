@@ -183,7 +183,8 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                       "Cria pedido; rode o reset-senha.bat e informe a temporária"),
                   onTap: () async {
                     Navigator.pop(ctx);
-                    await _requestPasswordReset(email);
+                    await _requestPasswordReset(email,
+                        clinicId: allowed.isNotEmpty ? allowed.first : null);
                   },
                 ),
               ],
@@ -268,7 +269,8 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
   }
 
   /// Grava o vínculo clínica↔funcionário (allowedClinics).
-  /// Rules `users`: escrita só owner (tela é owner-only na prática).
+  /// Rules `users`: team-manage pelo owner da clínica (cargo imutável;
+  /// inclusões restritas às clínicas do gestor).
   Future<void> _saveEmployeeClinics(
       String uid, String name, List<String> clinicIds) async {
     if (clinicIds.isEmpty) {
@@ -302,8 +304,9 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
   }
 
   /// Cria pedido pendente (só se ainda não houver um para o e-mail).
-  /// Campos exatos exigidos pelas rules A3: email/createdAt/status.
-  Future<void> _requestPasswordReset(String email) async {
+  /// Campos exigidos pelas rules A3: email/createdAt/status (+ clinicId
+  /// opcional p/ escopar a leitura do owner).
+  Future<void> _requestPasswordReset(String email, {String? clinicId}) async {
     try {
       final col =
           FirebaseFirestore.instance.collection('password_reset_requests');
@@ -323,6 +326,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
         'status': 'pending',
+        if (clinicId != null && clinicId.isNotEmpty) 'clinicId': clinicId,
       });
       if (mounted) {
         toast(context,

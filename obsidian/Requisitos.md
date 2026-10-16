@@ -601,7 +601,7 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 | 7 | ~~CPF duplicado: query existe mas bloqueio está comentado~~ → bloqueia o cadastro (vazio não conta) | RN-18 |
 | 8 | ~~Código morto: `_showMonthlyValueDialog`, `_checkForGroupPayment`, `_createNewProfile`, `_buildMinimalistCard`, `_getInitials`, `_isLoadingData`, `receivePayment`, `app_constants.dart`, rules `plans/anticipations`~~ ✅ removido (analyzer) | — |
 | 9 | Registro de funcionário pode deslogar o admin (FirebaseApp temporário) | RN-49 |
-| 10 | ~~Rules amplas (`financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`) liberavam qualquer autenticado~~ ✅ corrigido (redundância removida / blocos escopados; `procedures`/`inventory`/`suppliers` mantidos amplos de propósito) | RN-58 |
+| 10 | ~~Rules amplas (`financial`, `expenses`, `lab_orders`, `treatments`, `treatment_plans`) liberavam qualquer autenticado~~ ✅ corrigido (redundância removida / blocos escopados; reavaliação 16/10: sem poder global de owner, `role` imutável, trava de assinatura enforceable, `inventory`/`suppliers` exigem `clinicId`, só `procedures` mantém catálogo global intencional) | RN-58 |
 | 11 | ~~`patientTabCount` divergia das abas renderizadas (psico 7 vs 6, default 8 vs 9)~~ ✅ corrigido (6/9 + comentário no código) | RN-05 |
 | 12 | ~~Segredo Cloudinary lido no client~~ ✅ mitigado no Spark (signing removido do app; sem destroy remoto — só metadados; `settings/integrations` só owner p/ futuro Blaze) | RN-62 |
 | 13 | ~~Cascata purgava remoto antes do commit~~ ✅ corrigido (blocos de 450 + purge após commit) | RN-20 |

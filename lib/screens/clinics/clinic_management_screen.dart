@@ -158,8 +158,27 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'allowedClinics': FieldValue.arrayUnion([newClinicRef.id])
+      // Vínculo próprio via team-manage (leitura + set, não arrayUnion):
+      // o dono passa a "membro" da unidade que criou (allowedClinics do
+      // próprio doc é imutável p/ si; incluso via _teamUserManage: unidade
+      // nova que ele own). Acesso independe disso (ownsClinic nas rules).
+      final meRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final me = await meRef.get();
+      final mine = List<String>.from(
+          ((me.data() ?? {})['allowedClinics'] as List? ?? []).map((e) => '$e'));
+      if (!mine.contains(newClinicRef.id)) {
+        await meRef.update({
+          'allowedClinics': [...mine, newClinicRef.id]
+        });
+      }
+      // Projeção pública p/ avaliação online (só nome + WhatsApp).
+      await FirebaseFirestore.instance
+          .collection('public_clinics')
+          .doc(newClinicRef.id)
+          .set({
+        'name': name,
+        'whatsappNumber': phone,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       final wasFirst = _myClinicIds.isEmpty;

@@ -1,17 +1,25 @@
 // Publica firestore.rules via REST (contorna o 403 do `test` no CLI).
+// Uso: node migrate/rules-release.js
+// SOMENTE com ordem explícita. Rode a partir da raiz do repo.
+// Chave: env GOOGLE_APPLICATION_CREDENTIALS ou migrate/*-key.json
+// (ignorado no git; cada operador usa a sua).
 const fs = require('fs');
-const { GoogleAuth } = require('C:/Users/gabri/OneDrive/Documents/projetos/flutter/NexoSaude/migrate/node_modules/google-auth-library');
+const path = require('path');
+const { GoogleAuth } = require('./node_modules/google-auth-library');
+
+const ROOT = process.cwd();
+const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+  path.join(ROOT, 'migrate', 'new-key.json');
 
 (async () => {
   const auth = new GoogleAuth({
-    keyFile: 'C:/Users/gabri/OneDrive/Documents/projetos/flutter/NexoSaude/migrate/new-key.json',
+    keyFile,
     scopes: ['https://www.googleapis.com/auth/cloud-platform'],
   });
   const c = await auth.getClient();
   const t = await c.getAccessToken();
   const H = { Authorization: 'Bearer ' + t.token, 'Content-Type': 'application/json' };
-  const content = fs.readFileSync(
-    'C:/Users/gabri/OneDrive/Documents/projetos/flutter/NexoSaude/firestore.rules', 'utf8');
+  const content = fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8');
   let r = await fetch('https://firebaserules.googleapis.com/v1/projects/nexosaude/rulesets', {
     method: 'POST', headers: H,
     body: JSON.stringify({ source: { files: [{ name: 'firestore.rules', content }] } }),

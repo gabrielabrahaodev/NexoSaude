@@ -1,13 +1,19 @@
 // SÓ VALIDA a sintaxe: cria ruleset sem trocar o release (produção intacta).
+// Uso: node migrate/rules-validate.js [caminho/rules]
+// Rode a partir da raiz do repo. Chave: env GOOGLE_APPLICATION_CREDENTIALS
+// ou migrate/*-key.json (ignorado no git; cada operador usa a sua).
 const fs = require('fs');
-const { GoogleAuth } = require('C:/Users/gabri/OneDrive/Documents/projetos/flutter/NexoSaude/migrate/node_modules/google-auth-library');
+const path = require('path');
+const { GoogleAuth } = require('./node_modules/google-auth-library');
 
-const file = process.argv[2] ||
-  'C:/Users/gabri/OneDrive/Documents/projetos/flutter/NexoSaude/firestore.rules';
+const ROOT = process.cwd();
+const file = process.argv[2] || path.join(ROOT, 'firestore.rules');
+const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+  path.join(ROOT, 'migrate', 'new-key.json');
 
 (async () => {
   const auth = new GoogleAuth({
-    keyFile: 'C:/Users/gabri/OneDrive/Documents/projetos/flutter/NexoSaude/migrate/new-key.json',
+    keyFile,
     scopes: ['https://www.googleapis.com/auth/cloud-platform'],
   });
   const c = await auth.getClient();

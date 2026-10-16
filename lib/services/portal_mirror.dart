@@ -42,6 +42,7 @@ Map<String, dynamic> buildPortalMirror({
   required String pixKey,
   required DateTime now,
   List<String> refusedIso = const [],
+  bool debtsTruncated = false,
 }) {
   final upcoming = sessions
       .where((s) {
@@ -88,6 +89,9 @@ Map<String, dynamic> buildPortalMirror({
     'debts': open.take(3).toList(),
     'debtsTotal': total,
     'debtsCount': open.length,
+    // Teto de leitura atingido: o total pode estar incompleto (a tesouraria
+    // confere no Financeiro; reavaliação §9).
+    'debtsTruncated': debtsTruncated,
     'pixKey': pixKey,
     'propostasRecusadas': refusedIso,
     'updatedAt': now,
@@ -241,23 +245,24 @@ class PortalMirrorSync {
       await pRef.update({'portalToken': token});
     }
     final now = DateTime.now();
-    // Escopo da clínica (índices publicados: patientId+clinicId e
-    // clinicId+patientId+date DESC). Sem clinicId no cadastro (legado),
-    // cai no comportamento anterior.
+    // Escopo da clínica (índices: patientId+clinicId+date ASC e
+    // patientId+clinicId p/ financial). Sem clinicId = sem espelho
+    // (observável: o chamador avisa; backfill pendente — reavaliação §9).
     final scopeClinic = '${pdata['clinicId'] ?? ''}';
-    // Limites documentados (auditoria 16/10): janela de sessões a partir
-    // do mês passado; débitos sem corte de data (inadimplência antiga
-    // precisa aparecer), teto 200.
-    final monthStart = DateTime(now.year, now.month - 1, 1);
-    var apptsQuery = _db
-        .collection('appointments')
-        .where('patientId', isEqualTo: patientId);
-    if (scopeClinic.isNotEmpty) {
-      apptsQuery = apptsQuery.where('clinicId', isEqualTo: scopeClinic);
+    if (scopeClinic.isEmpty) {
+      throw StateError('Paciente sem clinicId (backfill pendente).');
     }
-    final appts = await apptsQuery
+    // Janela de sessões a partir do mês passado, ASC (as próximas primeiro;
+    // DESC+limit descartava as mais próximas acima de 200 — §9).
+    // Débitos sem corte de data (inadimplência antiga precisa aparecer),
+    // teto 500 + flag de truncamento.
+    final monthStart = DateTime(now.year, now.month - 1, 1);
+    final appts = await _db
+        .collection('appointments')
+        .where('patientId', isEqualTo: patientId)
+        .where('clinicId', isEqualTo: scopeClinic)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(monthStart))
-        .orderBy('date', descending: true)
+        .orderBy('date', descending: false)
         .limit(200)
         .get();
     final sessions = <Map<String, dynamic>>[];
@@ -276,13 +281,13 @@ class PortalMirrorSync {
         'status': '${m['status'] ?? ''}',
       });
     }
-    var finsQuery = _db
+    final fins = await _db
         .collection('financial')
-        .where('patientId', isEqualTo: patientId);
-    if (scopeClinic.isNotEmpty) {
-      finsQuery = finsQuery.where('clinicId', isEqualTo: scopeClinic);
-    }
-    final fins = await finsQuery.limit(200).get();
+        .where('patientId', isEqualTo: patientId)
+        .where('clinicId', isEqualTo: scopeClinic)
+        .limit(500)
+        .get();
+    final debtsTruncated = fins.docs.length >= 500;
     final debts = <Map<String, dynamic>>[];
     for (final d in fins.docs) {
       final m = d.data();
@@ -320,6 +325,7 @@ class PortalMirrorSync {
       pixKey: pixKey,
       now: now,
       refusedIso: refused,
+      debtsTruncated: debtsTruncated,
     ), SetOptions(merge: true)); // merge: preserva campos do portal (statusSessao, pedidos, avisos)
   }
 

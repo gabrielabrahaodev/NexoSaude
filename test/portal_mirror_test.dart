@@ -95,6 +95,21 @@ void main() {
       expect(m['debtsTotal'], 1120.0);
       expect(m['debtsCount'], 5);
     });
+
+    test('flag de truncamento: default false, propagada quando pedida', () {
+      final base = buildPortalMirror(
+          clinicId: 'cid1',
+          sessions: [], debts: [], pixKey: '', now: now);
+      expect(base['debtsTruncated'], false);
+      final trunc = buildPortalMirror(
+          clinicId: 'cid1',
+          sessions: [],
+          debts: [],
+          pixKey: '',
+          now: now,
+          debtsTruncated: true);
+      expect(trunc['debtsTruncated'], true);
+    });
   });
 
   group('freeSlots', () {

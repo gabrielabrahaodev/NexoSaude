@@ -317,10 +317,12 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     // sem isso, os deltas futuros (sessões) seriam
                     // descartados por doc inexistente.
                     if (consent) {
-                      try {
-                        await PortalMirrorSync.patient(newRef.id);
-                      } catch (e) {
-                        debugPrint("Espelho portal pós-cadastro: $e");
+                      // Falha no espelho é observável (não só debugPrint).
+                      if (!await PortalMirrorSync.patient(newRef.id) &&
+                          mounted) {
+                        toast(context,
+                            "Espelho do portal desatualizado — confira no Financeiro.",
+                            error: true);
                       }
                     }
 

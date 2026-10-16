@@ -1,15 +1,18 @@
-# Plano de testes — remodelagem-gpt (fases 1–4 + auditoria 16/10)
+# Plano de testes — remodelagem-gpt (fases 1–4 + auditoria 16/10 + reavaliação 16/10)
 
-Escopo: branch `remodelagem-gpt` (9 commits após `a6bad4f`). Ambiente:
-checkout da branch + `flutter run -d chrome`. Sem emulador (sem Java):
-testes de rules fora; resto manual + suite unitária. Nada vai a produção
-sem este plano assinado. **Rules NÃO publicadas** (ver §6).
+Escopo: `master` após a reavaliação (rules P0–P2 reescritas, app ajustado).
+Ambiente: checkout + `flutter run -d chrome`. Emulador/CI p/ rules:
+`firebase emulators:exec --only firestore "npm --prefix test/rules test"`
+(Java indisponível nesta máquina — roda no CI). **NADA vai a produção
+sem este plano assinado. Rules NOVAS NÃO publicadas** (ao vivo segue
+`d28dd75b` até a matriz passar + ordem explícita).
 
 ## 0. Base automatizada (executar primeiro)
 
-- [ ] `flutter analyze --no-pub` → 226 issues, 0 erros (igual baseline).
-- [ ] `flutter test` → +174 -1 (só `widget_test` pré-existente).
-- [ ] `flutter test test/portal_mirror_test.dart` → parcial conta resto.
+- [x] `flutter analyze --no-pub` → 227 issues, 0 erros (16/10, +1 info vs baseline).
+- [x] `flutter test` → +176 -1 (só `widget_test` pré-existente; inclui gate `monthly_package_card` + flag `debtsTruncated`).
+- [ ] Matriz `test/rules/matrix.test.js` no emulator (14 casos P0/P1) → tudo verde. **Bloqueia o release.**
+- [ ] `node migrate/rules-validate.js` → SINTAXE OK (sem release).
 
 ## 1. Fase 1 — diálogos em telas pequenas
 
@@ -55,11 +58,11 @@ Preparar massa (clínica Teste): cobrança de R$ 200 com R$ 80 pagos
 - [ ] Portal: confirmar presença, pedir remarcação, avisar pagamento.
 - [ ] Login por perfil (owner, dentista, recepcionista) + menu correto.
 
-## 5. Segurança (só verificação, sem publicar)
+## 5. Segurança (matriz antes de publicar)
 
-- [ ] Ruleset ao vivo inalterado: `node migrate/rules-inspect.js` →
-      mesmo id de 27/09 (ou o publicado depois, se autorizado).
-- [ ] P1/P2 seguem como proposta NÃO aplicada.
+- [ ] Ruleset ao vivo AINDA `d28dd75b`: `node migrate/rules-inspect.js` → mesmo id (nada publicado durante os testes).
+- [ ] Matriz `test/rules/` verde no emulator (anon/staff mesma/staff outra/owner outra/superadmin).
+- [ ] Manual pós-matriz (conta de teste por perfil): dropdown da agenda lista; confirmar por link com token; avaliação pública carrega + grava lead; owner NÃO promove a si; clínica bloqueada nega operacional no app.
 
 ## 6. Auditoria 16/10 (lote `a5458a7`)
 
@@ -74,16 +77,26 @@ Preparar massa (clínica Teste): cobrança de R$ 200 com R$ 80 pagos
 - [ ] Staff (recepcionista): rebuild e pacote funcionam (comportamento
       igual ou melhor que antes).
 
+## 7. Reavaliação 16/10 (lote atual — regressão dirigida)
+
+- [ ] Login owner/staff/superadmin + trava de assinatura (bloqueio manual e trial vencido mostram tela; falha de leitura mostra "indisponível", NÃO entra).
+- [ ] Funcionários: criar staff (vincula à clínica), editar clínicas, pedir reset (com `clinicId`), dispensar pedido.
+- [ ] Trial: cadastro `assinatura.html` cria pedido COM `uid` (Master vê e aprova); falha no pedido NÃO deixa órfão (tenta de novo no mesmo e-mail).
+- [ ] Avaliação pública `?cid=`: carrega nome/WhatsApp SEM login; responde e grava lead; WhatsApp abre com score.
+- [ ] Agenda cria agendamento COM `portalToken` (checar doc); confirmar por link com token funciona; remarcar idem.
+- [ ] Espelho: falha aparece em toast (não só console); `debtsTruncated` quando 500+ lançamentos.
+- [ ] Exportação (owner) e Master seguem operando (lists autenticadas mantidas).
+
 ## Assinatura
 
 | Item | OK? | Obs |
 |---|---|---|
-| Base 0 verde | ☐ | |
+| Base 0 verde (analyze 0 erros + suite +176 -1) | ☑ | 16/10 máquina local |
+| Matriz de rules no emulator | ☐ | **bloqueia release** |
 | Fase 1 (5 diálogos × 4 larguras) | ☐ | |
 | Fase 2 (portal resto/Pix) | ☐ | |
 | Fase 4 (valores restantes) | ☐ | |
-| Regressão | ☐ | |
-| Segurança verificada | ☐ | |
+| Regressão §4 + §7 | ☐ | |
+| Segurança verificada (§5) | ☐ | |
 
-Só após tudo ☐→☑: merge `remodelagem-gpt → master → producao` +
-`deploy.bat` (com ordem explícita).
+Só após tudo ☐→☑: `rules-release.js` + `firestore:indexes` (com ordem explícita) → merge `master → producao` + `deploy.bat` (com ordem explícita).

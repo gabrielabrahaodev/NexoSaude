@@ -82,7 +82,9 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 /anticipations/{docId}        # histórico de antecipações de recebíveis
 /patients/{patientId}/docs/{docId}        # metadados de arquivos (binário no Cloudinary)
 /patients/{patientId}/clinical_data/odontogram  # teeth + lastUpdate
-/clinics/{clinicId}/leads/{leadId}        # leads da avaliação pública (/avaliacao)
+/public_clinics/{clinicId}          # PROJEÇÃO pública (name, whatsappNumber) p/ /avaliacao (sem login)
+/public_clinics/{clinicId}/leads/{leadId}  # leads da avaliação (create anônimo; equipe lê)
+/clinics/{clinicId}/leads/{leadId}        # LEGADO (só leitura da equipe; escrita nova só na via pública)
 /clinics/{clinicId}/settings/fees         # perfis de taxas de máquina + anticipation_rate
 /clinics/{clinicId}/settings/integrations/cloudinary/{config}  # {apiKey, apiSecret} p/ destroy remoto (ausente = só Firestore)
 /anamnesis/{patientId}        # Public write (WhatsApp link)
@@ -91,16 +93,17 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 
 ---
 
-## Key Security Rules (firestore.rules)
+## Key Security Rules (firestore.rules — reavaliação 16/10)
 
-1. **`isOwner()`** — checks `users/{uid}.role == 'owner'`
-2. **`hasClinicAccess(clinicId)`** — checks `clinicId in users/{uid}.allowedClinics`
-3. **Operational collections** (patients, appointments, financial, treatments, treatment_plans, budgets, clinical_records, psychology_schedules) require auth + (owner OR clinic access)
-4. **Public exceptions**: `/anamnesis` (public write, no auth), `/appointments` update limited to `status='Confirmado'` (+`confirmationDate`, no auth — WhatsApp link)
-5. ⚠️ **Regras amplas restantes** (de propósito, p/ não quebrar telas legadas): `procedures` (catálogo global sem `clinicId`), `inventory`/`suppliers` (leitores legados sem filtro), `plans`, `anticipations`, `news`. `financial`/`treatments`/`treatment_plans` valem pela regra F; `expenses`/`lab_orders` têm blocos próprios escopados. Toda query nova DEVE filtrar por `clinicId`.
-6. **`clinics/{id}/settings/**`: leitura auth (telas leem taxas); escrita owner. **`settings/integrations/**` (segredos): SÓ owner** — o destroy Cloudinary roda na Function via Admin SDK; o app nunca lê o segredo.
-7. Subcoleções `patients/{id}/{docs,odontogram,...}`: auth + (owner OR acesso à clínica do paciente pai).
-8. **Anamnese**: `get` público (prefill do html), escrita pública restrita por allowlist de 14 campos; staff auth tem acesso total.
+1. **Sem poder global de owner.** Owner age SÓ na própria clínica (`ownsClinic` = `clinics/{id}.ownerId == uid`) ou na equipe dela (team-manage). Plataforma = `superadmin`. `isOwner()` (papel) restante só onde não há `clinicId` (ex.: reset sem clínica).
+2. **`users`**: `role` IMUTÁVEL via cliente (só superadmin promove — fecha escalada a superadmin). Get próprio/superadmin/mesma clínica; **list autenticada** (dropdowns + ensureWindow: tudo-ou-nada negaria). Create: auto-cadastro pendente (allowlist), trial owner pendente, equipe pelo gestor (subconjunto das suas + 2ª unidade própria). Update próprio só-perfil; delete superadmin + auto-limpeza do pendente.
+3. **Operacional** (F + expenses/lab + subcoleções): `clinicScoped` = superadmin OU ((staff OU dono) E clínica ATIVA). **Trava de assinatura enforceable**: `blockedByAdmin` ou trial vencido nega no servidor (legada sem `trialEndsAt` = ativa + backfill).
+4. **Listas são tudo-ou-nada**: restrição que a query não prova nega a LISTA inteira (não filtrar via lista). Por isso `users`/leads de equipe e `clinics` seguem listáveis p/ autenticado (residuais documentados nas rules).
+5. **Público**: `portal/{token}` get; update anônimo só allowlist; `portal_slots` get público, SEM list, escrita escopada; `appointments` confirma/remarca com **token do paciente** (do agendamento OU do cadastro) ou staff escopado; `anamnesis` get + allowlist; `trial_requests` create autenticado com `uid == auth.uid`; `public_clinics` get + leads anônimos validados.
+6. **`clinics/{id}/settings/**`: leitura da EQUIPE (telas leem taxas); escrita owner-da-clínica/superadmin fora de segredos. **`settings/integrations/**` (segredos): SÓ dono DA clínica ou superadmin** — destroy Cloudinary DESABILITADO no app (`deleteRemoteFile` retorna `false`; órfãos com limpeza manual — sem Function no Spark).
+7. Subcoleções `patients/{id}/{...}`: auth + clínica do paciente pai (`patientClinicOk`).
+8. **Anamnese**: `get` público (prefill do html), escrita pública restrita por allowlist de 14 campos; staff via clínica do paciente; delete escopado (sem delete amplo).
+9. **Publicar rules** SOMENTE com ordem explícita: validar (`node migrate/rules-validate.js`) → matriz `test/rules/` no emulator (CI) → `rules-release.js` → `rules-inspect.js` confirma. `plans`/`anticipations` sem regra (= negado). Toda query nova DEVE filtrar por `clinicId`.
 
 ---
 
@@ -165,8 +168,8 @@ Psicologia: 0 Dashboard, 1 Agenda, 2 Pacientes, 7 Cobranças, 11 Fluxo Terapêut
 - `widget_test.dart` usa `ClinicApp`; `print` → `debugPrint`; `withOpacity` → `withValues`
 
 ### Pending Firestore Index Deploy
-- `firestore.indexes.json` mesclado (console + novos filtros) — fonte da verdade; **nunca aceitar delete** no deploy (`No`)
-- Run: `firebase deploy --only firestore:rules,indexes` (rules liberam `user_prefs` p/ o tema por usuário)
+- `firestore.indexes.json` mesclado (console + novos filtros) — fonte da verdade; **nunca aceitar delete** no deploy (`No`); inclui `appointments(patientId,clinicId,date ASC)` do espelho (deploy junto das rules novas)
+- Run: `firebase deploy --only firestore:rules,indexes` SOMENTE com ordem explícita (antes: matriz `test/rules/` no emulator + `rules-validate`)
 
 ### Hosting layout (build/web)
 - App em `/sistema-interno/` (`--base-href`); raiz: `index.html` (landing), `anamnese.html`, `confirmar.html`, `portal.html`, `assinatura.html`, `logo.png`.

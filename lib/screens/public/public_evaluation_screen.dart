@@ -68,7 +68,8 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
     _loadClinicData();
   }
 
-  // 1. Carrega dados da clínica via URL
+  // 1. Carrega dados da clínica via URL (projeção PÚBLICA: só nome +
+  // WhatsApp, sem login — reavaliação §6; o doc interno exige auth).
   Future<void> _loadClinicData() async {
     // Tenta pegar o ID da URL (ex: ?cid=123)
     final uri = Uri.base;
@@ -84,7 +85,10 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
 
     if (clinicId != null) {
       try {
-        final doc = await FirebaseFirestore.instance.collection('clinics').doc(clinicId).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('public_clinics')
+            .doc(clinicId)
+            .get();
         if (doc.exists) {
           setState(() {
             clinicData = doc.data();
@@ -131,9 +135,9 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
 
     try {
       await FirebaseFirestore.instance
-          .collection('clinics')
+          .collection('public_clinics')
           .doc(clinicId)
-          .collection('leads') // Vai criar a subcoleção leads dentro de Jabaquara
+          .collection('leads') // Projeção pública (rule B1c: create anônimo)
           .add(leadData);
 
       _launchWhatsAppRedirect();

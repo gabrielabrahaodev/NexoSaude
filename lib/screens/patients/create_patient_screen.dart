@@ -93,8 +93,14 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
         'status': isPsy ? _therapeuticStatus.storage : 'Ativo',
         'searchKey': _nameController.text.trim().toLowerCase(),
       });
-      // Espelho inicial: link vale desde o cadastro (best-effort).
-      await PortalMirrorSync.patient(newRef.id);
+      // Espelho inicial: link vale desde o cadastro (best-effort observável).
+      if (!await PortalMirrorSync.patient(newRef.id) && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Paciente salvo, mas o espelho do portal falhou."),
+              backgroundColor: Colors.orange),
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

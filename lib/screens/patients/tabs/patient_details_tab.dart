@@ -61,8 +61,14 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
             .delete()
             .catchError((_) {});
       }
-      await PortalMirrorSync.patient(docId);
-      if (mounted) toast(context, "Link do portal pronto.", ok: true);
+      final mirrorOk = await PortalMirrorSync.patient(docId);
+      // O delete do token antigo pode negar em espelhos legados sem
+      // clinicId (catch acima); o link NOVO vale — sem ação.
+      if (mounted) {
+        toast(context,
+            mirrorOk ? "Link do portal pronto." : "Link criado, mas o espelho falhou — tente de novo.",
+            ok: mirrorOk, error: !mirrorOk);
+      }
     } catch (e) {
       if (mounted) toast(context, "Falha ao gerar link: $e", error: true);
     } finally {

@@ -19,12 +19,12 @@ flutter test
 
 Deploy web: `deploy.bat` (build + organiza `/sistema-interno/` + `firebase deploy --only hosting`).
 Branches: `master` (próximas sprints) e `producao` (= ao vivo); deploy roda da `producao`.
-Rules/índices: `node migrate/rules-release.js` (REST, contorna o 403 do CLI) e `firebase deploy --only firestore:indexes` — ambos já publicados e verificados (16/10).
+Rules/índices: ao vivo = ruleset `d28dd75b` (16/10); **há rules NOVAS pendentes (reavaliação 16/10, P0–P2) — NÃO publicar sem**: `flutter analyze/test` verdes + matriz `test/rules/` no emulator passando + `rules-validate` OK + ordem explícita. Scripts versionados em `migrate/rules-*.js` (chave via `GOOGLE_APPLICATION_CREDENTIALS` ou `migrate/*-key.json` local, ignorado no git). CI (`.github/workflows/ci.yml`) roda analyze/test + matriz de rules.
 
 ## Integrações (setup manual)
 
 - **Cloudinary** (docs do paciente): upload unsigned — cloud `dbbh601ay`, `upload_preset=dbbh601ay` (preset precisa estar **unsigned** no painel). Exclusão apaga só o Firestore (Spark, sem destroy remoto).
-- **Links públicos**: `confirmar.html?id=` (presença) e `anamnese.html?id=` (anamnese) ficam na raiz do hosting; `/avaliacao` (rota Flutter) grava leads em `clinics/{cid}/leads`.
+- **Links públicos**: `confirmar.html?id=&t=` (presença, token do paciente) e `anamnese.html?id=` (anamnese) ficam na raiz do hosting; `/avaliacao?cid=` (rota Flutter) lê `public_clinics/{cid}` e grava leads em `public_clinics/{cid}/leads`.
 
 ## Estrutura
 

@@ -201,10 +201,21 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
       };
     }).toList();
 
+    // Vínculo do portal nos agendamentos (confirmar.html valida o token
+    // contra o cadastro; reavaliação §5). Uma leitura p/ o lote todo.
+    String? patientToken;
+    try {
+      final p = await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(schedule.patientId)
+          .get();
+      final t = '${(p.data() ?? {})['portalToken'] ?? ''}';
+      if (t.isNotEmpty) patientToken = t;
+    } catch (_) {}
+
     batch.set(planRef, {
       'clinicId': clinicId,
-      'patientId': schedule.patientId,
-      'patientName': schedule.patientName,
+      'patientId': schedule.patientId,      'patientName': schedule.patientName,
       'scheduleId': scheduleId,
       'scheduleType': _scheduleType.name,
       'totalValue': schedule.effectiveValue,
@@ -320,6 +331,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
         scheduleId: scheduleId,
         planId: planRef.id,
         monthlyPeriod: monthKey,
+        portalToken: patientToken,
       );
       batch.set(apptRef, appt.toMap());
     }
@@ -327,8 +339,13 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
     await batch.commit();
     // Espelho do portal: este form grava appointments/financial em batch
     // (fora do AppointmentService), então rebuild aqui — sem isso o
-    // portal.html nunca recebe as sessões da psicologia.
-    await PortalMirrorSync.patient(schedule.patientId);
+    // portal.html nunca recebe as sessões da psicologia. Falha observável.
+    if (!await PortalMirrorSync.patient(schedule.patientId) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Espelho do portal desatualizado — confira no Financeiro."),
+        backgroundColor: Colors.orange,
+      ));
+    }
   }
 
   Future<void> _confirmCancelSchedule() async {
@@ -443,8 +460,15 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
 
       // Espelho do portal: cancelamento direto em batch não passa pelos
       // deltas — rebuild p/ tirar as sessões futuras do portal.html.
+      var mirrorOk = true;
       for (final pid in patientIds) {
-        await PortalMirrorSync.patient(pid);
+        if (!await PortalMirrorSync.patient(pid)) mirrorOk = false;
+      }
+      if (!mirrorOk && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Espelho do portal desatualizado em 1+ paciente."),
+          backgroundColor: Colors.orange,
+        ));
       }
 
       if (mounted) {
