@@ -225,7 +225,9 @@ service cloud.firestore {
       let newClinics = t.get('allowedClinics', []);
       let added = newClinics.toSet().difference(
         oldClinics is list ? oldClinics.toSet() : [].toSet());
-      let outside = added.toSet().difference(mine.toSet());
+      // `added` já é Set (difference retorna Set): sem toSet() aqui
+      // (chamar método de lista em Set = evaluation error = nega tudo).
+      let outside = added.difference(mine.toSet());
       return isAuthenticated() &&
         (ur == 'owner' || ur == 'superadmin') &&
         old.get('role', '') != 'superadmin' &&

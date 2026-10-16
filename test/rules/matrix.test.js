@@ -136,8 +136,8 @@ describe('matriz reavaliação P0/P1', () => {
 
   it('P1-4: trial com uid próprio passa; de outro nega; anônimo nega', async () => {
     const good = {
-      nome: 'N', whatsapp: '11999999999', email: 'n@n.com',
-      clinicName: 'C', type: 'dental', uid: 'ownerA',
+      nome: 'Novo', whatsapp: '11999999999', email: 'n@n.com',
+      clinicName: 'Clinica C', type: 'dental', uid: 'ownerA',
       status: 'solicitado', createdAt: new Date(),
     };
     await assertSucceeds(
