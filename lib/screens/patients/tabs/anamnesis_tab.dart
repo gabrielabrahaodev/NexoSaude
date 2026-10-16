@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../ui/app_theme.dart';
 import '../../../utils/display.dart';
 import '../../../utils/external_link.dart';
+import '../../../services/portal_mirror.dart';
 
 class AnamnesisTab extends StatefulWidget {
   final String patientId;
@@ -155,7 +156,10 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
   Future<void> _sendLinkToWhatsapp() async {
     final tab = openBlankTab();
     try {
-      final doc = await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).get();
+      final patientRef = FirebaseFirestore.instance
+          .collection('patients')
+          .doc(widget.patientId);
+      final doc = await patientRef.get();
       String? phoneRaw;
       String patientName = "Paciente";
 
@@ -163,6 +167,17 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
         final data = doc.data()!;
         phoneRaw = data['phone'] ?? data['celular'] ?? data['whatsapp'];
         patientName = data['name'] ?? "Paciente";
+      }
+
+      // Token DEDICADO da anamnese (P0 reavaliação): link carrega `t`;
+      // girar o token revoga links antigos (rules exigem a prova).
+      var token = '';
+      try {
+        token = '${(doc.data() ?? {})['anamnesisToken'] ?? ''}';
+      } catch (_) {}
+      if (token.isEmpty) {
+        token = newPortalToken();
+        await patientRef.update({'anamnesisToken': token});
       }
 
       if (phoneRaw == null || phoneRaw.isEmpty) {
@@ -177,7 +192,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
       if (!phone.startsWith('55')) phone = '55$phone';
 
       String baseUrl = "https://nexosaude.web.app/anamnese.html"; 
-      String link = "$baseUrl?id=${widget.patientId}";
+      String link = "$baseUrl?id=${widget.patientId}&t=$token";
 
       String message = "Olá $patientName, para agilizar seu atendimento, por favor preencha sua ficha de anamnese online clicando neste link: $link";
 

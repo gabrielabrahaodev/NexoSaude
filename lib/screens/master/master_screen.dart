@@ -245,6 +245,15 @@ class _MasterScreenState extends State<MasterScreen> {
             DateTime.now().add(const Duration(days: 7))),
         'blockedByAdmin': false,
       });
+      // Projeção pública p/ avaliação online (P1: todo onboarding cria).
+      await FirebaseFirestore.instance
+          .collection('public_clinics')
+          .doc(clinicRef.id)
+          .set({
+        'name': _clinicCtrl.text.trim(),
+        'whatsappNumber': '',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)

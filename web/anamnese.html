@@ -124,12 +124,14 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Pega ID da URL
+    // Pega ID + token do link (P0 reavaliação: sem token, sem acesso;
+    // o prontuário NÃO é legível publicamente — sem pré-preenchimento).
     const urlParams = new URLSearchParams(window.location.search);
     const patientId = urlParams.get('id');
+    const proofToken = urlParams.get('t') || '';
 
-    if (!patientId) {
-        alert("Erro: Link inválido. Identificação do paciente não encontrada.");
+    if (!patientId || !proofToken) {
+        alert("Erro: Link inválido ou expirado. Peça um novo link à clínica.");
         document.querySelector("button").disabled = true;
     }
 
@@ -138,31 +140,8 @@
         document.getElementById(divId).style.display = isChecked ? 'block' : 'none';
     }
 
-    // Carregar Dados Existentes (Opcional - se o paciente for editar)
-    if(patientId) {
-        db.collection("anamnesis").doc(patientId).get().then((doc) => {
-            if (doc.exists) {
-                const data = doc.data();
-                
-                setCheck('underMedicalTreatment', data.underMedicalTreatment, 'divMedical', 'medicalTreatmentDesc', data.medicalTreatmentDesc);
-                setCheck('takingMedication', data.takingMedication, 'divMedication', 'medicationDesc', data.medicationDesc);
-                setCheck('hasAllergies', data.hasAllergies, 'divAllergies', 'allergiesDesc', data.allergiesDesc);
-                
-                document.getElementById('smoker').checked = data.smoker || false;
-                document.getElementById('alcohol').checked = data.alcohol || false;
-                document.getElementById('bruxism').checked = data.bruxism || false;
-                document.getElementById('pregnant').checked = data.pregnant || false;
-                document.getElementById('observations').value = data.observations || '';
-
-                // Conditions
-                if (data.conditions) {
-                    document.querySelectorAll('.condition-check').forEach(el => {
-                        if (data.conditions[el.value] === true) el.checked = true;
-                    });
-                }
-            }
-        }).catch(() => { /* sem pré-preenchimento (ex.: ficha nova) */ });
-    }
+    // Sem pré-preenchimento público: a leitura anônima é negada pelas
+    // rules (o prontuário só abre no app, para a equipe da clínica).
 
     function setCheck(chkId, val, divId, textId, textVal) {
         document.getElementById(chkId).checked = val;
@@ -172,9 +151,9 @@
         }
     }
 
-    // Salvar
+    // Salvar (com prova do token: as rules conferem com o cadastro)
     function saveData() {
-        if (!patientId) return;
+        if (!patientId || !proofToken) return;
 
         const btn = document.querySelector("button");
         btn.disabled = true;
@@ -188,6 +167,7 @@
 
         const dataToSave = {
             patientId: patientId,
+            proofToken: proofToken,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             
             underMedicalTreatment: document.getElementById('underMedicalTreatment').checked,

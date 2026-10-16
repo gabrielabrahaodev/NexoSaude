@@ -248,6 +248,7 @@
             const fresh = mirror && ('debtsTotal' in mirror);
             const grand = fresh ? Number(mirror.debtsTotal || total) : total;
             html += '<p style="font-size:13px;color:var(--mut)">Total em aberto: <b style="color:var(--txt)">' + fmtBRL(grand) + '</b></p>';
+            if (mirror && mirror.debtsTruncated === true) html += '<p style="font-size:13px;color:#b45309">⚠️ Muitos lançamentos: o total pode estar incompleto. Confirme o valor com a recepção antes de pagar.</p>';
             const count = Number(mirror.debtsCount || debts.length);
             if (fresh && count > debts.length) html += '<p style="font-size:13px;color:var(--mut)">+ mais ' + (count - debts.length) + ' em aberto. Fale com a recepção.</p>';
         }

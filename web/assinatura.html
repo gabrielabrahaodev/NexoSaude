@@ -132,9 +132,11 @@
         }
         const btn = document.getElementById('s-btn');
         btn.disabled = true;
+        // uid FORA do try (o catch precisa dele p/ limpar órfãos — P1).
+        let uid = null;
         try {
             const cred = await auth.createUserWithEmailAndPassword(v('s-email'), v('s-senha'));
-            const uid = cred.user.uid;
+            uid = cred.user.uid;
             await db.collection('users').doc(uid).set({
                 email: v('s-email'), name: v('s-nome'), role: 'owner',
                 allowedClinics: [], status: 'pending_approval',
@@ -153,7 +155,7 @@
             // nova tentativa no mesmo e-mail.
             try {
                 const u = auth.currentUser;
-                if (u && u.uid === uid) {
+                if (uid && u && u.uid === uid) {
                     await db.collection('users').doc(uid).delete().catch(() => {});
                     await u.delete();
                 }

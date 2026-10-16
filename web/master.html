@@ -114,7 +114,7 @@
 
     function renderTabs() {
         content.innerHTML = '<div class="tabs">'
-            + ['owners|Owners', 'pedidos|Pedidos', 'new|Novo owner', 'debits|Débitos', 'trials|Trials'].map((t) => {
+            + ['owners|Owners', 'pedidos|Pedidos', 'new|Novo owner', 'debits|Débitos', 'trials|Trials', 'resets|Resets'].map((t) => {
                 const parts = t.split('|');
                 return '<button class="' + (tab === parts[0] ? 'sel' : '') + '" onclick="goTab(\'' + parts[0] + '\')">' + parts[1] + '</button>';
             }).join('')
@@ -133,6 +133,7 @@
             else if (tab === 'pedidos') await pedidosTab(body);
             else if (tab === 'new') newOwnerTab(body);
             else if (tab === 'debits') await debitsTab(body);
+            else if (tab === 'resets') await resetsTab(body);
             else await trialsTab(body);
         } catch (e) { body.innerHTML = '<p class="err">Falha ao carregar.</p>'; }
     }
@@ -212,6 +213,11 @@
                 ownerId: m.uid, createdAt: new Date(),
                 trialEndsAt: new Date(Date.now() + 7 * 86400000), blockedByAdmin: false,
             });
+            // Projeção pública p/ avaliação online (P1: todo onboarding cria).
+            await db.collection('public_clinics').doc(clinicRef.id).set({
+                name: m.clinicName || 'Clínica', whatsappNumber: m.whatsapp || '',
+                updatedAt: new Date(),
+            });
             await db.collection('users').doc(m.uid).update({
                 allowedClinics: [clinicRef.id], status: 'Ativo',
             });
@@ -221,8 +227,31 @@
         } catch (e) { toast('Falha. Tente de novo.'); }
     }
 
-    async function recusarPedido(rid) {
+    // Fila GLOBAL de resets (pedidos do login, sem clinicId): SÓ Master vê.
+    // Fluxo: rode migrate/reset-senha.bat p/ o e-mail, informe a temporária
+    // pelo canal verificado e dispense aqui (a temporária NUNCA fica no doc).
+    async function resetsTab(body) {
+        const rs = await db.collection('password_reset_requests').where('status', '==', 'pending').limit(50).get();
+        if (rs.empty) { body.innerHTML = '<div class="card"><p class="muted">Nenhum pedido pendente.</p></div>'; return; }
+        let html = '';
+        rs.forEach((r) => {
+            const m = r.data();
+            html += '<div class="card"><div class="big">' + esc(m.email || '') + '</div>'
+                + '<div class="muted">' + (m.clinicId ? 'clínica: ' + esc(m.clinicId) : 'login (sem clínica)') + '</div>'
+                + '<div class="btn-row"><button class="btn-ghost" onclick="dismissReset(\'' + r.id + '\')">Dispensar</button></div></div>';
+        });
+        body.innerHTML = html;
+    }
+
+    async function dismissReset(rid) {
         try {
+            await db.collection('password_reset_requests').doc(rid).delete();
+            toast('Pedido dispensado.');
+            loadTab();
+        } catch (e) { toast('Falha. Tente de novo.'); }
+    }
+
+    async function recusarPedido(rid) {        try {
             const r = await db.collection('trial_requests').doc(rid).get();
             const m = r.data() || {};
             if (m.uid) {
@@ -284,6 +313,10 @@
                 name: v('n-clinica'), type: document.getElementById('n-tipo').value,
                 ownerId: uid, createdAt: new Date(),
                 trialEndsAt: new Date(Date.now() + 7 * 86400000), blockedByAdmin: false,
+            });
+            await db.collection('public_clinics').doc(clinicRef.id).set({
+                name: v('n-clinica'), whatsappNumber: '',
+                updatedAt: new Date(),
             });
             await db.collection('users').doc(uid).set({
                 email: v('n-email'), name: v('n-nome'), role: 'owner',

@@ -41,15 +41,24 @@ pede "medidas de segurança"); cifrar campos quebraria buscas e índices e
 criaria gestão de chaves desproporcional no plano Spark. Exceção: o Export
 gera JSON/CSV em texto puro — ali vale ZIP com senha (sugestão 3).
 
-## O que já está conforme
+## O que já está conforme (16/10 noite)
 
 - Consentimento portal/WhatsApp explícito, default desmarcado,
   `accepted/at/via/by`; sweep apagou 415 espelhos sem aceite (E2).
-- Revogação efetiva (mata link + espelho, `accepted:false`/`revokedAt`).
-- Rules por `clinicId`, anamnese com allowlist de 14 campos, segredos só owner.
+- Revogação efetiva do PORTAL (mata link + espelho) e da CONFIRMAÇÃO (token
+  atual; link antigo nega) — segundo lote 16/10.
+- Anamnese: SEM leitura pública; escrita anônima só com token dedicado
+  `anamnesisToken` + tipos/tamanhos (segundo lote 16/10).
+- Rules por `clinicId` + clínica ativa; `inventory`/`suppliers` exigem
+  `clinicId` (base verificada); segredos só dono-da-clínica/superadmin.
+- Temporária de senha NUNCA persiste em doc (só console do bat).
 - Cascatas de eliminação (paciente, clínica nx-160, orçamento nx-168).
 - Token opaco de 32 chars, sem dado sensível em URL.
 - Chaves de serviço (`migrate/*-key.json`) fora do git (ignoradas).
+
+> Sem expressão "conforme à LGPD" em sentido jurídico: controles técnicos
+> acima + pendências contratuais/operacionais abaixo (DPA, DPO, incidentes,
+> retenção) até avaliação jurídica fechar.
 
 ## Sugestões (decidir: fazer / adiar / descartar)
 

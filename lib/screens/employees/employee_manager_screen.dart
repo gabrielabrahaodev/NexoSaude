@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../ui/app_theme.dart';
 import '../../widgets/page_header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -142,14 +141,9 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
     }
   }
 
-  void _copyTemp(String temp) {
-    Clipboard.setData(ClipboardData(text: temp));
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Senha temporária copiada.")));
-  }
-
   /// Ações do funcionário: gerar nova senha (cria pedido pendente;
-  /// o reset-senha.bat efetiva e a temporária aparece em Pedidos).
+  /// o reset-senha.bat efetiva; informe a temporária pelo canal
+  /// verificado e dispense o pedido).
   void _showEmployeeActions(String uid, String email, String name,
       List<String> allowed,
       {bool canAdmin = true}) {
@@ -305,16 +299,21 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
 
   /// Cria pedido pendente (só se ainda não houver um para o e-mail).
   /// Campos exigidos pelas rules A3: email/createdAt/status (+ clinicId
-  /// opcional p/ escopar a leitura do owner).
+  /// p/ escopar a leitura do owner; sem ele, só o Master vê).
   Future<void> _requestPasswordReset(String email, {String? clinicId}) async {
     try {
       final col =
           FirebaseFirestore.instance.collection('password_reset_requests');
-      final existing = await col
+      // Checagem de duplicada ESCOPADA (query global negaria tudo-ou-nada
+      // havendo pedido de outra clínica; reavaliação P1).
+      var q = col
           .where('email', isEqualTo: email)
           .where('status', isEqualTo: 'pending')
-          .limit(1)
-          .get();
+          .limit(1);
+      if (clinicId != null && clinicId.isNotEmpty) {
+        q = q.where('clinicId', isEqualTo: clinicId);
+      }
+      final existing = await q.get();
       if (existing.docs.isNotEmpty) {
         if (mounted) {
           toast(context,
@@ -463,8 +462,10 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
             ),
             const SizedBox(height: 12),
 
-            // PEDIDOS DE SENHA (segue o item Funcionários). Sem e-mail
-            // automático: gere a nova senha com o reset-senha.bat e informe.
+            // PEDIDOS DE SENHA da clínica atual (fila interna escopada;
+            // pedidos do login, sem clínica, só o Master vê). Rode o
+            // reset-senha.bat, informe a temporária pelo canal verificado
+            // e dispense aqui (a temporária NUNCA fica no doc — P1).
             ...[
               const Text("Pedidos de senha",
                   style: TextStyle(
@@ -475,9 +476,13 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
               const SizedBox(height: 8),
               SizedBox(
                 height: 190,
-                child: StreamBuilder<QuerySnapshot>(
+                child: currentClinic == null
+                    ? const Text("Selecione uma clínica.",
+                        style: TextStyle(color: Colors.grey))
+                    : StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('password_reset_requests')
+                      .where('clinicId', isEqualTo: currentClinic)
                       .orderBy('createdAt', descending: true)
                       .limit(20)
                       .snapshots(),
@@ -500,8 +505,6 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                         final d =
                             docs[i].data() as Map<String, dynamic>;
                         final done = d['status'] == 'done';
-                        final temp =
-                            (d['tempPassword'] ?? '').toString();
                         return Card(
                           margin:
                               const EdgeInsets.only(bottom: 8),
@@ -521,36 +524,23 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                                     fontWeight:
                                         FontWeight.w600)),
                             subtitle: Text(done
-                                ? 'Atendida em ${_fmtDate(d['handledAt'])} • Temporária: $temp'
+                                ? 'Atendida em ${_fmtDate(d['handledAt'])} (temporária já informada)'
                                 : 'Pendente desde ${_fmtDate(d['createdAt'])}'),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (done && temp.isNotEmpty)
-                                  IconButton(
-                                    tooltip: 'Copiar senha',
-                                    icon: const Icon(
-                                        Icons.copy, size: 20),
-                                    onPressed: () =>
-                                        _copyTemp(temp),
-                                  ),
-                                IconButton(
-                                  tooltip: 'Dispensar',
-                                  icon: const Icon(
-                                      Icons.delete_outline,
-                                      size: 20),
-                                  onPressed: () =>
-                                      _dismissRequest(
-                                          docs[i].id),
-                                ),
-                              ],
+                            trailing: IconButton(
+                              tooltip: 'Dispensar',
+                              icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 20),
+                              onPressed: () =>
+                                  _dismissRequest(
+                                      docs[i].id),
                             ),
                           ),
                         );
                       },
                     );
                   },
-                ),
+                    ),
               ),
               const SizedBox(height: 12),
             ],

@@ -37,7 +37,7 @@ Avaliação ponto a ponto contra o código atual (`remodelagem-gpt` ≈ `master`
 ### Etapa C — rules (ARQUIVO alterado, NÃO publicado)
 8. ✅ no arquivo: `appointments` anônimo exige `portalToken` vinculado (+ `confirmar.html?t=`, link com token e `portal.html` enviando; staff autenticado inalterado). Links antigos sem token caem no fallback "avise no WhatsApp".
 9. ✅ no arquivo: `portal_slots` com `allow get` (lista só autenticado; ninguém lista).
-10. ✅ FEITO em 16/10 (arquivo, sem publicar): auditoria escritor-a-escritor concluída (todos os escritores carimbam `clinicId`; leitores mapeados); owner global removido da regra F, expenses/lab, delete de clínica, write de settings/fees, subcoleções via `patientClinicOk`; leitura de `users` (próprio/superadmin/mesma clínica); escrita de procedures/suppliers/inventory exigindo `clinicId` escopado (base zerada ou com `clinicId` — seguro). Mantidos de propósito: leitura de `clinics` (avaliação pública usa sem login), anamnese pública, creates de `users`. Sintaxe validada (ruleset sem release).
+10. ✅ FEITO em 16/10 e PUBLICADO (`f50ad0ac` ~20:50Z, ordem explícita): auditoria escritor-a-escritor (todos os escritores carimbam `clinicId`); owner global removido da regra F, expenses/lab, delete de clínica, write de settings/fees, subcoleções via `patientClinicOk`; leitura de `users` autenticada (list) + get escopado; escrita de procedures/suppliers/inventory exigindo `clinicId` escopado (base verificada — seguro). Mantidos então: leitura de `clinics`, anamnese pública, creates de `users` (revistos na reavaliação da noite — ver seção abaixo).
 11. ✅ PUBLICADO em 16/10/2026 (ordem explícita): ruleset `a6883496-5be1-4421-9e53-76d86067d4d7` via `rules-release.js`, confirmado via `rules-inspect.js`. Anterior (rollback): `fb8cc262-ebcf-4db4-b173-30297ae4ae2d` (fonte salva em Temp/live-firestore.rules).
 12. ⚠️ REVERSÃO PARCIAL em 16/10 (~17:10): leitura de `users` voltou a autenticada (ruleset `9a7990e0`). Motivo: escopo por sobreposição nega a LISTA inteira (tudo-ou-nada) — quebrou dropdown da agenda e `ensureWindow` (erro `PortalMirror janela falhou`). `sharesClinic` mantida SÓ p/ gets. Residual aceito e documentado na regra (UIDs imprevisíveis, app filtra por clínica, sem credenciais nos docs).
 11. Publicar via `migrate/rules-release.js` + `rules-inspect.js` SOMENTE com ordem explícita.
@@ -53,9 +53,30 @@ Avaliação ponto a ponto contra o código atual (`remodelagem-gpt` ≈ `master`
 - Rebuild "negado p/ staff": o mecanismo descrito não procede (avaliação é por documento); os defeitos reais são observabilidade e limite — menores e já endereçados acima.
 - `debtsTotal`, README e parte do portal: apontados como pendentes, mas já implementados na remodelagem — o gap é merge, não código.
 
-## Reavaliação 16/10 (noite) — disposição item a item
+## Reavaliação 16/10 (noite, `reavaliacao-2026-10-16-master`) — segundo lote
 
-Arquivo: [[reavaliacao-2026-10-16]]. Ao vivo segue `d28dd75b`; abaixo = ARQUIVO (não publicado). Sintaxe validada (ruleset sem release); `flutter analyze` 0 erros; `flutter test` +176 -1.
+Estado: rules ARQUIVO (não publicado; ao vivo segue `f50ad0ac` até matriz + ordem).
+
+| Item | Disposição |
+|---|---|
+| P0 anamnese pública | ✅ sem get/list anônimo; escrita só com `proofToken == patients/{id}.anamnesisToken` + tipos/tamanhos; link `?id=&t=`; prefill público removido |
+| P1 create clínica nega owner | ✅ `_noClinicAdminKeys` recebe `.keys()`; owner exige `type` válido; matriz cobre create owner/com-trial/superadmin |
+| P1 menuAccess self-grant | ✅ fora do self-update (só team-manage); `clinicActive` no update operacional (dono e staff); matriz cobre |
+| P1 login ignora status | ✅ pendente → tela de espera (sem dashboard/listas); inativo → logout; rules exigem `status == 'Ativo'` (listas, acesso, shares) |
+| P1 revogação portal | ✅ `apptTokenOk` só contra o token ATUAL do paciente; token velho no agendamento não vale; matriz testa |
+| P1 assinatura uid scope | ✅ `let uid` fora do try; limpeza de órfão executa |
+| P1 public_clinics onboarding | ✅ Master web (aprovar + novo owner), Master Flutter e app criam/espelham; renomeações futuras devem re-espelhar |
+| P1/P1 users/clinics/reset | ✅ lists só perfil ATIVO; reset global só Master (aba Resets) + fila interna por clínica; temporária NUNCA persiste (só console do bat) |
+| P1 trialEndsAt null | ⚠️ 2 clínicas reais sem trial (Yervant, Jabaquara) — política+backfill em `nx-172` (sem escrita automática) |
+| P2 debtsTruncated | ✅ portal.html avisa "pode estar incompleto" |
+| P2 leads spam | ✅ teto 2k no join das respostas; rate limit real exige backend (residual) |
+| P2 CI | ✅ workflow manual `ci-manual.yml` (dispatch); auto segue removido por decisão |
+| P2 higiene | ✅ `node_modules/` raiz + cache hosting fora do índice; `.gitignore` cobre |
+| P2 Cloudinary órfãos | ✅ rotina documentada em `nx-174` (limpeza manual periódica) |
+
+## Reavaliação 16/10 (tarde, `reavaliacao-2026-10-16`) — primeira leva (PUBLICADA em `f50ad0ac`)
+
+Arquivo: [[reavaliacao-2026-10-16]] (fotografia histórica).
 
 | Item | Disposição |
 |---|---|

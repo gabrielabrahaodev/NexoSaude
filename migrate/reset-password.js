@@ -1,9 +1,11 @@
 // Gera uma senha temporaria para um usuario — SEM e-mail (e-mails genericos).
-// Atende tambem os pedidos pendentes em `password_reset_requests` (a tela
-// Funcionarios mostra a temporaria + botao copiar).
+// Fluxo (P1 reavaliacao): a temporaria aparece SOMENTE neste console —
+// NUNCA persiste em documento legivel pelo cliente. Informe pelo canal
+// verificado e dispense o pedido (Funcionarios p/ fila interna, Master
+// web > Resets p/ fila global do login).
 //
 // Uso: node reset-password.js <email> [novaSenha]
-//   - sem [novaSenha]: gera `Nexo####` aleatoria.
+//   - sem [novaSenha]: gera `Nx-xxxxxx` aleatoria.
 //   - usa new-key.json (service account do projeto nexosaude).
 const admin = require('firebase-admin');
 const sa = require('./new-key.json');
@@ -36,9 +38,9 @@ const db = admin.firestore();
   let n = 0;
   pend.forEach((d) => {
     if (d.data().status === 'pending') {
+      // Marca atendido SEM gravar a temporária (segredo só no console).
       batch.update(d.ref, {
         status: 'done',
-        tempPassword: temp,
         handledAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       n++;
@@ -47,6 +49,7 @@ const db = admin.firestore();
   await batch.commit();
 
   console.log('OK! ' + email + ' -> senha temporaria: ' + temp);
+  console.log('INFORME pelo canal verificado e dispense o pedido.');
   console.log('Pedidos atendidos: ' + n);
   process.exit(0);
 })().catch((e) => {

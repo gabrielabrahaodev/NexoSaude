@@ -30,6 +30,10 @@ async function seed(admin) {
   await db.doc(`users/staffB`).set({
     role: 'recepcionista', allowedClinics: [B], status: 'Ativo', email: 'b@x',
   });
+  await db.doc(`users/pendingU`).set({
+    role: 'recepcionista', allowedClinics: [A], status: 'pending_approval',
+    email: 'p@x',
+  });
   await db.doc(`users/ownerB`).set({
     role: 'owner', allowedClinics: [B], status: 'Ativo', email: 'o@x',
   });
@@ -40,9 +44,18 @@ async function seed(admin) {
   await db.doc(`clinics/${B}`).set({
     name: 'B', ownerId: 'ownerB', blockedByAdmin: true,
   });
-  await db.doc(`patients/p1`).set({ clinicId: A, portalToken: 'tok123' });
+  await db.doc(`patients/p1`).set({
+    clinicId: A, portalToken: 'tok123', anamnesisToken: 'ana456',
+  });
   await db.doc(`appointments/ap1`).set({
-    clinicId: A, patientId: 'p1', status: 'Agendado', portalToken: null,
+    clinicId: A, patientId: 'p1', status: 'Agendado', portalToken: 'oldTok',
+  });
+  await db.doc(`anamnesis/an1`).set({ patientId: 'p1', smoker: false });
+  await db.doc(`password_reset_requests/reqGlobal`).set({
+    email: 'g@g.com', status: 'pending', createdAt: new Date(),
+  });
+  await db.doc(`password_reset_requests/reqA`).set({
+    email: 'a@a.com', status: 'pending', createdAt: new Date(), clinicId: A,
   });
   await db.doc(`financial/f1`).set({ clinicId: A, amount: 100 });
   await db.doc(`portal_slots/${A}`).set({ 'staff.d1': [] });
@@ -97,8 +110,13 @@ describe('matriz reavaliação P0/P1', () => {
     await assertFails(db.doc('financial/f1').update({ amount: 1 }));
   });
 
-  it('P1-5: anônimo confirma COM token do paciente; sem token nega', async () => {
+  it('P1-5: anônimo confirma COM token ATUAL; token antigo revogado nega', async () => {
     const db = ctx(null).firestore();
+    // Link antigo (token copiado no agendamento, já girado no paciente).
+    await assertFails(db.doc('appointments/ap1').update({
+      status: 'Confirmado', portalToken: 'oldTok',
+    }));
+    // Link novo (token atual do cadastro).
     await assertSucceeds(db.doc('appointments/ap1').update({
       status: 'Confirmado', portalToken: 'tok123',
     }));
@@ -173,11 +191,100 @@ describe('matriz reavaliação P0/P1', () => {
     await assertSucceeds(ctx(null).firestore().doc(`portal_slots/${A}`).get());
   });
 
-  it('P0-2: anamnese fora da allowlist nega p/ staff sem clínica', async () => {
-    const db = ctx('staffB').firestore();
-    await assertFails(db.doc('anamnesis/p1').update({ diagnosis: 'x' }));
-    await assertSucceeds(ctx(null).firestore().doc('anamnesis/p2').set({
-      patientId: 'p2', smoker: false,
+  it('P1: owner cria a própria clínica; com trial nega; superadmin cria', async () => {
+    const ownerA = ctx('ownerA').firestore();
+    await assertSucceeds(ownerA.collection('clinics').add({
+      name: 'Unidade 2', type: 'dental', ownerId: 'ownerA',
+      createdAt: new Date(),
     }));
+    await assertFails(ownerA.collection('clinics').add({
+      name: 'Fake', type: 'dental', ownerId: 'ownerA',
+      trialEndsAt: new Date(), createdAt: new Date(),
+    }));
+    await assertSucceeds(ctx('root').firestore().collection('clinics').add({
+      name: 'M', type: 'dental', ownerId: 'ownerA',
+      trialEndsAt: new Date(), blockedByAdmin: false, createdAt: new Date(),
+    }));
+  });
+
+  it('P1: staff não se dá menuAccess; owner gerencia e staff opera', async () => {
+    const staffA = ctx('staffA').firestore();
+    await assertFails(
+      staffA.doc('users/staffA').update({ menuAccess: { g_pix: true } }));
+    await assertSucceeds(
+      ctx('ownerA').firestore().doc('users/staffA').update({
+        menuAccess: { g_pix: true },
+      }));
+    await assertSucceeds(
+      staffA.doc(`clinics/${A}`).update({ pixKey: 'pix@x' }));
+    await assertFails(
+      ctx('staffB').firestore().doc(`clinics/${A}`).update({ pixKey: 'y' }));
+  });
+
+  it('P1: pendente não lista nem opera; próprio get passa', async () => {
+    const p = ctx('pendingU').firestore();
+    await assertFails(p.collection('users').get());
+    await assertFails(p.collection('clinics').get());
+    await assertFails(p.collection('patients').add({ clinicId: A }));
+    await assertSucceeds(p.doc('users/pendingU').get());
+  });
+
+  it('P1: reset — global só Master; interna escopada; global nega lista', async () => {
+    const ownerA = ctx('ownerA').firestore();
+    await assertFails(ownerA.doc('password_reset_requests/reqGlobal').get());
+    await assertSucceeds(ownerA.doc('password_reset_requests/reqA').get());
+    await assertSucceeds(
+      ctx('root').firestore().doc('password_reset_requests/reqGlobal').get());
+    // Tudo-ou-nada: havendo pedido global, lista sem filtro nega p/ owner.
+    await assertFails(ownerA.collection('password_reset_requests').get());
+    await assertSucceeds(ownerA
+      .collection('password_reset_requests')
+      .where('clinicId', '==', A)
+      .get());
+  });
+
+  it('P1: public_clinics só dono da clínica ou Master', async () => {
+    // A projeção usa o MESMO id da clínica (ownsClinic prova a posse).
+    await assertSucceeds(
+      ctx('ownerA').firestore().doc(`public_clinics/${A}`).set({
+        name: 'A', whatsappNumber: '119', updatedAt: new Date(),
+      }));
+    await assertFails(
+      ctx('ownerB').firestore().doc(`public_clinics/${A}`).set({
+        name: 'X', whatsappNumber: '119', updatedAt: new Date(),
+      }));
+  });
+
+  it('P2: lead gigante nega (teto anti-spam)', async () => {
+    const anon = ctx(null).firestore();
+    await assertFails(
+      anon.collection('public_clinics/pub1/leads').add({
+        answers: ['x'.repeat(1500), 'y'.repeat(1000)],
+        score: 10, createdAt: new Date(),
+        origin: 'web_form', status: 'new_lead',
+      }));
+  });
+
+  it('P0 anamnese: sem get público; escrita só com prova do token', async () => {
+    const anon = ctx(null).firestore();
+    await assertFails(anon.doc('anamnesis/an1').get());
+    // Sem prova e com prova errada: nega.
+    await assertFails(anon.doc('anamnesis/an1').update({ smoker: true }));
+    await assertFails(anon.doc('anamnesis/an1').update({
+      smoker: true, proofToken: 'errada',
+    }));
+    // Prova certa + allowlist: permite (link válido do WhatsApp).
+    await assertSucceeds(anon.doc('anamnesis/an1').update({
+      patientId: 'p1', smoker: true, proofToken: 'ana456',
+    }));
+    // Campo fora da allowlist mesmo com prova: nega.
+    await assertFails(anon.doc('anamnesis/an1').update({
+      patientId: 'p1', diagnosis: 'x', proofToken: 'ana456',
+    }));
+    // Staff de outra clínica sem prova: nega; da mesma clínica: permite.
+    await assertFails(
+      ctx('staffB').firestore().doc('anamnesis/an1').update({ smoker: false }));
+    await assertSucceeds(
+      ctx('staffA').firestore().doc('anamnesis/an1').update({ smoker: false }));
   });
 });

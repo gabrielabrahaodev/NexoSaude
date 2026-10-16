@@ -9,9 +9,11 @@ kanban-plugin-created: 2026-09-29
 
 - [ ] Reconsentir os 53 pacientes com consulta em 14 dias [[Sprint - Backlog]] `nx-103` (venceu 06/10 — REAGENDADO p/ 23/10)
 - [ ] Validar trial ponta a ponta [[Sprint - Backlog]] `nx-104` (inclui pedido com `uid` + aprovação Master + relógio 7d)
-- [ ] Matriz de rules no emulator + release `rules/indexes` (reavaliação 16/10) `nx-171`
-- [ ] Backfill `trialEndsAt` legadas + política trial null (reavaliação §3) `nx-172`
-- [ ] Backfill `clinicId` pacientes sem clínica, se houver (reavaliação §9) `nx-173`
+- [ ] Matriz de rules no emulator + release `rules/indexes` (reavaliação 16/10) `nx-171` — 1º lote: matriz 14/14 ✓, publicado `f50ad0ac` ✓, ao vivo confirmado ✓, manual pendente; 2º lote (anamnese token, status, revogação, reset): ARQUIVO, matriz a rodar
+- [ ] Backfill `trialEndsAt` legadas + política trial null (reavaliação §3) `nx-172` — 2 clínicas sem trial (Yervant, Jabaquara); + `status: Ativo` no doc superadmin (sem status hoje)
+- [ ] Backfill `clinicId` pacientes sem clínica, se houver (reavaliação §9) `nx-173` — base 16/10: 440/440 COM clínica
+- [ ] Limpeza manual periódica de órfãos Cloudinary (retenção) `nx-174`
+- [ ] Regressão manual 2º lote (anamnese token, revogação, reset, public_clinics, menuAccess) `nx-175`
 
 
 ## Depois

@@ -1,11 +1,10 @@
-# Plano de testes — remodelagem-gpt (fases 1–4 + auditoria 16/10 + reavaliação 16/10)
+# Plano de testes — remodelagem-gpt (fases 1–4 + auditoria 16/10 + reavaliações)
 
-Escopo: `master` após a reavaliação (rules P0–P2 reescritas, app ajustado).
-Ambiente: checkout + `flutter run -d chrome`. Emulador/CI p/ rules:
-`firebase emulators:exec --only firestore "npm --prefix test/rules test"`
-(Java indisponível nesta máquina — roda no CI). **NADA vai a produção
-sem este plano assinado. Rules NOVAS NÃO publicadas** (ao vivo segue
-`d28dd75b` até a matriz passar + ordem explícita).
+Escopo: `master` após as reavaliações (rules P0–P2 reescritas, app ajustado).
+Ao vivo: ruleset `f50ad0ac` + app `20261016-1751` (release 16/10 ~20:50Z).
+Há NOVO lote de rules ARQUIVO (reavaliação da noite: anamnese com token,
+status Ativo, revogação, reset isolado) — NÃO publicado; libera com matriz
+verde no emulator + ordem explícita (workflow manual `ci-manual`).
 
 ## 0. Base automatizada (executar primeiro)
 
@@ -77,7 +76,18 @@ Preparar massa (clínica Teste): cobrança de R$ 200 com R$ 80 pagos
 - [ ] Staff (recepcionista): rebuild e pacote funcionam (comportamento
       igual ou melhor que antes).
 
-## 7. Reavaliação 16/10 (lote atual — regressão dirigida)
+## 7. Reavaliação 16/10 noite (lote atual — regressão dirigida)
+
+- [ ] Login: pendente cai em "aguardando aprovação" (sem dashboard); desativado desloga; owner/staff/superadmin entram.
+- [ ] Anamnese: link SEM `t` e com `t` errado negam; com `t` certo grava; prefill público não existe; equipe lê no app.
+- [ ] Revogação: gerar link de confirmação, girar `portalToken` (novo link), tentar o ANTIGO — confirmar e remarcar negam.
+- [ ] Reset: fila Funcionários mostra SÓ a clínica atual; pedido do login aparece no Master > Resets; bat NÃO grava temporária (só console).
+- [ ] Avaliação: `public_clinics` existe p/ clínica criada no Master (trial e novo owner) e no app.
+- [ ] Portal: 500+ lançamentos mostra aviso "pode estar incompleto".
+- [ ] `menuAccess` próprio travado: staff não se promove a `g_pix` (negado); owner concede e staff opera.
+- [ ] Clínica bloqueada: dono/staff não editam operacional (congelada); Master libera.
+
+## 8. Reavaliação 16/10 tarde (§4 + §7, já em produção `f50ad0ac`)
 
 - [ ] Login owner/staff/superadmin + trava de assinatura (bloqueio manual e trial vencido mostram tela; falha de leitura mostra "indisponível", NÃO entra).
 - [ ] Funcionários: criar staff (vincula à clínica), editar clínicas, pedir reset (com `clinicId`), dispensar pedido.

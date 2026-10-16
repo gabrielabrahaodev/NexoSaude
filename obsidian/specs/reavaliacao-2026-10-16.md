@@ -1,5 +1,10 @@
 # Reavaliação do NexoSaúde — 16/10/2026
 
+> ⚠️ FOTOGRAFIA HISTÓRICA (estado `0234af8`, app `20261016-1413`, rules
+> anteriores ao `f50ad0ac`). Conclusões abaixo NÃO valem para o estado
+> atual — ver [[reavaliacao-2026-10-16-master]] (noite) e a resposta à
+> auditoria vigente.
+
 ## Escopo e limites
 
 Revisão estática do estado atual do repositório `gabrielabrahaodev/NexoSaude`, com foco transversal nos achados da auditoria anterior e nas suas integrações com regras do Firestore, telas Flutter, HTML público, assinatura/Master, testes e documentação.

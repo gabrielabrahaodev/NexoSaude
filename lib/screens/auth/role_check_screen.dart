@@ -29,7 +29,23 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
         if (doc.exists && doc.data() != null) {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
           if (data.containsKey('role')) {
+            // Gate de status (reavaliação P1): pendente NÃO entra no
+            // dashboard (tela de espera); outro estado = conta inválida.
+            // Superadmin passa (doc legado pode não ter `status`).
+            final status = '${data['status'] ?? ''}';
             String role = data['role'];
+            if (status != 'Ativo' && role != 'superadmin') {
+              if (status == 'pending_approval' && mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (c) => const _AwaitingApprovalScreen()),
+                );
+                return;
+              }
+              _showErrorAndLogout("Conta desativada. Fale com o responsável.");
+              return;
+            }
             List<dynamic> allowedClinics = data['allowedClinics'] ?? [];
             String? clinicId;
 
@@ -142,6 +158,56 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
 
   @override
   Widget build(BuildContext context) => const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
+
+/// Tela "aguardando aprovação" (cadastro pendente): sem dashboard e sem
+/// listas — a conta só opera após o owner/Master ativar (reavaliação P1).
+class _AwaitingApprovalScreen extends StatelessWidget {
+  const _AwaitingApprovalScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.hourglass_empty_outlined,
+                    size: 56, color: Colors.blue),
+                const SizedBox(height: 16),
+                const Text("Cadastro em análise",
+                    style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                const Text(
+                    "Sua conta foi criada e aguarda liberação do responsável. Você será avisado.",
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                OutlinedButton(
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    SessionManager().clear();
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (_) => const RoleCheckScreen()),
+                        (r) => false,
+                      );
+                    }
+                  },
+                  child: const Text("Voltar ao login"),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Tela de indisponibilidade (falha de leitura no login): não entra no

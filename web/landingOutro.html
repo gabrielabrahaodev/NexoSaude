@@ -1,0 +1,1425 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NexoSaúde — Gestão inteligente para clínicas</title>
+  <meta name="description" content="Agenda, prontuário e financeiro em um só lugar. Gestão para odontologia, psicologia e multiclínicas. Solicite seu teste de 7 dias.">
+  <meta name="theme-color" content="#101512">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: "#101512",
+            paper: "#F7F8F5",
+            teal: "#00C897",
+            muted: "#66716B"
+          },
+          fontFamily: { sans: ["Manrope", "sans-serif"] }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    :root {
+      --ink: #101512;
+      --paper: #f7f8f5;
+      --teal: #00c897;
+      --muted: #66716b;
+      --line: #e3e9e3;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 90px;
+    }
+
+    body {
+      margin: 0;
+      font-family: Manrope, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection { background: var(--teal); color: var(--ink); }
+
+    a, button, input, select { -webkit-tap-highlight-color: transparent; }
+
+    button, input, select { font: inherit; }
+
+    a:focus-visible, button:focus-visible,
+    input:focus-visible, select:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--teal);
+      outline-offset: 4px;
+    }
+
+    .wrap {
+      width: min(1160px, calc(100% - 44px));
+      margin-inline: auto;
+    }
+
+    /* LOGOTIPO REAL DO PROJETO: web/logo.png */
+    .logo-panel {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 4px 8px;
+      overflow: hidden;
+      border-radius: 9px;
+      background: #fff;
+    }
+
+    .logo-image {
+      display: block;
+      width: auto;
+      height: 36px;
+      max-width: 185px;
+      object-fit: contain;
+    }
+
+    .logo-image-small {
+      height: 27px;
+      max-width: 150px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex-shrink: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      min-height: 49px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 13px 21px;
+      border: 1px solid var(--teal);
+      border-radius: 9px;
+      background: var(--teal);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: transform .2s ease, background .2s ease;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      background: #28dfae;
+    }
+
+    .btn-outline {
+      color: #fff;
+      background: transparent;
+      border-color: #48534b;
+    }
+
+    .btn-outline:hover {
+      background: #1b241d;
+      border-color: #7f9384;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      color: white;
+      background: var(--ink);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      width: 620px;
+      height: 620px;
+      right: -230px;
+      top: -260px;
+      border-radius: 50%;
+      background: rgba(0,200,151,.10);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      align-items: center;
+      gap: 54px;
+      padding-block: 78px 88px;
+    }
+
+    .hero h1 {
+      margin: 22px 0;
+      font-size: clamp(42px, 5.4vw, 70px);
+      font-weight: 800;
+      letter-spacing: -.075em;
+      line-height: 1.05;
+    }
+
+    .accent { color: var(--teal); }
+
+    .hero-copy {
+      max-width: 550px;
+      color: #bdc7c0;
+      font-size: 14px;
+      line-height: 1.95;
+    }
+
+    .hero-notes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      margin-top: 25px;
+      color: #c0c9c1;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .hero-notes b { color: var(--teal); }
+
+    /* Prévia interativa do produto */
+    .demo {
+      padding: 15px;
+      border: 1px solid #303a32;
+      border-radius: 15px;
+      background: #171e19;
+      box-shadow: 0 28px 80px rgba(0,0,0,.3);
+    }
+
+    .demo-top, .demo-heading, .list-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .demo-top {
+      padding-bottom: 13px;
+      border-bottom: 1px solid #303a32;
+    }
+
+    .dots { display: flex; gap: 5px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: #58645b; }
+
+    .demo-muted { color: #8c9a90; font-size: 9px; }
+
+    .status {
+      color: #9df2d5;
+      background: #18372b;
+      border: 1px solid #285744;
+      border-radius: 99px;
+      padding: 5px 8px;
+      font-size: 9px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 5px;
+      margin: 15px 0;
+      padding: 4px;
+      border-radius: 9px;
+      background: #101612;
+      border: 1px solid #303a32;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 9px 5px;
+      border: 0;
+      border-radius: 6px;
+      color: #aab4ac;
+      background: transparent;
+      font-size: 9px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--ink);
+      background: var(--teal);
+    }
+
+    .demo-heading { margin-bottom: 14px; align-items: flex-start; }
+
+    .demo-heading h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .demo-heading p { margin: 4px 0 0; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .stat {
+      min-width: 0;
+      padding: 11px 9px;
+      border: 1px solid #303a32;
+      border-radius: 9px;
+      background: #202821;
+    }
+
+    .stat-label { color: #a8b2aa; font-size: 9px; }
+
+    .stat-value {
+      margin-top: 8px;
+      font-size: clamp(16px, 2vw, 23px);
+      font-weight: 800;
+      letter-spacing: -.06em;
+    }
+
+    .stat-detail { margin-top: 4px; color: #91e4c3; font-size: 8px; }
+
+    .demo-list {
+      overflow: hidden;
+      border: 1px solid #303a32;
+      border-radius: 9px;
+    }
+
+    .list-head {
+      padding: 12px;
+      border-bottom: 1px solid #303a32;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .demo-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 12px 10px;
+      border-bottom: 1px solid #29332c;
+    }
+
+    .demo-row:last-child { border-bottom: 0; }
+    .demo-time { width: 37px; flex-shrink: 0; color: #c0cac2; font-size: 9px; font-weight: 800; }
+
+    .demo-row-main { flex: 1; min-width: 0; }
+    .demo-row-main strong {
+      display: block;
+      overflow: hidden;
+      font-size: 9px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .demo-row-main span {
+      display: block;
+      margin-top: 4px;
+      color: #8d9a90;
+      font-size: 8px;
+    }
+
+    .pill {
+      flex-shrink: 0;
+      padding: 5px 6px;
+      border-radius: 5px;
+      color: #98f1d2;
+      background: #18372b;
+      font-size: 8px;
+      font-weight: 800;
+    }
+
+    .pill.warn { color: #f4d59a; background: #3a301e; }
+
+    .demo-note {
+      margin: 12px 1px 0;
+      color: #849087;
+      font-size: 8px;
+      line-height: 1.7;
+    }
+
+    .kicker {
+      margin-bottom: 13px;
+      color: #008c69;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      max-width: 700px;
+      margin: 0;
+      font-size: clamp(30px, 4.3vw, 48px);
+      font-weight: 800;
+      letter-spacing: -.07em;
+      line-height: 1.12;
+    }
+
+    .section-copy {
+      max-width: 610px;
+      margin-top: 17px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.9;
+    }
+
+    .modality {
+      height: 100%;
+      padding: 26px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: white;
+      transition: transform .2s ease, border-color .2s ease;
+    }
+
+    .modality:hover { transform: translateY(-3px); border-color: #9cebd4; }
+
+    .modality-icon {
+      display: grid;
+      width: 46px;
+      height: 46px;
+      place-items: center;
+      border-radius: 12px;
+      background: #e0f8ef;
+      color: #007854;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .modality h3 { margin: 20px 0 9px; font-size: 19px; font-weight: 800; letter-spacing: -.05em; }
+    .modality p { color: var(--muted); font-size: 12px; line-height: 1.8; }
+
+    .feature-list { display: grid; gap: 10px; margin-top: 19px; padding: 0; list-style: none; }
+    .feature-list li { display: flex; gap: 9px; color: #364139; font-size: 11px; line-height: 1.7; }
+    .feature-list li::before { content: "↗"; color: #008c69; font-weight: 800; }
+
+    .step {
+      padding: 24px 0;
+      border-top: 1px solid rgba(255,255,255,.18);
+    }
+
+    .step-no { color: var(--teal); font-size: 10px; font-weight: 800; letter-spacing: .13em; }
+    .step h3 { margin: 18px 0 10px; font-size: 17px; font-weight: 800; }
+    .step p { color: #adb9b0; font-size: 11px; line-height: 1.9; }
+
+    .price-panel {
+      display: grid;
+      grid-template-columns: 1fr .85fr;
+      gap: 40px;
+      align-items: center;
+      padding: clamp(23px, 5vw, 48px);
+      border: 1px solid #dfe6df;
+      border-radius: 16px;
+      background: white;
+    }
+
+    .price-amount {
+      margin: 20px 0 8px;
+      font-size: clamp(42px, 6vw, 64px);
+      font-weight: 800;
+      letter-spacing: -.08em;
+      line-height: 1;
+    }
+
+    .price-amount span { font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+
+    .calculator { padding: 23px; border-radius: 12px; background: var(--paper); }
+
+    .count-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0; }
+
+    .counter { display: flex; align-items: center; gap: 12px; }
+    .counter button {
+      width: 35px;
+      height: 35px;
+      border: 1px solid #d6dfd7;
+      border-radius: 8px;
+      background: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .counter button:disabled { opacity: .35; cursor: not-allowed; }
+    #staffCount { min-width: 20px; text-align: center; font-weight: 800; }
+
+    .calc-total {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 17px;
+      border-top: 1px solid #dfe6df;
+    }
+
+    #monthlyTotal { font-size: 24px; font-weight: 800; letter-spacing: -.05em; }
+
+    .faq-item { border-bottom: 1px solid var(--line); }
+    .faq-item summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 21px 0;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after { content: "+"; color: #008c69; font-size: 22px; font-weight: 500; }
+    .faq-item[open] summary::after { content: "−"; }
+
+    .faq-answer { max-width: 670px; padding: 0 20px 21px 0; color: var(--muted); font-size: 12px; line-height: 1.9; }
+
+    .field-label { display: block; margin-bottom: 7px; font-size: 10px; font-weight: 800; color: #344037; }
+    .field {
+      width: 100%;
+      min-height: 47px;
+      padding: 12px;
+      border: 1px solid #dce3dc;
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .field:focus { outline: 2px solid #00c897; outline-offset: 1px; }
+    .field::placeholder { color: #9aa39d; }
+
+    [data-reveal] {
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity .5s ease, transform .5s ease;
+    }
+
+    [data-reveal].visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 950px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 40px; padding-block: 60px; }
+      .demo { width: min(100%, 650px); margin-inline: auto; }
+      .price-panel { grid-template-columns: 1fr; gap: 28px; }
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: calc(100% - 34px); }
+      .hero-grid { padding-block: 43px 52px; }
+      .hero h1 { font-size: clamp(40px, 11vw, 56px); }
+      .hero-actions { display: grid; grid-template-columns: 1fr; }
+      .hero-actions a { width: 100%; }
+      .hero-notes { gap: 11px 14px; }
+      .demo { padding: 10px; }
+      .tab { font-size: 8px; padding: 9px 3px; }
+      .stat { padding: 9px 7px; }
+      .demo-row { gap: 6px; padding-inline: 7px; }
+      .pill { max-width: 67px; text-align: center; white-space: normal; }
+      .modality { padding: 22px; }
+      .price-panel { padding: 22px 17px; }
+      .calculator { padding: 17px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+
+      [data-reveal] { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- CABEÇALHO -->
+  <header class="sticky top-0 z-50 border-b border-white/10 bg-ink/95 text-white backdrop-blur">
+    <div class="wrap flex h-[72px] items-center justify-between gap-4">
+
+      <a href="#inicio" class="logo-panel" aria-label="NexoSaúde, início">
+        <img src="logo.png" alt="NexoSaúde" class="logo-image">
+      </a>
+
+      <nav class="hidden items-center gap-6 md:flex" aria-label="Menu principal">
+        <a href="#solucoes" class="text-xs font-semibold text-white/70 hover:text-teal">Soluções</a>
+        <a href="#como-funciona" class="text-xs font-semibold text-white/70 hover:text-teal">Como funciona</a>
+        <a href="#preco" class="text-xs font-semibold text-white/70 hover:text-teal">Preço</a>
+        <a href="#duvidas" class="text-xs font-semibold text-white/70 hover:text-teal">Dúvidas</a>
+      </nav>
+
+      <div class="hidden items-center gap-4 sm:flex">
+        <a href="/sistema-interno/" class="text-xs font-bold text-white/80 hover:text-white">Entrar</a>
+        <a href="#demonstracao" class="btn !min-h-[41px] !px-4 !py-2">Testar grátis ↗</a>
+      </div>
+
+      <button id="menuButton" type="button"
+        class="grid h-10 w-10 place-items-center rounded-lg border border-white/20 text-xl sm:hidden"
+        aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileMenu">☰</button>
+    </div>
+
+    <nav id="mobileMenu" class="hidden border-t border-white/10 bg-ink px-5 pb-5 pt-2 sm:hidden" aria-label="Menu móvel">
+      <a class="block py-3 text-sm text-white/80" href="#solucoes">Soluções</a>
+      <a class="block py-3 text-sm text-white/80" href="#como-funciona">Como funciona</a>
+      <a class="block py-3 text-sm text-white/80" href="#preco">Preço</a>
+      <a class="block py-3 text-sm text-white/80" href="#duvidas">Perguntas frequentes</a>
+      <a class="block py-3 text-sm font-bold text-teal" href="/sistema-interno/">Entrar no sistema ↗</a>
+      <a class="btn mt-3 w-full" href="#demonstracao">Solicitar teste de 7 dias</a>
+    </nav>
+  </header>
+
+
+  <main>
+    <!-- HERO -->
+    <section id="inicio" class="hero">
+      <div class="wrap hero-grid">
+
+        <div data-reveal>
+          <div class="eyebrow text-teal">
+            <span class="dot"></span>
+            Gestão clínica sem complicação
+          </div>
+
+          <h1>
+            Menos tarefas.
+            <br>
+            Mais tempo para
+            <span class="accent">cuidar.</span>
+          </h1>
+
+          <p class="hero-copy">
+            Agenda, prontuário e financeiro conectados em um só lugar.
+            Uma rotina mais organizada para odontologia, psicologia e
+            operações com várias clínicas.
+          </p>
+
+          <div class="hero-actions mt-8 flex flex-wrap gap-3">
+            <a href="#demonstracao" class="btn">Solicitar teste de 7 dias ↗</a>
+            <a href="#solucoes" class="btn btn-outline">Conhecer as soluções ↓</a>
+          </div>
+
+          <div class="hero-notes">
+            <span><b>✓</b> Acesso pelo navegador</span>
+            <span><b>✓</b> Preço por equipe</span>
+            <span><b>✓</b> Teste solicitado com atendimento</span>
+          </div>
+        </div>
+
+        <!-- PRÉVIA INTERATIVA ILUSTRATIVA -->
+        <div class="demo" data-reveal>
+          <div class="demo-top">
+            <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span class="demo-muted">Prévia ilustrativa · NexoSaúde</span>
+            <span class="status">Demonstração</span>
+          </div>
+
+          <div class="tabs" role="tablist" aria-label="Modalidades">
+            <button class="tab" role="tab" type="button" data-mode="odonto" aria-selected="true" id="tab-odonto">Odontologia</button>
+            <button class="tab" role="tab" type="button" data-mode="psico" aria-selected="false" id="tab-psico" tabindex="-1">Psicologia</button>
+            <button class="tab" role="tab" type="button" data-mode="multi" aria-selected="false" id="tab-multi" tabindex="-1">Multiclínicas</button>
+          </div>
+
+          <div id="demoContent" role="tabpanel" aria-labelledby="tab-odonto">
+            <div class="demo-heading">
+              <div>
+                <h3 id="demoTitle">Visão geral da clínica</h3>
+                <p class="demo-muted" id="demoSubtitle">Agenda e rotina de atendimento</p>
+              </div>
+              <span class="demo-muted">Hoje · Exemplo</span>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-label" id="label1">Agendamentos</div>
+                <div class="stat-value" id="value1">12</div>
+                <div class="stat-detail" id="detail1">Agenda do dia</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label" id="label2">Confirmações</div>
+                <div class="stat-value" id="value2">08</div>
+                <div class="stat-detail" id="detail2">Status dos horários</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label" id="label3">Financeiro</div>
+                <div class="stat-value" id="value3">R$</div>
+                <div class="stat-detail" id="detail3">Lançamentos</div>
+              </div>
+            </div>
+
+            <div class="demo-list">
+              <div class="list-head">
+                <span id="listTitle">Próximos atendimentos</span>
+                <span class="demo-muted">Exemplo</span>
+              </div>
+              <div id="demoRows">
+                <div class="demo-row">
+                  <span class="demo-time">09:00</span>
+                  <div class="demo-row-main"><strong>Atendimento de exemplo</strong><span>Compromisso ilustrativo</span></div>
+                  <span class="pill">Agendado</span>
+                </div>
+                <div class="demo-row">
+                  <span class="demo-time">10:30</span>
+                  <div class="demo-row-main"><strong>Retorno de exemplo</strong><span>Revisar situação</span></div>
+                  <span class="pill warn">Pendente</span>
+                </div>
+                <div class="demo-row">
+                  <span class="demo-time">14:00</span>
+                  <div class="demo-row-main"><strong>Próximo atendimento</strong><span>Rotina ilustrativa</span></div>
+                  <span class="pill">Agendado</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="demo-note">
+            Números e compromissos fictícios para demonstração visual.
+            Não são dados reais nem uma captura do sistema.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SOLUÇÕES -->
+    <section id="solucoes" class="py-24">
+      <div class="wrap">
+        <div class="mb-12 max-w-3xl" data-reveal>
+          <div class="kicker">Uma plataforma, diferentes rotinas</div>
+          <h2 class="section-title">Ferramentas pensadas para o jeito que sua clínica trabalha.</h2>
+          <p class="section-copy">
+            Organize os principais processos administrativos e clínicos
+            num ambiente integrado, com recursos por especialidade.
+          </p>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-3">
+
+          <article class="modality" data-reveal>
+            <div class="modality-icon" aria-hidden="true">✳</div>
+            <h3>Odontologia</h3>
+            <p>Organize os atendimentos e acompanhe os tratamentos em uma rotina integrada.</p>
+            <ul class="feature-list">
+              <li>Agenda e cadastro de pacientes</li>
+              <li>Odontograma e prontuário</li>
+              <li>Orçamentos e planos de tratamento</li>
+              <li>Laboratório e próteses</li>
+            </ul>
+          </article>
+
+          <article class="modality" data-reveal>
+            <div class="modality-icon" aria-hidden="true">◉</div>
+            <h3>Psicologia</h3>
+            <p>Acompanhe o percurso dos pacientes e organize sessões e pacotes.</p>
+            <ul class="feature-list">
+              <li>Agenda de sessões</li>
+              <li>Fluxo de acompanhamento</li>
+              <li>Organização de pacotes</li>
+              <li>Controle de presença e financeiro</li>
+            </ul>
+          </article>
+
+          <article class="modality" data-reveal>
+            <div class="modality-icon" aria-hidden="true">⌘</div>
+            <h3>Multiclínicas</h3>
+            <p>Para equipes que precisam acompanhar mais de uma unidade.</p>
+            <ul class="feature-list">
+              <li>Alternância entre unidades vinculadas</li>
+              <li>Controle de usuários da equipe</li>
+              <li>Visão financeira por unidade</li>
+              <li>Acompanhamento consolidado</li>
+            </ul>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+
+    <!-- COMO FUNCIONA -->
+    <section id="como-funciona" class="border-y border-[#26332B] bg-ink py-24 text-white">
+      <div class="wrap">
+        <div class="grid gap-12 lg:grid-cols-[.9fr_1.1fr]">
+          <div data-reveal>
+            <div class="kicker !text-teal">Do agendamento à gestão</div>
+            <h2 class="section-title !text-white">Menos informações espalhadas. Mais clareza na rotina.</h2>
+            <p class="section-copy !text-[#ADB9B0]">
+              Reúna os processos administrativos importantes e facilite
+              o acompanhamento do que acontece na clínica.
+            </p>
+            <a class="btn mt-7" href="#demonstracao">Conhecer o sistema ↗</a>
+          </div>
+
+          <div class="grid gap-6 sm:grid-cols-3" data-reveal>
+            <article class="step">
+              <div class="step-no">01 / AGENDA</div>
+              <h3>Organize os horários</h3>
+              <p>Centralize os agendamentos e acompanhe os compromissos da equipe.</p>
+            </article>
+            <article class="step">
+              <div class="step-no">02 / ATENDIMENTO</div>
+              <h3>Registre e acompanhe</h3>
+              <p>Consulte registros e organize as informações conforme a especialidade.</p>
+            </article>
+            <article class="step">
+              <div class="step-no">03 / GESTÃO</div>
+              <h3>Acompanhe os valores</h3>
+              <p>Reúna recebimentos, pendências e lançamentos financeiros.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- PORTAL DO PACIENTE -->
+    <section class="py-24">
+      <div class="wrap grid items-center gap-12 lg:grid-cols-2">
+        <div data-reveal>
+          <div class="kicker">Comunicação mais prática</div>
+          <h2 class="section-title">Facilite a comunicação entre clínica e paciente.</h2>
+          <p class="section-copy">
+            O portal possibilita consultar informações disponibilizadas
+            pela clínica, confirmar sessões ou solicitar remarcações.
+          </p>
+          <ul class="feature-list mt-6">
+            <li>Visualização de sessões e informações disponíveis</li>
+            <li>Confirmação ou pedido de remarcação pelo portal</li>
+            <li>Consulta de pendências apresentadas no portal</li>
+            <li>Informações de pagamento e chave Pix, quando configuradas</li>
+          </ul>
+          <p class="mt-5 text-xs leading-6 text-muted">
+            As ações disponíveis dependem das configurações e dos dados
+            habilitados pela clínica.
+          </p>
+        </div>
+
+        <div class="relative" data-reveal>
+          <div class="absolute -inset-3 rounded-3xl bg-[#DFF7EC]"></div>
+          <div class="relative rounded-2xl border border-[#E2E8E1] bg-white p-6 shadow-xl sm:p-8">
+            <div class="flex items-center justify-between gap-4 border-b border-[#EDF0EC] pb-5">
+              <div class="logo-panel">
+                <img src="logo.png" alt="NexoSaúde" class="logo-image logo-image-small">
+              </div>
+              <span class="rounded-full bg-[#E1F8EF] px-3 py-1 text-[9px] font-extrabold text-[#007854]">Portal</span>
+            </div>
+
+            <div class="py-6">
+              <p class="text-xs text-muted">Próximo compromisso</p>
+              <h3 class="mt-2 text-xl font-extrabold tracking-tight">Sua próxima sessão</h3>
+              <div class="mt-5 rounded-xl border border-[#E4EAE4] p-4">
+                <p class="text-xs font-extrabold">Data e horário definidos pela clínica</p>
+                <p class="mt-2 text-[10px] text-muted">Detalhes disponíveis no portal</p>
+              </div>
+
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="rounded-xl bg-[#E7F8F0] p-3">
+                  <p class="text-[10px] font-bold text-[#007854]">Confirmar sessão</p>
+                  <p class="mt-2 text-[10px] leading-5 text-[#376B59]">Ação disponível pelo portal.</p>
+                </div>
+                <div class="rounded-xl bg-[#F4F5F1] p-3">
+                  <p class="text-[10px] font-bold">Pedir remarcação</p>
+                  <p class="mt-2 text-[10px] leading-5 text-muted">Solicitar alteração de horário.</p>
+                </div>
+              </div>
+            </div>
+
+            <p class="border-t border-[#EDF0EC] pt-4 text-[10px] leading-5 text-muted">
+              Representação visual ilustrativa, sem informações reais de pacientes.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- MULTICLÍNICAS -->
+    <section class="bg-[#EAF3EC] py-20">
+      <div class="wrap grid items-center gap-9 lg:grid-cols-[1.1fr_.9fr]">
+        <div data-reveal>
+          <div class="kicker">Para crescer com organização</div>
+          <h2 class="section-title">Uma gestão que acompanha as unidades da sua operação.</h2>
+          <p class="section-copy">
+            Trabalhe com unidades vinculadas, usuários da equipe e recursos
+            financeiros e administrativos para acompanhar sua operação.
+          </p>
+        </div>
+
+        <div class="rounded-2xl border border-[#D7E3D8] bg-white p-6 sm:p-8" data-reveal>
+          <div class="flex items-center justify-between gap-4 border-b border-[#E9EEE8] pb-5">
+            <div>
+              <p class="text-sm font-extrabold">Visão da operação</p>
+              <p class="mt-1 text-[10px] text-muted">Exemplo de organização</p>
+            </div>
+            <span class="rounded-lg bg-[#DFF8EC] px-3 py-2 text-[10px] font-extrabold text-[#007854]">Multiclínicas</span>
+          </div>
+
+          <div class="mt-5 space-y-3">
+            <div class="flex items-center gap-3 rounded-xl border border-[#E5EBE4] p-4">
+              <span class="grid h-10 w-10 place-items-center rounded-lg bg-[#E3F8EF] font-extrabold text-[#007854]">01</span>
+              <span class="flex-1"><strong class="block text-xs">Unidade vinculada</strong><small class="mt-1 block text-[10px] text-muted">Agenda e rotinas da unidade</small></span>
+              <span class="text-lg text-[#008C69]">↗</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-xl border border-[#E5EBE4] p-4">
+              <span class="grid h-10 w-10 place-items-center rounded-lg bg-[#F0F2EB] font-extrabold">02</span>
+              <span class="flex-1"><strong class="block text-xs">Equipe</strong><small class="mt-1 block text-[10px] text-muted">Usuários associados às unidades</small></span>
+              <span class="text-lg text-[#008C69]">↗</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-xl border border-[#E5EBE4] p-4">
+              <span class="grid h-10 w-10 place-items-center rounded-lg bg-[#F0F2EB] font-extrabold">03</span>
+              <span class="flex-1"><strong class="block text-xs">Acompanhamento financeiro</strong><small class="mt-1 block text-[10px] text-muted">Informações por unidade</small></span>
+              <span class="text-lg text-[#008C69]">↗</span>
+            </div>
+          </div>
+          <p class="mt-4 text-[10px] leading-5 text-muted">Conteúdo ilustrativo. A visualização real depende dos vínculos e cadastros.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- PREÇO E SIMULADOR -->
+    <section id="preco" class="py-24">
+      <div class="wrap">
+        <div class="mb-11 max-w-2xl" data-reveal>
+          <div class="kicker">Preço transparente</div>
+          <h2 class="section-title">Um plano que acompanha o tamanho da equipe.</h2>
+          <p class="section-copy">
+            Preço por usuários únicos da equipe, sem multiplicar a licença
+            pela quantidade de unidades.
+          </p>
+        </div>
+
+        <div class="price-panel" data-reveal>
+          <div>
+            <div class="eyebrow text-[#008C69]"><span class="dot"></span> Plano por equipe</div>
+            <div class="price-amount">R$ 40<span>/mês</span></div>
+            <p class="max-w-md text-sm leading-7 text-muted">
+              Para o primeiro usuário da equipe. Cada usuário adicional custa R$ 15 por mês.
+            </p>
+            <ul class="feature-list">
+              <li>Agenda, prontuário e ferramentas de gestão</li>
+              <li>Portal do paciente</li>
+              <li>Suporte às unidades vinculadas ao plano</li>
+            </ul>
+            <p class="mt-5 text-[10px] leading-6 text-muted">
+              O proprietário (owner) não entra nessa contagem.
+              Confirme o total conforme os vínculos da equipe.
+            </p>
+          </div>
+
+          <div class="calculator">
+            <p class="text-sm font-extrabold">Calcule o valor da equipe</p>
+            <p class="mt-2 text-[11px] leading-6 text-muted">Escolha a quantidade de usuários para estimar o valor mensal.</p>
+
+            <div class="count-controls">
+              <div>
+                <p class="text-xs font-bold">Usuários da equipe</p>
+                <p class="mt-1 text-[10px] text-muted">Mínimo: 1 usuário</p>
+              </div>
+
+              <div class="counter">
+                <button id="minus" type="button" aria-label="Diminuir usuários" disabled>−</button>
+                <output id="staffCount" aria-live="polite">1</output>
+                <button id="plus" type="button" aria-label="Adicionar usuário">+</button>
+              </div>
+            </div>
+
+            <div class="calc-total">
+              <div>
+                <p class="text-[11px] text-muted">Estimativa mensal</p>
+                <p id="priceFormula" class="mt-1 text-[10px] text-muted">1 usuário</p>
+              </div>
+              <strong id="monthlyTotal" aria-live="polite">R$ 40</strong>
+            </div>
+
+            <a href="#demonstracao" class="btn mt-6 w-full">Solicitar teste de 7 dias ↗</a>
+            <p class="mt-3 text-center text-[10px] leading-5 text-muted">
+              A solicitação de teste é feita com atendimento comercial.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- PASSOS DO TESTE -->
+    <section class="border-y border-[#26332B] bg-ink py-20 text-white">
+      <div class="wrap grid gap-10 lg:grid-cols-[.75fr_1.25fr]">
+        <div data-reveal>
+          <div class="kicker !text-teal">Comece com uma conversa</div>
+          <h2 class="section-title !text-white">Conheça o NexoSaúde na prática.</h2>
+          <p class="section-copy !text-[#ADB9B0]">
+            Entenda como o sistema se encaixa na sua rotina e combine o acesso de avaliação.
+          </p>
+        </div>
+
+        <div class="grid gap-6 sm:grid-cols-3" data-reveal>
+          <article class="step"><div class="step-no">PASSO 01</div><h3>Conte sobre sua clínica</h3><p>Preencha o formulário com seu contato e sua modalidade.</p></article>
+          <article class="step"><div class="step-no">PASSO 02</div><h3>Converse pelo WhatsApp</h3><p>Revise a mensagem pronta e inicie o contato comercial.</p></article>
+          <article class="step"><div class="step-no">PASSO 03</div><h3>Avalie o sistema</h3><p>Combine a liberação do teste de 7 dias com a equipe.</p></article>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- PERGUNTAS FREQUENTES -->
+    <section id="duvidas" class="py-24">
+      <div class="wrap grid gap-10 lg:grid-cols-[.75fr_1.25fr]">
+        <div data-reveal>
+          <div class="kicker">Perguntas frequentes</div>
+          <h2 class="section-title">Antes de começar.</h2>
+          <p class="section-copy">Informações práticas sobre acesso, modalidades e teste.</p>
+        </div>
+
+        <div data-reveal>
+          <details class="faq-item">
+            <summary>Preciso instalar um programa?</summary>
+            <div class="faq-answer">O sistema é acessado pelo navegador. Use o endereço e as credenciais fornecidas para entrar.</div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Quais modalidades são atendidas?</summary>
+            <div class="faq-answer">A plataforma possui recursos para odontologia, psicologia e operação com múltiplas clínicas. Os recursos disponíveis variam conforme a rotina e a configuração.</div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Como funciona o teste de 7 dias?</summary>
+            <div class="faq-answer">Preencha o formulário e entre em contato pelo WhatsApp. A equipe orienta a solicitação e combina a liberação; o formulário desta página não cria automaticamente uma conta.</div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Tenho mais de uma unidade. Pago em dobro?</summary>
+            <div class="faq-answer">O modelo de preço é calculado pelo número de usuários únicos da equipe, não pela multiplicação do preço por unidade. A quantidade considerada deve ser confirmada conforme os vínculos da operação.</div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Como entro na minha conta?</summary>
+            <div class="faq-answer">Use o link <a href="/sistema-interno/" class="font-extrabold text-[#008C69] underline">Entrar no sistema</a>. Caso ainda não tenha acesso, solicite orientação pelo formulário de teste.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- FORMULÁRIO E WHATSAPP -->
+    <section id="demonstracao" class="bg-[#EAF3EC] py-20">
+      <div class="wrap grid gap-12 lg:grid-cols-[.85fr_1.15fr]">
+
+        <div data-reveal>
+          <div class="kicker">Seu próximo passo</div>
+          <h2 class="section-title">Veja como o NexoSaúde pode se encaixar na sua clínica.</h2>
+          <p class="section-copy">
+            Preencha seus dados para preparar a mensagem comercial.
+            Você poderá revisar e enviar pelo WhatsApp.
+          </p>
+
+          <div class="mt-8 border-t border-[#D6E3D8] pt-6">
+            <p class="text-sm font-extrabold">Contato direto</p>
+            <p class="mt-2 text-xs leading-6 text-muted">
+              A página não envia os dados a um servidor próprio. Ela monta
+              uma mensagem e abre o WhatsApp para que você confirme o envio.
+            </p>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-[#DDE7DE] bg-white p-6 sm:p-9" data-reveal>
+          <h3 class="text-xl font-extrabold tracking-tight">Solicitar teste gratuito</h3>
+          <p class="mt-2 mb-7 text-xs leading-6 text-muted">Preencha os campos para preparar sua mensagem.</p>
+
+          <form id="leadForm" class="space-y-5">
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label for="leadName" class="field-label">Seu nome</label>
+                <input class="field" id="leadName" type="text" placeholder="Nome completo" maxlength="100" autocomplete="name" required>
+              </div>
+              <div>
+                <label for="leadPhone" class="field-label">Seu WhatsApp</label>
+                <input class="field" id="leadPhone" type="tel" inputmode="tel" placeholder="(11) 99999-9999" maxlength="25" autocomplete="tel" required>
+              </div>
+            </div>
+
+            <div>
+              <label for="leadClinic" class="field-label">Nome da clínica</label>
+              <input class="field" id="leadClinic" type="text" placeholder="Clínica ou consultório" maxlength="120" required>
+            </div>
+
+            <div>
+              <label for="leadSpec" class="field-label">Modalidade principal</label>
+              <select class="field" id="leadSpec" required>
+                <option value="Odontologia">Odontologia</option>
+                <option value="Psicologia">Psicologia</option>
+                <option value="Multidisciplinar / Multiclínicas">Multidisciplinar / Multiclínicas</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="leadTeam" class="field-label">Tamanho da equipe</label>
+              <select class="field" id="leadTeam">
+                <option>1 usuário</option>
+                <option>2 a 3 usuários</option>
+                <option>4 a 7 usuários</option>
+                <option>8 ou mais usuários</option>
+                <option>Ainda vou definir</option>
+              </select>
+            </div>
+
+            <div id="formMessage" class="hidden rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700" role="alert"></div>
+
+            <button type="submit" class="btn w-full">Continuar pelo WhatsApp ↗</button>
+            <p class="text-center text-[10px] leading-5 text-muted">
+              A mensagem não é enviada automaticamente. Você poderá revisá-la no WhatsApp.
+            </p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- CTA FINAL -->
+    <section class="bg-ink py-16 text-white">
+      <div class="wrap flex flex-col items-start justify-between gap-7 sm:flex-row sm:items-center">
+        <div data-reveal>
+          <div class="kicker !text-teal">NexoSaúde</div>
+          <h2 class="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">Organize a gestão para cuidar melhor da rotina.</h2>
+          <p class="mt-3 text-sm leading-7 text-white/60">Conheça os recursos disponíveis para sua clínica.</p>
+        </div>
+        <a href="#demonstracao" class="btn shrink-0">Solicitar meu teste ↗</a>
+      </div>
+    </section>
+  </main>
+
+
+  <!-- RODAPÉ -->
+  <footer class="bg-ink text-white">
+    <div class="wrap py-8">
+      <div class="flex flex-col justify-between gap-6 border-b border-white/10 pb-7 sm:flex-row sm:items-center">
+        <a href="#inicio" class="logo-panel" aria-label="Voltar ao início">
+          <img src="logo.png" alt="NexoSaúde" class="logo-image">
+        </a>
+
+        <nav class="flex flex-wrap gap-x-5 gap-y-3" aria-label="Links do rodapé">
+          <a class="text-[11px] text-white/60 hover:text-teal" href="#solucoes">Soluções</a>
+          <a class="text-[11px] text-white/60 hover:text-teal" href="#preco">Preço</a>
+          <a class="text-[11px] text-white/60 hover:text-teal" href="#duvidas">Dúvidas</a>
+          <a class="text-[11px] text-white/60 hover:text-teal" href="assinatura.html">Minha assinatura</a>
+          <a class="text-[11px] text-white/60 hover:text-teal" href="/sistema-interno/">Entrar no sistema</a>
+        </nav>
+      </div>
+
+      <div class="flex flex-col justify-between gap-3 pt-6 text-[10px] leading-5 text-white/40 sm:flex-row">
+        <p>© <span id="currentYear">2026</span> NexoSaúde. Todos os direitos reservados.</p>
+        <p>Gestão para odontologia, psicologia e multiclínicas.</p>
+      </div>
+    </div>
+  </footer>
+
+
+  <script>
+    "use strict";
+
+    /* Número comercial já utilizado pela landing original.
+       Confirme se ele continua correto antes de publicar. */
+    const SALES_WHATSAPP = "5511973490979";
+
+    /* MENU MOBILE */
+    const menuButton = document.getElementById("menuButton");
+    const mobileMenu = document.getElementById("mobileMenu");
+
+    menuButton.addEventListener("click", () => {
+      const open = menuButton.getAttribute("aria-expanded") === "true";
+      menuButton.setAttribute("aria-expanded", String(!open));
+      menuButton.setAttribute("aria-label", open ? "Abrir menu" : "Fechar menu");
+      menuButton.textContent = open ? "☰" : "×";
+      mobileMenu.classList.toggle("hidden", open);
+    });
+
+    mobileMenu.querySelectorAll("a").forEach(link => {
+      link.addEventListener("click", () => {
+        mobileMenu.classList.add("hidden");
+        menuButton.setAttribute("aria-expanded", "false");
+        menuButton.setAttribute("aria-label", "Abrir menu");
+        menuButton.textContent = "☰";
+      });
+    });
+
+    /* PRÉVIA INTERATIVA: dados fictícios, sem Firestore */
+    const modes = {
+      odonto: {
+        title: "Visão geral da clínica",
+        subtitle: "Agenda e rotina de atendimento",
+        labels: ["Agendamentos", "Confirmações", "Financeiro"],
+        values: ["12", "08", "R$"],
+        details: ["Agenda do dia", "Acompanhe o status", "Lançamentos"],
+        listTitle: "Próximos atendimentos",
+        rows: [
+          ["09:00", "Atendimento odontológico", "Exemplo de compromisso", "Agendado", ""],
+          ["10:30", "Retorno de exemplo", "Revisar situação", "Pendente", "warn"],
+          ["14:00", "Próximo atendimento", "Rotina da equipe", "Agendado", ""]
+        ]
+      },
+      psico: {
+        title: "Rotina de sessões",
+        subtitle: "Acompanhamento e organização",
+        labels: ["Sessões", "Presenças", "Pacotes"],
+        values: ["08", "06", "04"],
+        details: ["Exemplo do dia", "Registros", "Organização"],
+        listTitle: "Sessões de exemplo",
+        rows: [
+          ["09:00", "Sessão de exemplo", "Compromisso ilustrativo", "Agendada", ""],
+          ["11:00", "Sessão a acompanhar", "Status de exemplo", "Pendente", "warn"],
+          ["15:00", "Próxima sessão", "Rotina ilustrativa", "Agendada", ""]
+        ]
+      },
+      multi: {
+        title: "Visão de múltiplas unidades",
+        subtitle: "Equipe e organização da operação",
+        labels: ["Unidades", "Equipe", "Financeiro"],
+        values: ["03", "12", "R$"],
+        details: ["Exemplo", "Usuários de exemplo", "Visão administrativa"],
+        listTitle: "Unidades de exemplo",
+        rows: [
+          ["01", "Unidade principal", "Exemplo de unidade vinculada", "Ativa", ""],
+          ["02", "Segunda unidade", "Exemplo de organização", "Equipe", ""],
+          ["03", "Terceira unidade", "Visão ilustrativa", "Equipe", ""]
+        ]
+      }
+    };
+
+    const tabs = [...document.querySelectorAll(".tab")];
+
+    function renderMode(mode) {
+      const data = modes[mode];
+      if (!data) return;
+
+      document.getElementById("demoTitle").textContent = data.title;
+      document.getElementById("demoSubtitle").textContent = data.subtitle;
+      document.getElementById("listTitle").textContent = data.listTitle;
+
+      for (let i = 0; i < 3; i++) {
+        document.getElementById(`label${i + 1}`).textContent = data.labels[i];
+        document.getElementById(`value${i + 1}`).textContent = data.values[i];
+        document.getElementById(`detail${i + 1}`).textContent = data.details[i];
+      }
+
+      const rows = document.getElementById("demoRows");
+      rows.replaceChildren();
+
+      data.rows.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "demo-row";
+
+        const time = document.createElement("span");
+        time.className = "demo-time";
+        time.textContent = item[0];
+
+        const main = document.createElement("div");
+        main.className = "demo-row-main";
+
+        const title = document.createElement("strong");
+        title.textContent = item[1];
+
+        const description = document.createElement("span");
+        description.textContent = item[2];
+
+        main.append(title, description);
+
+        const badge = document.createElement("span");
+        badge.className = item[4] ? `pill ${item[4]}` : "pill";
+        badge.textContent = item[3];
+
+        row.append(time, main, badge);
+        rows.appendChild(row);
+      });
+
+      tabs.forEach(tab => {
+        const selected = tab.dataset.mode === mode;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        if (selected) {
+          document.getElementById("demoContent").setAttribute("aria-labelledby", tab.id);
+        }
+      });
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => renderMode(tab.dataset.mode));
+      tab.addEventListener("keydown", event => {
+        let next = index;
+
+        if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+        else if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
+        else return;
+
+        event.preventDefault();
+        tabs[next].focus();
+        renderMode(tabs[next].dataset.mode);
+      });
+    });
+
+    /* SIMULADOR DE PREÇO: R$ 40 + R$ 15 por adicional */
+    const BASE_PRICE = 40;
+    const EXTRA_PRICE = 15;
+    const MIN_STAFF = 1;
+    const MAX_STAFF = 100;
+    let staff = 1;
+
+    const countOutput = document.getElementById("staffCount");
+    const totalOutput = document.getElementById("monthlyTotal");
+    const formulaOutput = document.getElementById("priceFormula");
+    const minusButton = document.getElementById("minus");
+    const plusButton = document.getElementById("plus");
+
+    const money = new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0
+    });
+
+    function updatePrice() {
+      const total = BASE_PRICE + EXTRA_PRICE * (staff - 1);
+      countOutput.textContent = String(staff);
+      totalOutput.textContent = money.format(total);
+      formulaOutput.textContent = staff === 1
+        ? "1 usuário da equipe"
+        : `1 usuário + ${staff - 1} adicional(is)`;
+
+      minusButton.disabled = staff <= MIN_STAFF;
+      plusButton.disabled = staff >= MAX_STAFF;
+    }
+
+    minusButton.addEventListener("click", () => {
+      if (staff > MIN_STAFF) {
+        staff--;
+        updatePrice();
+      }
+    });
+
+    plusButton.addEventListener("click", () => {
+      if (staff < MAX_STAFF) {
+        staff++;
+        updatePrice();
+      }
+    });
+
+    updatePrice();
+
+    /* FORMULÁRIO -> WHATSAPP */
+    const leadForm = document.getElementById("leadForm");
+    const formMessage = document.getElementById("formMessage");
+
+    function showError(message) {
+      formMessage.textContent = message;
+      formMessage.classList.remove("hidden");
+    }
+
+    leadForm.addEventListener("input", () => {
+      formMessage.textContent = "";
+      formMessage.classList.add("hidden");
+    });
+
+    leadForm.addEventListener("submit", event => {
+      event.preventDefault();
+
+      formMessage.textContent = "";
+      formMessage.classList.add("hidden");
+
+      const name = document.getElementById("leadName").value.trim();
+      const phone = document.getElementById("leadPhone").value.trim();
+      const clinic = document.getElementById("leadClinic").value.trim();
+      const specialty = document.getElementById("leadSpec").value;
+      const team = document.getElementById("leadTeam").value;
+      const digits = phone.replace(/\D/g, "");
+
+      if (!name || !phone || !clinic) {
+        showError("Preencha seu nome, WhatsApp e nome da clínica.");
+        return;
+      }
+
+      if (digits.length < 10 || digits.length > 15) {
+        showError("Confira o WhatsApp, incluindo DDD.");
+        return;
+      }
+
+      if (!/^\d{10,15}$/.test(SALES_WHATSAPP)) {
+        showError("O número comercial precisa ser configurado antes da publicação.");
+        return;
+      }
+
+      const message = [
+        "Olá! Quero solicitar o teste de 7 dias do NexoSaúde.",
+        "",
+        `Nome: ${name}`,
+        `WhatsApp: ${phone}`,
+        `Clínica: ${clinic}`,
+        `Modalidade: ${specialty}`,
+        `Tamanho da equipe: ${team}`,
+        "",
+        "Gostaria de receber orientações sobre o acesso de avaliação."
+      ].join("\n");
+
+      const url = `https://wa.me/${SALES_WHATSAPP}?text=${encodeURIComponent(message)}`;
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+
+      if (!opened) {
+        formMessage.textContent = "O navegador bloqueou a nova aba. ";
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "Abrir WhatsApp";
+        link.className = "font-bold underline";
+        formMessage.appendChild(link);
+        formMessage.classList.remove("hidden");
+      }
+    });
+
+    /* ANIMAÇÃO SUTIL AO ROLAR A PÁGINA */
+    const revealItems = document.querySelectorAll("[data-reveal]");
+
+    if ("IntersectionObserver" in window &&
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const observer = new IntersectionObserver((entries, currentObserver) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            currentObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+
+      revealItems.forEach(item => observer.observe(item));
+    } else {
+      revealItems.forEach(item => item.classList.add("visible"));
+    }
+
+    document.getElementById("currentYear").textContent =
+      String(new Date().getFullYear());
+  </script>
+</body>
+</html>
