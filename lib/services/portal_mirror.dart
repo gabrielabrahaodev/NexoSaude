@@ -75,8 +75,12 @@ Map<String, dynamic> buildPortalMirror({
     if (db == null) return -1;
     return da.compareTo(db);
   });
-  final total =
-      open.fold<double>(0.0, (s, d) => s + (d['amount'] as num).toDouble());
+  final total = open.fold<double>(
+      0.0,
+      (s, d) =>
+          s +
+          ((d['amount'] as num).toDouble() -
+              ((d['paidAmount'] as num?)?.toDouble() ?? 0.0)));
   return {
     'clinicId': clinicId,
     'clinicName': clinicName,

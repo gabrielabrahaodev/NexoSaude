@@ -221,15 +221,18 @@
         if (!debts.length) html += '<div class="card"><p style="color:var(--mut);font-size:13px;margin:0">Nenhum pagamento em aberto. 🎉</p></div>';
         let total = 0;
         for (const x of debts) {
-            total += Number(x.amount || 0);
+            const amount = Number(x.amount || 0), paid = Number(x.paidAmount || 0);
+            const rest = amount - paid;
+            total += rest;
             const dd = dueOf(x);
             const isLate = dd < now0;
             const lateDays = Math.floor((now0 - dd) / 86400000);
             const due = dd.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
             html += '<div class="card"><div class="debt"><div class="info"><div style="font-weight:700">' + esc(x.title)
                 + (isLate ? '<span class="late">há ' + lateDays + 'd</span>' : '') + '</div>'
-                + '<div style="font-size:12px;color:var(--mut)">' + (isLate ? 'venceu ' : 'vence ') + due + '</div></div>'
-                + '<div class="val">' + fmtBRL(x.amount) + '</div></div>'
+                + '<div style="font-size:12px;color:var(--mut)">' + (isLate ? 'venceu ' : 'vence ') + due
+                + (paid > 0 ? ' • falta ' + fmtBRL(rest) + ' de ' + fmtBRL(amount) : '') + '</div></div>'
+                + '<div class="val">' + fmtBRL(rest) + '</div></div>'
                 + '<div class="actions"><button class="btn-ghost" onclick="togglePix(\'' + x.id + '\')">Pagar com Pix</button></div>'
                 + '<div id="pix-' + x.id + '" style="display:none;">'
                 + '<div class="pixbox">'
@@ -261,7 +264,8 @@
 
     function pixCodeFor(id) {
         const x = (mirror.debts || []).find((d) => d.id === id) || {};
-        return pixBrCode(mirror.pixKey, Number(x.amount || 0), mirror.clinicName || 'Clinica', 'BRASIL');
+        const rest = Number(x.amount || 0) - Number(x.paidAmount || 0);
+        return pixBrCode(mirror.pixKey, rest, mirror.clinicName || 'Clinica', 'BRASIL');
     }
 
     function copiarPixCode(id) {

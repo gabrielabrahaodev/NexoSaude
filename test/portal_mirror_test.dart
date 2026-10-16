@@ -83,15 +83,17 @@ void main() {
         {'id': 'f1', 'title': 'F', 'amount': 300.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 25)},
         {'id': 'c1', 'title': 'X', 'amount': 500.0, 'paidAmount': 0.0, 'dueDate': DateTime(2026, 9, 1), 'status': 'cancelado'},
         {'id': 's1', 'title': 'Y', 'amount': 500.0, 'paidAmount': 500.0, 'dueDate': DateTime(2026, 9, 1), 'status': 'substituido (parcelado)'},
+        {'id': 'p1', 'title': 'P', 'amount': 200.0, 'paidAmount': 80.0, 'dueDate': DateTime(2026, 9, 12)},
       ];
       final m = buildPortalMirror(
           clinicId: 'cid1',
           sessions: [], debts: debts, pixKey: '', now: now);
       final ids =
           (m['debts'] as List).map((d) => (d as Map)['id']).toList();
-      expect(ids, ['o3', 'o1', 'o2']);
-      expect(m['debtsTotal'], 1000.0);
-      expect(m['debtsCount'], 4);
+      expect(ids, ['o3', 'o1', 'p1']);
+      // Parcial conta o RESTO (200 - 80), não o cheio.
+      expect(m['debtsTotal'], 1120.0);
+      expect(m['debtsCount'], 5);
     });
   });
 
