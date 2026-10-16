@@ -50,7 +50,8 @@ async function seed(admin) {
   await db.doc(`appointments/ap1`).set({
     clinicId: A, patientId: 'p1', status: 'Agendado', portalToken: 'oldTok',
   });
-  await db.doc(`anamnesis/an1`).set({ patientId: 'p1', smoker: false });
+  // Anamnese: doc id == patientId (como o app grava).
+  await db.doc(`anamnesis/p1`).set({ patientId: 'p1', smoker: false });
   await db.doc(`password_reset_requests/reqGlobal`).set({
     email: 'g@g.com', status: 'pending', createdAt: new Date(),
   });
@@ -267,24 +268,24 @@ describe('matriz reavaliação P0/P1', () => {
 
   it('P0 anamnese: sem get público; escrita só com prova do token', async () => {
     const anon = ctx(null).firestore();
-    await assertFails(anon.doc('anamnesis/an1').get());
+    await assertFails(anon.doc('anamnesis/p1').get());
     // Sem prova e com prova errada: nega.
-    await assertFails(anon.doc('anamnesis/an1').update({ smoker: true }));
-    await assertFails(anon.doc('anamnesis/an1').update({
+    await assertFails(anon.doc('anamnesis/p1').update({ smoker: true }));
+    await assertFails(anon.doc('anamnesis/p1').update({
       smoker: true, proofToken: 'errada',
     }));
     // Prova certa + allowlist: permite (link válido do WhatsApp).
-    await assertSucceeds(anon.doc('anamnesis/an1').update({
+    await assertSucceeds(anon.doc('anamnesis/p1').update({
       patientId: 'p1', smoker: true, proofToken: 'ana456',
     }));
     // Campo fora da allowlist mesmo com prova: nega.
-    await assertFails(anon.doc('anamnesis/an1').update({
+    await assertFails(anon.doc('anamnesis/p1').update({
       patientId: 'p1', diagnosis: 'x', proofToken: 'ana456',
     }));
     // Staff de outra clínica sem prova: nega; da mesma clínica: permite.
     await assertFails(
-      ctx('staffB').firestore().doc('anamnesis/an1').update({ smoker: false }));
+      ctx('staffB').firestore().doc('anamnesis/p1').update({ smoker: false }));
     await assertSucceeds(
-      ctx('staffA').firestore().doc('anamnesis/an1').update({ smoker: false }));
+      ctx('staffA').firestore().doc('anamnesis/p1').update({ smoker: false }));
   });
 });

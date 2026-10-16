@@ -122,11 +122,16 @@ service cloud.firestore {
       return document == 'integrations' || document.matches('integrations/.*');
     }
 
-    // 3b. Campos administrativos de clínica: SÓ superadmin (reavaliação §3).
+    // 3b. Campos administrativos de clínica: SÓ superadmin.
     // Recebe LISTA de chaves (`.keys()` no create, `affectedKeys()` no
     // update) — passar o mapa inteiro quebra a verificação (P1).
     function _noClinicAdminKeys(keys) {
       return !keys.hasAny(['trialEndsAt', 'blockedByAdmin', 'ownerId']);
+    }
+    // Create: ownerId é OBRIGATÓRIO (= o próprio uid) mas não é "admin"
+    // nesse contexto — só trial/bloqueio são vedados ao owner.
+    function _noTrialKeys(keys) {
+      return !keys.hasAny(['trialEndsAt', 'blockedByAdmin']);
     }
 
     // 3c. Papéis de equipe (nunca owner/superadmin via cliente).
@@ -311,11 +316,12 @@ service cloud.firestore {
       allow get: if isAuthenticated();
       allow list: if isSuperAdmin() || _isActiveUser();
       // Create: plataforma livre; owner SÓ a própria (ownerId == uid), sem
-      // campos administrativos e com tipo válido (P1: valida `.keys()`).
+      // trial/bloqueio e com tipo válido (P1: valida `.keys()`; ownerId
+      // aqui é prova de posse, não campo administrativo).
       allow create: if isSuperAdmin() ||
           (isAuthenticated() &&
            request.resource.data.get('ownerId', '') == request.auth.uid &&
-           _noClinicAdminKeys(request.resource.data.keys()) &&
+           _noTrialKeys(request.resource.data.keys()) &&
            request.resource.data.get('name', '') is string &&
            request.resource.data.get('type', '') in
              ['dental', 'psychology', 'multi']);
@@ -335,12 +341,17 @@ service cloud.firestore {
       let affected =
         request.resource.data.diff(resource.data).affectedKeys();
       let u = _updater();
-      let flags = 'menuAccess' in u ? u.menuAccess : {};
+      let flags = 'menuAccess' in u && u.menuAccess is map ? u.menuAccess : {};
+      // Guarda `in`: mapa sem a flag NÃO autoriza (acesso a chave
+      // inexistente = evaluation error = nega tudo — P1).
+      let gPix = 'g_pix' in flags && flags['g_pix'] == true;
+      let gGrade = 'g_grade' in flags && flags['g_grade'] == true;
+      let gClin = 'g_clinica' in flags && flags['g_clinica'] == true;
       return affected.hasOnly(
           ['pixKey', 'gradeConfig', 'whatsappNumber', 'updatedAt']) &&
-        (!('pixKey' in affected) || flags['g_pix'] == true) &&
-        (!('gradeConfig' in affected) || flags['g_grade'] == true) &&
-        (!('whatsappNumber' in affected) || flags['g_clinica'] == true);
+        (!('pixKey' in affected) || gPix) &&
+        (!('gradeConfig' in affected) || gGrade) &&
+        (!('whatsappNumber' in affected) || gClin);
     }
 
     // B1b. PROJEÇÃO PÚBLICA p/ avaliação online (reavaliação §6): get
