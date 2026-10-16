@@ -10,7 +10,7 @@ sem este plano assinado. Rules NOVAS NÃO publicadas** (ao vivo segue
 ## 0. Base automatizada (executar primeiro)
 
 - [x] `flutter analyze --no-pub` → 227 issues, 0 erros (16/10, +1 info vs baseline).
-- [x] `flutter test` → +176 -1 (só `widget_test` pré-existente; inclui gate `monthly_package_card` + flag `debtsTruncated`).
+- [x] `flutter test` → +177 tudo verde (16/10; `widget_test` corrigido com Firebase mockado + gate `monthly_package_card` + flag `debtsTruncated`).
 - [ ] Matriz `test/rules/matrix.test.js` no emulator (14 casos P0/P1) → tudo verde. **Bloqueia o release.**
 - [ ] `node migrate/rules-validate.js` → SINTAXE OK (sem release).
 
@@ -91,7 +91,7 @@ Preparar massa (clínica Teste): cobrança de R$ 200 com R$ 80 pagos
 
 | Item | OK? | Obs |
 |---|---|---|
-| Base 0 verde (analyze 0 erros + suite +176 -1) | ☑ | 16/10 máquina local |
+| Base 0 verde (analyze 0 erros + suite +177) | ☑ | 16/10 máquina local |
 | Matriz de rules no emulator | ☐ | **bloqueia release** |
 | Fase 1 (5 diálogos × 4 larguras) | ☐ | |
 | Fase 2 (portal resto/Pix) | ☐ | |

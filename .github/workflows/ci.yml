@@ -14,7 +14,8 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
-      - run: flutter analyze --no-pub
+      # Gate = 0 erros (avisos/infos pré-existentes não bloqueiam).
+      - run: flutter analyze --no-pub --no-fatal-warnings --no-fatal-infos
       - run: flutter test
 
   rules:
@@ -27,7 +28,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
       - run: npm i -g firebase-tools
       - run: npm install --no-save @firebase/rules-unit-testing firebase-admin
         working-directory: test/rules

@@ -64,6 +64,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Mocks do Firebase p/ widget_test (sem rede nem app real).
+  firebase_core_platform_interface: ^8.1.1
     
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
