@@ -37,7 +37,8 @@ Avaliação ponto a ponto contra o código atual (`remodelagem-gpt` ≈ `master`
 ### Etapa C — rules (ARQUIVO alterado, NÃO publicado)
 8. ✅ no arquivo: `appointments` anônimo exige `portalToken` vinculado (+ `confirmar.html?t=`, link com token e `portal.html` enviando; staff autenticado inalterado). Links antigos sem token caem no fallback "avise no WhatsApp".
 9. ✅ no arquivo: `portal_slots` com `allow get` (lista só autenticado; ninguém lista).
-10. ⏳ PENDENTE (exige auditoria escritor-a-escritor): owner escopado por `ownerId`, `users`/`clinics` leitura escopada, `inventory`/`suppliers` escrita escopada. NÃO implementar às cegas (risco: telas owner-ALL sem filtro negariam).
+10. ✅ FEITO em 16/10 (arquivo, sem publicar): auditoria escritor-a-escritor concluída (todos os escritores carimbam `clinicId`; leitores mapeados); owner global removido da regra F, expenses/lab, delete de clínica, write de settings/fees, subcoleções via `patientClinicOk`; leitura de `users` (próprio/superadmin/mesma clínica); escrita de procedures/suppliers/inventory exigindo `clinicId` escopado (base zerada ou com `clinicId` — seguro). Mantidos de propósito: leitura de `clinics` (avaliação pública usa sem login), anamnese pública, creates de `users`. Sintaxe validada (ruleset sem release).
+11. Publicar via `migrate/rules-release.js` + `rules-inspect.js` SOMENTE com ordem explícita. Rollback: republicar o ruleset anterior.
 11. Publicar via `migrate/rules-release.js` + `rules-inspect.js` SOMENTE com ordem explícita.
 
 ### Etapa D — verificação sem emulador

@@ -39,6 +39,39 @@ service cloud.firestore {
              (clinicId in get(userDocPath).data.allowedClinics);
     }
 
+    // 2b. Dono DAQUELA clínica (ownerId) — não basta ser owner em geral
+    // (auditoria 16/10: `isOwner()` global permitia ler outra clínica).
+    // Custo só no fallback: o caminho comum (`hasClinicAccess`) resolve antes.
+    function ownsClinic(clinicId) {
+      return isAuthenticated() &&
+             clinicId is string && clinicId != '' &&
+             exists(/databases/$(database)/documents/clinics/$(clinicId)) &&
+             get(/databases/$(database)/documents/clinics/$(clinicId)).data.ownerId == request.auth.uid;
+    }
+
+    // 2c. Acesso operacional a UMA clínica: plataforma, dono dela ou staff.
+    function clinicScoped(clinicId) {
+      return isSuperAdmin() ||
+             hasClinicAccess(clinicId) ||
+             ownsClinic(clinicId);
+    }
+
+    // 2d. Mesma clínica entre usuários (lista de equipe, nomes de
+    // profissionais): interseção de `allowedClinics`, ou o próprio doc.
+    function sharesClinic(targetAllowed) {
+      let mine = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('allowedClinics', []);
+      return isAuthenticated() &&
+             targetAllowed is list && mine is list &&
+             mine.hasAny(targetAllowed);
+    }
+
+    // 2e. Clínica do paciente pai (subcoleções sem clinicId próprio).
+    function patientClinicOk(patientId) {
+      let pref = /databases/$(database)/documents/patients/$(patientId);
+      return exists(pref) &&
+             clinicScoped(get(pref).data.clinicId);
+    }
+
     // 3. Caminho de segredos dentro de settings (ex.: integrations/cloudinary)
     function isSecretsPath(document) {
       return document == 'integrations' || document.matches('integrations/.*');
@@ -46,9 +79,13 @@ service cloud.firestore {
 
     // --- REGRAS DE COLEÇÕES ---
 
-    // A. USUÁRIOS
+    // A. USUÁRIOS (leitura escopada — auditoria 16/10; escrita inalterada).
+    // Lê: o próprio doc, superadmin, ou quem divide clínica com o alvo
+    // (lista de equipe, nomes de profissionais, espelho do portal).
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (request.auth.uid == userId ||
+          isSuperAdmin() ||
+          sharesClinic(resource.data.allowedClinics));
       allow write: if isOwner() || isSuperAdmin();
       // Auto-cadastro (email/Google): o próprio usuário cria o doc,
       // sem clínica e sem poder virar owner (owner libera depois).
@@ -106,9 +143,14 @@ service cloud.firestore {
     // Operacional (pixKey/gradeConfig/whatsappNumber): staff da clínica
     // COM a flag g_pix/g_grade/g_clinica no mapa; resto segue owner.
     match /clinics/{clinicId} {
+      // Leitura autenticada mantida (avaliação pública usa este doc sem
+      // login; restringir quebraria `/avaliacao` — risco residual aceito:
+      // IDs imprevisíveis, sem listagem).
       allow read: if isAuthenticated();
-      allow create, delete: if isOwner() || isSuperAdmin();
-      allow update: if isOwner() || isSuperAdmin() ||
+      allow create: if isOwner() || isSuperAdmin();
+      // Excluir: SÓ o dono DA clínica (auditoria 16/10).
+      allow delete: if ownsClinic(clinicId) || isSuperAdmin();
+      allow update: if ownsClinic(clinicId) || isSuperAdmin() ||
         (hasClinicAccess(clinicId) && _clinicOpAllowed());
     }
 
@@ -225,33 +267,55 @@ service cloud.firestore {
       ]);
     }
 
-    // F. DADOS OPERACIONAIS (CORREÇÃO DE ACESSO PARA FUNCIONÁRIOS)
+    // F. DADOS OPERACIONAIS (escopo por clínica, sem owner global).
+    // Auditoria 16/10: `isOwner()` sozinho liberava qualquer clínica para
+    // qualquer owner. Agora: plataforma, dono DA clínica ou staff dela.
+    // Views sem filtro retornam o subconjunto permitido (sem erro).
     match /{collection}/{docId} {
       allow read, update, delete: if 
           isAuthenticated() &&
           (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
-          (isOwner() || hasClinicAccess(resource.data.clinicId));
+          clinicScoped(resource.data.clinicId);
       
       allow create: if 
           isAuthenticated() &&
           (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
-          (isOwner() || hasClinicAccess(request.resource.data.clinicId));
+          clinicScoped(request.resource.data.clinicId);
     }
 
-    // --- MÓDULO DE GESTÃO (mantido amplo DE PROPÓSITO) ---
-    // procedures = catálogo global sem clinicId; inventory/suppliers têm
-    // leitores legados sem filtro (product_service). Escopar aqui quebraria
-    // telas de staff — ver Apêndice B dos Requisitos.
+    // --- MÓDULO DE GESTÃO (escopo por clínica; catálogo legado sem
+    // clinicId continua legível — decisão de negócio documentada) ---
     match /procedures/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() ||
+          !('clinicId' in resource.data) ||
+          hasClinicAccess(resource.data.clinicId) ||
+          ownsClinic(resource.data.clinicId));
+      allow write: if isAuthenticated() && (isSuperAdmin() ||
+          (('clinicId' in request.resource.data) &&
+           (hasClinicAccess(request.resource.data.clinicId) ||
+            ownsClinic(request.resource.data.clinicId))));
     }
 
     match /inventory/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() ||
+          !('clinicId' in resource.data) ||
+          hasClinicAccess(resource.data.clinicId) ||
+          ownsClinic(resource.data.clinicId));
+      allow write: if isAuthenticated() && (isSuperAdmin() ||
+          (('clinicId' in request.resource.data) &&
+           (hasClinicAccess(request.resource.data.clinicId) ||
+            ownsClinic(request.resource.data.clinicId))));
     }
 
     match /suppliers/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() ||
+          !('clinicId' in resource.data) ||
+          hasClinicAccess(resource.data.clinicId) ||
+          ownsClinic(resource.data.clinicId));
+      allow write: if isAuthenticated() && (isSuperAdmin() ||
+          (('clinicId' in request.resource.data) &&
+           (hasClinicAccess(request.resource.data.clinicId) ||
+            ownsClinic(request.resource.data.clinicId))));
     }
 
     // --- DESPESAS E LAB (escopo por clínica, espelha regra F) ---
@@ -260,16 +324,16 @@ service cloud.firestore {
     // lab_service, patient_lab_tab). Queries sem clinicId serão negadas.
     match /expenses/{docId} {
       allow read, update, delete: if isAuthenticated() &&
-          (isOwner() || hasClinicAccess(resource.data.clinicId));
+          clinicScoped(resource.data.clinicId);
       allow create: if isAuthenticated() &&
-          (isOwner() || hasClinicAccess(request.resource.data.clinicId));
+          clinicScoped(request.resource.data.clinicId);
     }
 
     match /lab_orders/{orderId} {
       allow read, update, delete: if isAuthenticated() &&
-          (isOwner() || hasClinicAccess(resource.data.clinicId));
+          clinicScoped(resource.data.clinicId);
       allow create: if isAuthenticated() &&
-          (isOwner() || hasClinicAccess(request.resource.data.clinicId));
+          clinicScoped(request.resource.data.clinicId);
     }
 
     // (blocos plans/anticipations removidos — ver nota abaixo)
@@ -288,14 +352,14 @@ service cloud.firestore {
     // plano Spark não tem backend — nada no app lê este caminho hoje).
     match /clinics/{clinicId}/settings/{document=**} {
       allow read: if isAuthenticated() && !isSecretsPath(document);
-      allow write: if isOwner() && !isSecretsPath(document);
+      allow write: if (ownsClinic(clinicId) || isSuperAdmin()) && !isSecretsPath(document);
     }
     // Taxas da maquininha: regra explícita (leitura autenticado, escrita
     // owner — mesmo intent do bloco acima, sem depender do curinga
     // recursivo + função na condição; cobre doc fees e lista profiles).
     match /clinics/{clinicId}/settings/fees/{doc=**} {
       allow read: if isAuthenticated();
-      allow write: if isOwner();
+      allow write: if ownsClinic(clinicId) || isSuperAdmin();
     }
     match /clinics/{clinicId}/settings/integrations/{sub=**} {
       allow read, write: if isOwner();
@@ -308,7 +372,7 @@ service cloud.firestore {
        allow read, write: if 
           isAuthenticated() &&
           exists(/databases/$(database)/documents/patients/$(patientId)) &&
-          (isOwner() || hasClinicAccess(get(/databases/$(database)/documents/patients/$(patientId)).data.clinicId));
+          patientClinicOk(patientId);
     }
   }
 }
