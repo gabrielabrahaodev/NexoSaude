@@ -19,7 +19,7 @@ flutter test
 
 Deploy web: `deploy.bat` (build + organiza `/sistema-interno/` + `firebase deploy --only hosting`).
 Branches: `master` (próximas sprints) e `producao` (= ao vivo); deploy roda da `producao`.
-Rules/índices: ao vivo = ruleset `d28dd75b` (16/10); **há rules NOVAS pendentes (reavaliação 16/10, P0–P2) — NÃO publicar sem**: `flutter analyze/test` verdes + matriz `test/rules/` no emulator passando + `rules-validate` OK + ordem explícita. Scripts versionados em `migrate/rules-*.js` (chave via `GOOGLE_APPLICATION_CREDENTIALS` ou `migrate/*-key.json` local, ignorado no git). CI (`.github/workflows/ci.yml`) roda analyze/test + matriz de rules.
+Rules/índices: ao vivo = ruleset `f50ad0ac` + índices (16/10, release reavaliação P0–P2, matriz 14/14 no CI). Scripts versionados em `migrate/rules-*.js` (chave via `GOOGLE_APPLICATION_CREDENTIALS` ou `migrate/*-key.json` local, ignorado no git). CI (`.github/workflows/ci.yml`) roda analyze/test + matriz de rules. Publicar SÓ com ordem explícita.
 
 ## Integrações (setup manual)
 

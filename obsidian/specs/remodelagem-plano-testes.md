@@ -61,9 +61,8 @@ Preparar massa (clínica Teste): cobrança de R$ 200 com R$ 80 pagos
 
 ## 5. Segurança (matriz antes de publicar)
 
-- [ ] Ruleset ao vivo AINDA `d28dd75b`: `node migrate/rules-inspect.js` → mesmo id (nada publicado durante os testes).
-- [ ] Matriz `test/rules/` verde no emulator (anon/staff mesma/staff outra/owner outra/superadmin).
-- [ ] Manual pós-matriz (conta de teste por perfil): dropdown da agenda lista; confirmar por link com token; avaliação pública carrega + grava lead; owner NÃO promove a si; clínica bloqueada nega operacional no app.
+- [x] Ruleset `f50ad0ac` PUBLICADO em 16/10 (~20:50Z, ordem explícita) + `firestore:indexes` (inclui ASC do espelho); confirmado via `rules-inspect.js`. App `20261016-1751` deployado (`084ba78`, `master` = `producao`).
+- [ ] Manual pós-deploy (conta de teste por perfil): dropdown da agenda lista; confirmar por link com token; avaliação pública carrega + grava lead; owner NÃO promove a si; clínica bloqueada nega operacional no app.
 
 ## 6. Auditoria 16/10 (lote `a5458a7`)
 
