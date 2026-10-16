@@ -1,10 +1,7 @@
 # Plano de testes — remodelagem-gpt (fases 1–4 + auditoria 16/10 + reavaliações)
 
 Escopo: `master` após as reavaliações (rules P0–P2 reescritas, app ajustado).
-Ao vivo: ruleset `f50ad0ac` + app `20261016-1751` (release 16/10 ~20:50Z).
-Há NOVO lote de rules ARQUIVO (reavaliação da noite: anamnese com token,
-status Ativo, revogação, reset isolado) — NÃO publicado; libera com matriz
-verde no emulator + ordem explícita (workflow manual `ci-manual`).
+Ao vivo: ruleset `3051b8d5` + índices + app `20261016-1911` (release 16/10 ~22:10Z, 2º lote).
 
 ## 0. Base automatizada (executar primeiro)
 
@@ -62,7 +59,7 @@ Preparar massa (clínica Teste): cobrança de R$ 200 com R$ 80 pagos
 
 ## 5. Segurança (matriz antes de publicar)
 
-- [x] Ruleset `f50ad0ac` PUBLICADO em 16/10 (~20:50Z, ordem explícita) + `firestore:indexes` (inclui ASC do espelho); confirmado via `rules-inspect.js`. App `20261016-1751` deployado (`084ba78`, `master` = `producao`).
+- [x] Ruleset `3051b8d5` PUBLICADO em 16/10 (~22:10Z, ordem explícita) + `firestore:indexes` (inclui resets por clínica); confirmado via `rules-inspect.js`. App `20261016-1911` deployado (`8226c4d`, `master` = `producao`).
 - [ ] Manual pós-deploy (conta de teste por perfil): dropdown da agenda lista; confirmar por link com token; avaliação pública carrega + grava lead; owner NÃO promove a si; clínica bloqueada nega operacional no app.
 
 ## 6. Auditoria 16/10 (lote `a5458a7`)

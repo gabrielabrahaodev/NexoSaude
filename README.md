@@ -19,7 +19,7 @@ flutter test
 
 Deploy web: `deploy.bat` (build + organiza `/sistema-interno/` + `firebase deploy --only hosting`).
 Branches: `master` (próximas sprints) e `producao` (= ao vivo); deploy roda da `producao`.
-Rules/índices: ao vivo = ruleset `f50ad0ac` + índices (16/10). Há 2º LOTE ARQUIVO (reavaliação da noite) — NÃO publicar sem: matriz `test/rules/` verde (workflow manual `ci-manual`, precisa Java 21+) + ordem explícita. Scripts em `migrate/rules-*.js` (chave via `GOOGLE_APPLICATION_CREDENTIALS` ou `migrate/*-key.json` local, ignorado no git).
+Rules/índices: ao vivo = ruleset `3051b8d5` + índices (16/10 noite, 2º lote, matriz 20/20). Scripts em `migrate/rules-*.js` (chave via `GOOGLE_APPLICATION_CREDENTIALS` ou `migrate/*-key.json` local, ignorado no git). Publicar SÓ com ordem explícita.
 
 ## Integrações (setup manual)
 
