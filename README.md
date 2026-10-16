@@ -18,12 +18,13 @@ flutter test
 ```
 
 Deploy web: `deploy.bat` (build + organiza `/sistema-interno/` + `firebase deploy --only hosting`).
+Branches: `master` (próximas sprints) e `producao` (= ao vivo); deploy roda da `producao`.
+Rules/índices: `node migrate/rules-release.js` (REST, contorna o 403 do CLI) e `firebase deploy --only firestore:indexes` — ambos já publicados e verificados (16/10).
 
 ## Integrações (setup manual)
 
 - **Cloudinary** (docs do paciente): upload unsigned — cloud `dbbh601ay`, `upload_preset=dbbh601ay` (preset precisa estar **unsigned** no painel). Exclusão apaga só o Firestore (Spark, sem destroy remoto).
 - **Links públicos**: `confirmar.html?id=` (presença) e `anamnese.html?id=` (anamnese) ficam na raiz do hosting; `/avaliacao` (rota Flutter) grava leads em `clinics/{cid}/leads`.
-- **Pendente (obrigatório p/ as telas novas funcionarem)**: `firebase deploy --only firestore:rules,indexes`.
 
 ## Estrutura
 
