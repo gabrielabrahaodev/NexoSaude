@@ -11,8 +11,9 @@ sem este plano assinado. Rules NOVAS NÃO publicadas** (ao vivo segue
 
 - [x] `flutter analyze --no-pub` → 227 issues, 0 erros (16/10, +1 info vs baseline).
 - [x] `flutter test` → +177 tudo verde (16/10; `widget_test` corrigido com Firebase mockado + gate `monthly_package_card` + flag `debtsTruncated`).
-- [ ] Matriz `test/rules/matrix.test.js` no emulator (14 casos P0/P1) → tudo verde. **Bloqueia o release.**
-- [ ] `node migrate/rules-validate.js` → SINTAXE OK (sem release).
+- [x] Matriz `test/rules/matrix.test.js` no emulator (14 casos P0/P1) → tudo verde. **Bloqueia o release.**
+- [x] `node migrate/rules-validate.js` → SINTAXE OK (sem release).
+- CI verde em 16/10 (~20:38Z, run `38963424437`): jobs `flutter` (analyze 0 erros + suite +177) e `rules` (matriz 14/14 no emulator) ✓. No caminho, a matriz pegou 2 defeitos reais já corrigidos: `Set.toSet()` no team-manage (negava tudo) e massa do trial fora da allowlist.
 
 ## 1. Fase 1 — diálogos em telas pequenas
 
@@ -92,7 +93,7 @@ Preparar massa (clínica Teste): cobrança de R$ 200 com R$ 80 pagos
 | Item | OK? | Obs |
 |---|---|---|
 | Base 0 verde (analyze 0 erros + suite +177) | ☑ | 16/10 máquina local |
-| Matriz de rules no emulator | ☐ | **bloqueia release** |
+| Matriz de rules no emulator | ☑ | 16/10 CI run 38963424437 (14/14) |
 | Fase 1 (5 diálogos × 4 larguras) | ☐ | |
 | Fase 2 (portal resto/Pix) | ☐ | |
 | Fase 4 (valores restantes) | ☐ | |
