@@ -519,7 +519,13 @@ class _TransactionRow extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text("${item.isIncome ? '+' : '-'} ${formatBRL(item.amount)}", style: TextStyle(fontWeight: FontWeight.bold, color: item.isIncome ? Colors.green[700] : Colors.red[700], fontSize: 15)),
+                Builder(builder: (_) {
+                  // Pendente exibe o SALDO (desconta parciais); pago exibe o valor.
+                  final shown = item.isPaid
+                      ? item.amount
+                      : (item.amount - (item.paidAmount ?? 0.0));
+                  return Text("${item.isIncome ? '+' : '-'} ${formatBRL(shown)}", style: TextStyle(fontWeight: FontWeight.bold, color: item.isIncome ? Colors.green[700] : Colors.red[700], fontSize: 15));
+                }),
                 const SizedBox(height: 2),
                 Text("Saldo: ${formatBRL(item.runningBalance)}", style: TextStyle(fontSize: 10, color: Colors.grey[400]))
               ],

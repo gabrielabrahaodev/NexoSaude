@@ -299,7 +299,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       phone = phone.replaceAll(RegExp(r'[^\d]'), '');
       if (!phone.startsWith('55')) phone = '55$phone';
       
-      String msg = "Olá, lembrete da parcela de ${formatBRL(item.amount)} vencendo em ${formatDateShort(item.dueDate ?? DateTime.now())}.";
+      String msg = "Olá, lembrete da parcela de ${formatBRL(FinancialService.partialRemainder(amount: item.amount, paidAmount: item.paidAmount, payValue: 0))} vencendo em ${formatDateShort(item.dueDate ?? DateTime.now())}.";
       final ok = await openWhatsAppSafe(context, tab,
           phone: phone, message: msg);
       if (!ok) {

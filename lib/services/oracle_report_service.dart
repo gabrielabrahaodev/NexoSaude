@@ -10,6 +10,7 @@ class TransactionItem {
   final double amount;
   final DateTime date; 
   final DateTime dueDate;
+  final double paidAmount;
   final bool isIncome;
   final bool isPaid;
   final String category;
@@ -25,6 +26,7 @@ class TransactionItem {
     required this.amount,
     required this.date,
     required this.dueDate,
+    this.paidAmount = 0.0,
     required this.isIncome,
     required this.isPaid,
     required this.category,
@@ -186,6 +188,7 @@ class OracleReportService {
           amount: amount,
           date: effectiveDate,
           dueDate: dueDate,
+          paidAmount: (data['paidAmount'] as num?)?.toDouble() ?? 0.0,
           isIncome: true,
           isPaid: isPaid,
           category: "Receita",
@@ -224,6 +227,7 @@ class OracleReportService {
           amount: amount,
           date: effectiveDate,
           dueDate: dueDate,
+          paidAmount: (data['paidAmount'] as num?)?.toDouble() ?? 0.0,
           isIncome: false,
           isPaid: expIsPaid, 
           category: category,
@@ -244,7 +248,10 @@ class OracleReportService {
       if (item.isPaid) {
         if (item.isIncome) revenue += item.amount; else expense += item.amount;
       }
-      if (item.isIncome) balance += item.amount; else balance -= item.amount;
+      // Projetado usa o SALDO (desconta parciais de pendentes).
+      final projected =
+          item.isPaid ? item.amount : (item.amount - item.paidAmount);
+      if (item.isIncome) balance += projected; else balance -= projected;
       item.runningBalance = balance;
     }
 

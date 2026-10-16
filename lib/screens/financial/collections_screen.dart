@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/appointment_model.dart';
 import '../../models/financial_model.dart';
+import '../../services/financial_service.dart';
 import '../../services/clinic_capabilities.dart';
 import '../../services/package_billing.dart';
 import '../../services/session_manager.dart';
@@ -121,8 +122,11 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
       return;
     }
 
-    // 2. Gera mensagem rotativa
-    final message = WhatsAppHelper.getMessage(item.patientName, item.amount, item.dueDate ?? DateTime.now());
+    // 2. Gera mensagem rotativa (saldo restante, não o cheio)
+    final remaining = FinancialService.partialRemainder(
+        amount: item.amount, paidAmount: item.paidAmount, payValue: 0);
+    final message = WhatsAppHelper.getMessage(
+        item.patientName, remaining, item.dueDate ?? DateTime.now());
 
     // 3. Abre WhatsApp
     final success = await openWhatsAppSafe(context, tab,
