@@ -56,8 +56,10 @@ service cloud.firestore {
              ownsClinic(clinicId);
     }
 
-    // 2d. Mesma clínica entre usuários (lista de equipe, nomes de
-    // profissionais): interseção de `allowedClinics`, ou o próprio doc.
+    // 2d. Mesma clínica entre usuários: RESERVADO p/ leituras por doc
+    // (get). NÃO usar em LISTAS: rules são tudo-ou-nada e a query inteira
+    // nega (visto em 16/10 no dropdown da agenda). Listas de `users`
+    // seguem autenticadas (ver regra A); o app sempre filtra por clínica.
     function sharesClinic(targetAllowed) {
       let mine = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('allowedClinics', []);
       return isAuthenticated() &&
@@ -79,13 +81,13 @@ service cloud.firestore {
 
     // --- REGRAS DE COLEÇÕES ---
 
-    // A. USUÁRIOS (leitura escopada — auditoria 16/10; escrita inalterada).
-    // Lê: o próprio doc, superadmin, ou quem divide clínica com o alvo
-    // (lista de equipe, nomes de profissionais, espelho do portal).
+    // A. USUÁRIOS (leitura autenticada — auditoria 16/10; escrita inalterada).
+    // Escopo por sobreposição QUEBROU listas (tudo-ou-nada nega a query
+    // inteira: dropdown da agenda, ensureWindow). Mitigações mantidas:
+    // UIDs imprevisíveis, app sempre filtra por clínica, sem credenciais
+    // nos docs. Reavaliar com espelho por clínica se preciso.
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId ||
-          isSuperAdmin() ||
-          sharesClinic(resource.data.allowedClinics));
+      allow read: if isAuthenticated();
       allow write: if isOwner() || isSuperAdmin();
       // Auto-cadastro (email/Google): o próprio usuário cria o doc,
       // sem clínica e sem poder virar owner (owner libera depois).
