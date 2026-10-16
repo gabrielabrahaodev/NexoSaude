@@ -221,7 +221,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
           return AlertDialog(
             title: const Text("Novo Paciente Rápido"),
             content: SizedBox(
-              width: 500,
+              width: double.maxFinite,
               child: SingleChildScrollView(
                 child: Form(
                   key: formKeyModal,

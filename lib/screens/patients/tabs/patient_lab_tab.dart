@@ -55,7 +55,7 @@ class _PatientLabTabState extends State<PatientLabTab> {
             return AlertDialog(
               title: const Text("Novo Pedido de Lab"),
               content: SizedBox(
-                width: 400,
+                width: double.maxFinite,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

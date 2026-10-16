@@ -946,7 +946,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
             return AlertDialog(
               title: const Text("Finalizar Atendimento"),
               content: SizedBox(
-                width: 400,
+                width: double.maxFinite,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

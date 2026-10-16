@@ -345,7 +345,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
           title: const Text("Novo Funcionário"),
           content: SingleChildScrollView(
             child: SizedBox(
-              width: 400,
+              width: double.maxFinite,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

@@ -282,7 +282,7 @@ class _BudgetApprovalWizardState extends State<BudgetApprovalWizard> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 500,
+        width: double.maxFinite,
         height: 450,
         padding: const EdgeInsets.all(24),
         child: Column(
