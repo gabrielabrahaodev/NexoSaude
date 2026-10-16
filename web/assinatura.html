@@ -126,8 +126,8 @@
 
     async function doSignup() {
         const v = (id) => document.getElementById(id).value.trim();
-        if (!v('s-nome') || !v('s-email') || v('s-senha').length < 6 || !v('s-wa') || !v('s-clinica')) {
-            toast('Preencha tudo (senha mín. 6).');
+        if (!v('s-nome') || !v('s-email') || v('s-senha').length < 6 || v('s-wa').length < 8 || !v('s-clinica')) {
+            toast('Preencha tudo (senha mín. 6, WhatsApp com DDD).');
             return;
         }
         const btn = document.getElementById('s-btn');
@@ -148,6 +148,16 @@
             });
             toast('Pedido enviado! Aguarde nosso contato.');
         } catch (e) {
+            // Sem conta órfã (reavaliação §4): se o pedido falhou após
+            // criar Auth/perfil, apaga o perfil pendente + a conta e libera
+            // nova tentativa no mesmo e-mail.
+            try {
+                const u = auth.currentUser;
+                if (u && u.uid === uid) {
+                    await db.collection('users').doc(uid).delete().catch(() => {});
+                    await u.delete();
+                }
+            } catch (_) {}
             toast(e.code === 'auth/email-already-in-use' ? 'E-mail já cadastrado. Entre.' : 'Falha. Tente de novo.');
             btn.disabled = false;
         }
