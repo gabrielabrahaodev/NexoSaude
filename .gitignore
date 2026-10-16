@@ -57,3 +57,5 @@ obsidian.zip
 # Deploy/node raiz (nunca versionar instalado)
 /node_modules/
 .firebase/hosting.*.cache
+web/landingOutro.html
+web/landing - Copia.html
