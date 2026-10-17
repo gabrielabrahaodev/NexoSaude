@@ -346,7 +346,7 @@
                 const wd = dt.toLocaleDateString('pt-BR', {weekday: 'short'}).replace('.', '');
                 html += '<button class="daycard' + (i === 0 ? ' sel' : '') + '" data-action="escolher-dia" data-id="' + esc(id) + '" data-day="' + esc(day) + '">' + parts[2] + '/' + parts[1] + '<small>' + esc(wd) + ' • ' + byDay[day].length + '</small></button>';
             });
-            html += '</div><div style="font-size:13px;font-weight:700;color:var(--mut);margin-top:10px">Horários</div><div class="timegrid" id="tg-' + id + '"></div><div id="cf-' + id + '"></div></div>';
+            html += '</div><div style="font-size:13px;font-weight:700;color:var(--mut);margin-top:10px">Horários</div><div class="timegrid" id="tg-' + esc(id) + '"'></div><div id="cf-' + esc(id) + '"'></div></div>';
             box.innerHTML = html;
             window['_slots_' + id] = byDay;
             escolherDia(id, days[0]);
