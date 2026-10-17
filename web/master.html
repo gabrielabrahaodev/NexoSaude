@@ -221,6 +221,16 @@
             await db.collection('users').doc(m.uid).update({
                 allowedClinics: [clinicRef.id], status: 'Ativo',
             });
+            const ownerUserSnap = await db.collection('users').doc(m.uid).get();
+            const ownerUser = ownerUserSnap.data() || {};
+            await db.collection('clinics').doc(clinicRef.id).collection('members').doc(m.uid).set({
+                uid: m.uid, name: ownerUser.name || '', email: ownerUser.email || '',
+                role: ownerUser.role || 'owner', status: ownerUser.status || 'Ativo',
+                phone: ownerUser.phone || '', whatsapp: ownerUser.whatsapp || '',
+                cpf: ownerUser.cpf || '', menuAccess: ownerUser.menuAccess || {},
+                allowedClinics: [clinicRef.id], createdAt: ownerUser.createdAt || new Date(),
+                updatedAt: new Date(),
+            });
             await db.collection('trial_requests').doc(rid).update({status: 'aprovado', clinicId: clinicRef.id});
             toast('Trial liberado por 7 dias.');
             loadTab();
@@ -322,7 +332,12 @@
                 email: v('n-email'), name: v('n-nome'), role: 'owner',
                 allowedClinics: [clinicRef.id], status: 'Ativo', createdAt: new Date(),
             });
-            toast('Owner + clínica criados (trial 7 dias).');
+            await db.collection('clinics').doc(clinicRef.id).collection('members').doc(uid).set({
+                uid, name: v('n-nome'), email: v('n-email'), role: 'owner',
+                status: 'Ativo', phone: '', whatsapp: '', cpf: '', menuAccess: {},
+                allowedClinics: [clinicRef.id], createdAt: new Date(), updatedAt: new Date(),
+            });
+            toast('Owner + clínica criados (trial 7 dias).')
             goTab('owners');
         } catch (e) {
             toast(e.code === 'auth/email-already-in-use' ? 'E-mail já em uso.' : 'Falha. Tente de novo.');

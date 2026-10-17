@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/subscription.dart';
+import '../../services/clinic_member_directory.dart';
 import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
 
@@ -45,8 +46,7 @@ class _MasterScreenState extends State<MasterScreen> {
   /// Staff (sem owner) com acesso à clínica.
   Future<List<String>> _staffOf(String clinicId) async {
     final snap = await FirebaseFirestore.instance
-        .collection('users')
-        .where('allowedClinics', arrayContains: clinicId)
+        .collection('clinics').doc(clinicId).collection('members')
         .get();
     return [
       for (final d in snap.docs)
@@ -265,6 +265,8 @@ class _MasterScreenState extends State<MasterScreen> {
         'status': 'Ativo',
         'createdAt': FieldValue.serverTimestamp(),
       });
+      await ClinicMemberDirectory.syncUserForClinic(
+          uid: uid, clinicId: clinicRef.id);
       if (mounted) {
         toast(context, "Owner + clínica criados (trial 7 dias).",
             ok: true);
