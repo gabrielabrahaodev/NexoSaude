@@ -148,7 +148,7 @@
             + '<input id="r-nome" value="' + esc(name) + '" placeholder="Seu nome">'
             + '<input id="r-wa" type="tel" value="' + esc(whatsapp) + '" placeholder="WhatsApp (DDD+número)">'
             + '<input id="r-clinica" placeholder="Nome da clínica">'
-            + '<select id="r-tipo"><option value="dental">Odontologia</option><option value="psychology">Psicologia</option><option value="multi">Multidisciplinar</option></select>'
+            + '<select id="r-tipo"><option value="dental">Odontologia</option><option value="psychology">Psicologia</option></select>'
             + '<button class="btn-ok" data-action="retry-trial" data-id="' + esc(uid) + '">Solicitar nova análise</button>'
             + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
     }
@@ -168,7 +168,7 @@
             whatsapp.length < 8 || whatsapp.length >= 20 ||
             email.length < 4 || email.length >= 100 ||
             clinicName.length < 2 || clinicName.length >= 100 ||
-            !['dental', 'psychology', 'multi'].includes(type)) {
+            !['dental', 'psychology'].includes(type)) {
             toast('Confira nome, WhatsApp e nome da clínica.');
             return;
         }
@@ -205,7 +205,7 @@
             + '<input id="s-senha" type="password" placeholder="Senha (mín. 6)" autocomplete="new-password">'
             + '<input id="s-wa" type="tel" placeholder="WhatsApp (DDD+número)">'
             + '<input id="s-clinica" placeholder="Nome da clínica">'
-            + '<select id="s-tipo"><option value="dental">Odontologia</option><option value="psychology">Psicologia</option><option value="multi">Multidisciplinar</option></select>'
+            + '<select id="s-tipo"><option value="dental">Odontologia</option><option value="psychology">Psicologia</option></select>'
             + '<button class="btn-ok" id="s-btn" onclick="doSignup()">Pedir meu teste</button>'
             + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="loginView()">Já tenho conta</button></div>';
     }
