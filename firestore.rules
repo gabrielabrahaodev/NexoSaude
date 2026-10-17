@@ -173,7 +173,9 @@ service cloud.firestore {
           (request.auth.uid == userId || isSuperAdmin() ||
            sharesClinic(resource.data.get('allowedClinics', [])));
       allow list: if isSuperAdmin() ||
-          sharesClinic(resource.data.get('allowedClinics', []));
+          (_isActiveUser() &&
+           resource.data.get('allowedClinics', []) is list &&
+           resource.data.get('allowedClinics', []).hasAny(_updaterClinics()));
       // Auto-cadastro (email/Google): o próprio uid, pendente, sem clínica,
       // sem cargo de poder, allowlist de campos de perfil.
       allow create: if isAuthenticated() && request.auth.uid == userId
@@ -341,7 +343,8 @@ service cloud.firestore {
       allow get: if isSuperAdmin() || (_isActiveUser() &&
           (ownsClinic(clinicId) || hasClinicAccess(clinicId)));
       allow list: if isSuperAdmin() || (_isActiveUser() &&
-          (ownsClinic(clinicId) || hasClinicAccess(clinicId)));
+          (resource.data.get('ownerId', '') == request.auth.uid ||
+           clinicId in _updaterClinics()));
       allow create: if isSuperAdmin() || _ownerClinicCreate();
       allow delete: if (ownsClinic(clinicId) && _isActiveUser()) ||
           isSuperAdmin();
