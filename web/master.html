@@ -119,6 +119,20 @@
             case 'dismiss-notice':
                 dismissNotice(id);
                 break;
+            case 'login':
+                doLogin();
+                break;
+            case 'go-tab':
+                if (['owners', 'pedidos', 'new', 'debits', 'trials', 'resets'].includes(button.dataset.tab)) {
+                    goTab(button.dataset.tab);
+                }
+                break;
+            case 'sign-out':
+                auth.signOut();
+                break;
+            case 'create-owner':
+                createOwner();
+                break;
         }
     });
 
@@ -143,7 +157,7 @@
             + '<p class="muted">Acesso do dono da plataforma.</p>'
             + '<input id="em" type="email" placeholder="E-mail" autocomplete="username">'
             + '<input id="pw" type="password" placeholder="Senha" autocomplete="current-password">'
-            + '<button class="btn-ok" onclick="doLogin()">Acessar</button></div>';
+            + '<button class="btn-ok" data-action="login">Acessar</button></div>';
     }
 
     async function doLogin() {
@@ -158,10 +172,10 @@
         content.innerHTML = '<div class="tabs">'
             + ['owners|Owners', 'pedidos|Pedidos', 'new|Novo owner', 'debits|Débitos', 'trials|Trials', 'resets|Resets'].map((t) => {
                 const parts = t.split('|');
-                return '<button class="' + (tab === parts[0] ? 'sel' : '') + '" onclick="goTab(\'' + parts[0] + '\')">' + parts[1] + '</button>';
+                return '<button class="' + (tab === parts[0] ? 'sel' : '') + '" data-action="go-tab" data-tab="' + parts[0] + '">' + parts[1] + '</button>';
             }).join('')
             + '</div><div id="tabbody"></div>'
-            + '<button class="btn-ghost" style="width:100%;margin-top:12px" onclick="firebase.auth().signOut()">Sair</button>';
+            + '<button class="btn-ghost" style="width:100%;margin-top:12px" data-action="sign-out">Sair</button>';
         loadTab();
     }
 
@@ -415,7 +429,7 @@
             + '<input id="n-senha" type="password" placeholder="Senha inicial">'
             + '<input id="n-clinica" placeholder="Nome da clínica">'
             + '<select id="n-tipo"><option value="dental">Odonto</option><option value="psychology">Psicologia</option></select>'
-            + '<button class="btn-ok" id="n-btn" onclick="createOwner()">Criar</button></div>';
+            + '<button class="btn-ok" id="n-btn" data-action="create-owner">Criar</button></div>';
     }
 
     async function createOwner() {
