@@ -126,6 +126,18 @@ class PatientService {
       }
     }
 
+    // Não remova o paciente nem seus metadados se ainda houver binários
+    // no Cloudinary: isso perderia o caminho necessário para a exclusão
+    // remota posterior. Este preflight ocorre antes do primeiro commit.
+    final remoteDocs = docsMeta.where(requiresRemoteCloudinaryCleanup).length;
+    if (remoteDocs > 0) {
+      throw StateError(
+        'Exclusão cancelada antes de qualquer escrita: existem $remoteDocs '
+        'arquivo(s) legado(s) no Cloudinary. Remova o arquivo remoto de cada '
+        'documento pelo processo administrativo antes de excluir o paciente.',
+      );
+    }
+
     // Anamnese pública (doc top-level `anamnesis/{patientId}`, fora do paciente)
     deletes.add(db.collection('anamnesis').doc(patientId));
 
