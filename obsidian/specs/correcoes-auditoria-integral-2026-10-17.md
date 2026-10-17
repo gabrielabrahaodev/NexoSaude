@@ -32,7 +32,7 @@ Executar/consultar GitHub Actions no commit mais recente antes do merge. Histór
 
 ## Pendências/limitações explícitas
 
-1. **Cloudinary legado:** os arquivos já enviados continuam no provedor e URLs antigas podem permanecer acessíveis por quem as conhece. Novos uploads ficam desabilitados até haver upload/entrega privada autenticada e remoção remota segura. Não existe migração automática de arquivos nesta branch.
+1. **Cloudinary legado:** arquivos já enviados continuam no provedor e URLs antigas podem permanecer acessíveis por quem as conhece. O upload está bloqueado no app, mas isso não desativa o preset unsigned: desative/restrinja-o no painel Cloudinary para impedir uploads diretos de terceiros. Upload/entrega privada autenticada e remoção remota segura ainda exigem configuração externa/backend. Não existe migração automática dos binários nesta branch.
 2. **Regras de trial:** por decisão do responsável, as duas clínicas de teste sem `trialEndsAt` seguem aceitas. A Rule ainda trata ausência da data como ativa; antes de ampliar o uso real, definir política de assinatura e regularizar clínicas reais sem expiração.
 3. **Perfil completo em `users/{uid}`:** ainda contém PII e owners da mesma clínica podem lê-lo para administração. Uma separação integral da fonte de perfil privado exige migração e revisão de todas as telas/serviços; o diretório público já está mínimo.
 4. **Abuso de formulários:** regras de forma/tamanho não substituem rate-limit/CAPTCHA confiável. Sem backend, não é possível garantir limite por IP/dispositivo; manter monitoramento e planejar endpoint confiável.
