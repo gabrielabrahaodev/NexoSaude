@@ -127,6 +127,10 @@ List<ClinicDeleteStep> clinicDeletePlan(
     ClinicDeleteStep.subcollection(
         'clinics/$clinicId/settings/fees/profiles'),
     ClinicDeleteStep.doc('clinics/$clinicId/settings/fees'),
+    // Segredo Cloudinary legado fica em subcoleção do documento
+    // integrations; o DELETE do pai não remove os descendentes no Firestore.
+    ClinicDeleteStep.subcollection(
+        'clinics/$clinicId/settings/integrations/cloudinary'),
     ClinicDeleteStep.doc('clinics/$clinicId/settings/integrations'),
     ClinicDeleteStep.doc('portal_slots/$clinicId'),
     // Ambos os diretórios são removidos antes do documento da clínica.
