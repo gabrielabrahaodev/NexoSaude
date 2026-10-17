@@ -31,8 +31,10 @@ jobs:
           node-version: 20
       - name: Test public HTML security regressions
         run: node --test test/web_security.test.js
-      - name: Check guarded clinic deletion script syntax
-        run: node --check migrate/delete-clinic.js
+      - name: Check guarded administrative script syntax
+        run: |
+          node --check migrate/delete-clinic.js
+          node --check migrate/delete-cloudinary-document.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
