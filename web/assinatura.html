@@ -63,6 +63,7 @@
     // Impede que onAuthStateChanged tente carregar o perfil enquanto
     // o fluxo de cadastro ainda está criando users/{uid} e trial_requests.
     let signupInProgress = false;
+    let signupComplete = false;
 
     function toast(msg) {
         const t = document.getElementById('toast');
@@ -92,7 +93,7 @@
     });
 
     auth.onAuthStateChanged(async (user) => {
-        if (signupInProgress) return;
+        if (signupInProgress || signupComplete) return;
         if (!user) return loginView();
         content.innerHTML = '<div class="skel"></div><div class="skel"></div>';
         try {
@@ -124,6 +125,13 @@
             content.innerHTML = '<p class="err">Falha ao carregar. Tente de novo.</p>';
         }
     });
+
+    async function leaveSignupFlow() {
+        signupComplete = false;
+        signupInProgress = true;
+        try { await auth.signOut(); } finally { signupInProgress = false; }
+        loginView();
+    }
 
     function loginView() {
         content.innerHTML = '<div class="card"><div class="big">Entrar</div>'
@@ -240,12 +248,10 @@
                 type: document.getElementById('s-tipo').value,
                 uid: uid, status: 'solicitado', createdAt: new Date(),
             });
+            signupComplete = true;
             content.innerHTML = '<div class="card"><div class="big">Solicitação enviada</div>'
                 + '<p class="muted">Recebemos seu pedido de teste. Aguarde nosso contato pelo WhatsApp; sua conta só terá acesso após aprovação.</p>'
-                + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
-            // A sessão de inscrição não precisa permanecer aberta. O listener
-            // não substitui a confirmação porque signupInProgress segue true.
-            await auth.signOut();
+                + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="leaveSignupFlow()">Voltar ao login</button></div>';
         } catch (e) {
             // Se qualquer gravação falhar, tente remover o perfil e a conta
             // provisórios; o fluxo não deixa uma conta utilizável sem pedido.
