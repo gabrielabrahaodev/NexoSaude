@@ -17,6 +17,21 @@ class ClinicManagementScreen extends StatefulWidget {
 }
 
 class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
+  Future<List<DocumentSnapshot<Map<String, dynamic>>>> _loadClinicDocuments() async {
+    final db = FirebaseFirestore.instance;
+    if (_isOwner) {
+      final snap = await db.collection('clinics')
+          .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+          .orderBy('createdAt', descending: true).get();
+      return snap.docs;
+    }
+    // Security Rules não filtram resultados: lê cada ID que já está no perfil,
+    // em vez de uma query whereIn dinâmica que pode ser impossível de provar.
+    final docs = await Future.wait(_myClinicIds.map((id) => db
+        .collection('clinics').doc(id).get()));
+    return docs.where((doc) => doc.exists).toList();
+  }
+
   bool _isOwner = false;
   List<String> _myClinicIds = [];
   bool _loadingRole = true;
@@ -445,23 +460,13 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                       ? const Center(
                           child: Text("Nenhuma clínica liberada.",
                               style: TextStyle(color: Colors.grey)))
-                      : StreamBuilder<QuerySnapshot>(
-                      stream: _isOwner
-                          ? FirebaseFirestore.instance
-                              .collection('clinics')
-                              .where('ownerId', isEqualTo: user?.uid)
-                              .orderBy('createdAt', descending: true)
-                              .snapshots()
-                          : FirebaseFirestore.instance
-                              .collection('clinics')
-                              .where(FieldPath.documentId,
-                                  whereIn: _myClinicIds)
-                              .snapshots(),
+                      : FutureBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
+                      future: _loadClinicDocuments(),
                       builder: (context, snapshot) {
                   if (snapshot.hasError) return const Center(child: Text("Erro ao carregar dados."));
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-                  final docs = snapshot.data!.docs;
+                  final docs = snapshot.data!;
 
                   if (docs.isEmpty) {
                     return Center(
@@ -485,7 +490,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                     ),
                     itemCount: docs.length,
                     itemBuilder: (context, index) {
-                      var data = docs[index].data() as Map<String, dynamic>;
+                      final data = docs[index].data() ?? <String, dynamic>{};
                       
                       // Ícone dinâmico baseado no tipo
                       IconData typeIcon = Icons.store;
