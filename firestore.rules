@@ -115,24 +115,24 @@ service cloud.firestore {
     // Diretório público mínimo: somente identidade funcional necessária às telas comuns.
     function _publicMemberMirrorMatches(clinicId, memberId) {
       let userPath = /databases/$(database)/documents/users/$(memberId);
-      return exists(userPath) &&
-        get(userPath).data.get('allowedClinics', []) is list &&
-        get(userPath).data.get('allowedClinics', []).hasAny([clinicId]) &&
+      return existsAfter(userPath) &&
+        getAfter(userPath).data.get('allowedClinics', []) is list &&
+        getAfter(userPath).data.get('allowedClinics', []).hasAny([clinicId]) &&
         request.resource.data.keys().hasOnly([
           'uid', 'name', 'role', 'status', 'createdAt', 'updatedAt'
         ]) &&
         request.resource.data.get('uid', '') == memberId &&
-        _stringFieldMirrors(get(userPath).data, request.resource.data, 'name') &&
-        request.resource.data.get('role', '') == get(userPath).data.get('role', '') &&
-        request.resource.data.get('status', '') == get(userPath).data.get('status', '');
+        _stringFieldMirrors(getAfter(userPath).data, request.resource.data, 'name') &&
+        request.resource.data.get('role', '') == getAfter(userPath).data.get('role', '') &&
+        request.resource.data.get('status', '') == getAfter(userPath).data.get('status', '');
     }
 
     // Projeção privada de equipe: somente owner da clínica/plataforma lê.
     function _privateMemberMirrorMatches(clinicId, memberId) {
       let userPath = /databases/$(database)/documents/users/$(memberId);
-      let sourceAllowed = get(userPath).data.get('allowedClinics', []);
+      let sourceAllowed = getAfter(userPath).data.get('allowedClinics', []);
       let mirrorAllowed = request.resource.data.get('allowedClinics', []);
-      return exists(userPath) &&
+      return existsAfter(userPath) &&
         sourceAllowed is list &&
         sourceAllowed.hasAny([clinicId]) &&
         request.resource.data.keys().hasOnly([
@@ -140,14 +140,14 @@ service cloud.firestore {
           'cpf', 'menuAccess', 'allowedClinics', 'createdAt', 'updatedAt'
         ]) &&
         request.resource.data.get('uid', '') == memberId &&
-        _stringFieldMirrors(get(userPath).data, request.resource.data, 'name') &&
-        _stringFieldMirrors(get(userPath).data, request.resource.data, 'email') &&
-        request.resource.data.get('role', '') == get(userPath).data.get('role', '') &&
-        request.resource.data.get('status', '') == get(userPath).data.get('status', '') &&
-        _stringFieldMirrors(get(userPath).data, request.resource.data, 'phone') &&
-        _stringFieldMirrors(get(userPath).data, request.resource.data, 'whatsapp') &&
-        _stringFieldMirrors(get(userPath).data, request.resource.data, 'cpf') &&
-        _mapFieldMirrors(get(userPath).data, request.resource.data, 'menuAccess') &&
+        _stringFieldMirrors(getAfter(userPath).data, request.resource.data, 'name') &&
+        _stringFieldMirrors(getAfter(userPath).data, request.resource.data, 'email') &&
+        request.resource.data.get('role', '') == getAfter(userPath).data.get('role', '') &&
+        request.resource.data.get('status', '') == getAfter(userPath).data.get('status', '') &&
+        _stringFieldMirrors(getAfter(userPath).data, request.resource.data, 'phone') &&
+        _stringFieldMirrors(getAfter(userPath).data, request.resource.data, 'whatsapp') &&
+        _stringFieldMirrors(getAfter(userPath).data, request.resource.data, 'cpf') &&
+        _mapFieldMirrors(getAfter(userPath).data, request.resource.data, 'menuAccess') &&
         mirrorAllowed is list &&
         mirrorAllowed.hasAny([clinicId]) &&
         mirrorAllowed.toSet().difference(sourceAllowed.toSet()).size() == 0;
