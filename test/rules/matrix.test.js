@@ -378,6 +378,10 @@ describe('matriz reavaliação P0/P1', () => {
       ctx('staffA').firestore().collection('trial_requests').add(good));
     await assertFails(
       ctx(null).firestore().collection('trial_requests').add(good));
+    await assertFails(
+      ctx('ownerA').firestore().collection('trial_requests').add({
+        ...good, type: 'multi',
+      }));
   });
 
   it('P1-6: projeção pública lê sem login; sem listagem; lead válido passa', async () => {
