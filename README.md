@@ -24,7 +24,7 @@ Rules/índices: ao vivo = ruleset `3051b8d5` + índices (16/10 noite, 2º lote, 
 ## Integrações (setup manual)
 
 - **Cloudinary** (docs do paciente): upload unsigned — cloud `dbbh601ay`, `upload_preset=dbbh601ay` (preset precisa estar unsigned no painel). Validação de tipo/tamanho no Flutter é contornável pelo cliente; excluir metadados no Firestore não exclui o binário. Restringir o preset e planejar upload/delete autenticado antes de usar com documentos sensíveis.
-- **Links públicos**: `confirmar.html?id=&t=` (presença, token atual do paciente) e `anamnese.html?id=&t=` (anamnese, token dedicado) ficam na raiz do hosting; `/avaliacao?cid=` lê `public_clinics/{cid}` e grava leads em `public_clinics/{cid}/leads`. O portal exige correspondência com o token atual e aceite LGPD; antes de publicar as Rules novas, executar `node migrate/portal-backfill-patient-id.js` (dry-run), revisar e então `--apply`.
+- **Links públicos**: `confirmar.html?id=&t=` (presença) e `anamnese.html?id=&t=` (anamnese/token dedicado) ficam na raiz do hosting; `/avaliacao?cid=` lê `public_clinics/{cid}` e grava leads em `public_clinics/{cid}/leads`. O portal exige token atual + aceite LGPD. Antes de publicar as Rules, rode `node migrate/portal-backfill-patient-id.js` e `node migrate/clinic-members-backfill.js` em dry-run, revise as contagens e só então execute cada um com `--apply`.
 
 ## Estrutura
 

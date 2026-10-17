@@ -12,7 +12,7 @@ Data: 2026-10-17. Base: commit anterior à auditoria `5fb7aaf`.
 
 ## Alterações implementadas
 
-- Firestore Rules: remove listagens globais de `users` e `clinics`; queries precisam provar clínica compartilhada ou posse.
+- Firestore Rules: remove listagens globais comuns de `users` e `clinics`; diretório de equipe usa `clinics/{clinicId}/members` com leitura por tenant.
 - Criação de unidade via owner exige usuário ativo e herda trial de clínica ativa **do mesmo proprietário**; owner não pode escolher data maior nem omitir a data.
 - Atualização de `clinicId` em inventário, fornecedores, procedimentos, despesas e pedidos de laboratório não permite transferência entre tenants.
 - Exclusões operacionais usam `clinicId` do documento existente sem depender de `request.resource` em DELETE.
@@ -22,12 +22,12 @@ Data: 2026-10-17. Base: commit anterior à auditoria `5fb7aaf`.
 - Cascata de exclusão inclui leads e projeção em `public_clinics`.
 - UI mostra apenas tipos implementados (`dental`, `psychology`).
 - CI executa analyzer, testes Flutter e matriz Firestore Rules em push/PR.
-- README e Obsidian atualizados para refletir fluxos, migração e riscos restantes.
+- Diretório de membros: telas de equipe/profissionais listam um espelho mínimo por clínica; onboarding novo grava esse espelho, e `clinic-members-backfill.js` migra vínculos existentes.
 
 ## Antes de publicar as Rules
 
-1. Executar `node migrate/portal-backfill-patient-id.js` com credencial da base correta e revisar o dry-run.
-2. Só se a contagem estiver correta, executar `node migrate/portal-backfill-patient-id.js --apply`. O script ajusta espelhos existentes de pacientes com token e aceite LGPD explícito; não cria tokens/espelhos nem altera consentimento.
+1. Rodar `node migrate/portal-backfill-patient-id.js` e `node migrate/clinic-members-backfill.js` em dry-run, usando credencial correta; revisar contagens e arquivos a alterar.
+2. Só se os dry-runs estiverem corretos, executar os dois scripts com `--apply`. Eles corrigem espelhos existentes; não criam tokens nem alteram consentimento.
 3. Verificar CI verde e revisar o diff.
 4. Fazer deploy de Rules apenas com aprovação humana. Nenhum deploy foi feito por esta branch.
 

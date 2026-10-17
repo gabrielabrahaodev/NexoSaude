@@ -148,6 +148,20 @@ describe('matriz reavaliação P0/P1', () => {
       .doc(A).collection('members').get());
   });
 
+  it('P0: só owner escreve espelho coerente com users/{uid}', async () => {
+    const owner = ctx('ownerA').firestore();
+    await assertSucceeds(owner.doc('clinics/clinicA/members/staffA')
+      .update({ updatedAt: new Date() }));
+    await assertFails(owner.doc('clinics/clinicA/members/ghost').set({
+      uid: 'ghost', name: 'Ghost', email: 'ghost@x',
+      role: 'recepcionista', status: 'Ativo', allowedClinics: [A],
+      phone: '', whatsapp: '', cpf: '', menuAccess: {},
+      createdAt: new Date(), updatedAt: new Date(),
+    }));
+    await assertFails(owner.doc('clinics/clinicA/members/staffB')
+      .update({ updatedAt: new Date() }));
+  });
+
   it('P0: clinics não é enumerável entre tenants', async () => {
     const owner = ctx('ownerA').firestore();
     await assertFails(owner.collection('clinics').get());
