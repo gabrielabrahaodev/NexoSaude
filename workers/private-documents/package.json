@@ -1,0 +1,12 @@
+{
+  "name": "nexosaude-private-documents-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test ../../test/private_file_validation.test.js",
+    "check": "node --check src/index.js && node --check src/validation.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
