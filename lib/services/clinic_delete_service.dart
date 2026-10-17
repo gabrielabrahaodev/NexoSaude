@@ -152,6 +152,24 @@ class ClinicDeleteService {
     if (clinicId.isEmpty) throw ArgumentError('clinicId vazio');
     var stage = 'início';
     try {
+      // Não comece a cascata em clínica bloqueada/expirada: as Rules vão
+      // negar as consultas operacionais e uma cascata em lotes pode ficar parcial.
+      stage = 'verificar estado da clínica';
+      final clinicSnap = await _db.collection('clinics').doc(clinicId).get();
+      final clinicData = clinicSnap.data();
+      if (clinicData == null) {
+        throw StateError('Clínica não encontrada.');
+      }
+      final trialValue = clinicData['trialEndsAt'];
+      final trialInvalid = trialValue != null && trialValue is! Timestamp;
+      final trialExpired = trialValue is Timestamp &&
+          !trialValue.toDate().isAfter(DateTime.now());
+      if (clinicData['blockedByAdmin'] == true || trialInvalid || trialExpired) {
+        throw StateError(
+          'A clínica está bloqueada, expirada ou tem trial inválido. A cascata pelo navegador foi interrompida antes das exclusões. Use migrate/delete-clinic.js em DRY-RUN, revise o relatório e só então confirme a operação administrativa.',
+        );
+      }
+
       // 1. Pacientes comprovados da clínica (base do resto do plano).
       stage = 'localizar pacientes';
       onStage?.call('Localizando pacientes...');
