@@ -176,25 +176,46 @@ class ClinicDeleteService {
     onStage?.call('Mapeando dados...');
     final toDelete = <DocumentReference>[];
     final arrayTargets = <DocumentReference>[];
+    // Vínculos conhecidos por tenant; nunca enumere users globalmente.
+    final linkedUserIds = <String>{};
     for (final step in plan) {
       switch (step.kind) {
         case ClinicDeleteStep.kQuery:
-        case ClinicDeleteStep.kArrayRemove:
           stage =
               'ler ${step.collection} (${step.field}=${step.value})';
-          final snap = step.kind == ClinicDeleteStep.kQuery
-              ? await _db
-                  .collection(step.collection)
-                  .where(step.field!, isEqualTo: step.value)
-                  .get()
-              : await _db
-                  .collection(step.collection)
-                  .where(step.field!, arrayContains: step.value)
-                  .get();
-          (step.kind == ClinicDeleteStep.kQuery
-                  ? toDelete
-                  : arrayTargets)
-              .addAll(snap.docs.map((d) => d.reference));
+          final snap = await _db
+              .collection(step.collection)
+              .where(step.field!, isEqualTo: step.value)
+              .get();
+          toDelete.addAll(snap.docs.map((d) => d.reference));
+          break;
+        case ClinicDeleteStep.kArrayRemove:
+          // As Rules negam listagem global de users. Descobre-se a equipe
+          // exclusivamente pelas projeções privadas/públicas da própria clínica.
+          stage = 'localizar equipe em clinics/${clinicId}/members';
+          final publicMembers = await _db
+              .collection('clinics')
+              .doc(clinicId)
+              .collection('members')
+              .get();
+          final privateMembers = await _db
+              .collection('clinics')
+              .doc(clinicId)
+              .collection('members_private')
+              .get();
+          linkedUserIds
+            ..addAll(publicMembers.docs.map((d) => d.id))
+            ..addAll(privateMembers.docs.map((d) => d.id));
+          for (final uid in linkedUserIds) {
+            stage = 'verificar vínculo users/$uid';
+            final userRef = _db.collection('users').doc(uid);
+            final userSnap = await userRef.get();
+            if (!userSnap.exists) continue;
+            final allowed = (userSnap.data()?['allowedClinics'] as List? ?? [])
+                .map((value) => '$value')
+                .toSet();
+            if (allowed.contains(clinicId)) arrayTargets.add(userRef);
+          }
           break;
         case ClinicDeleteStep.kDoc:
           toDelete.add(_db.doc(step.path));
