@@ -175,22 +175,38 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _isUploading ? null : () {
-          showModalBottomSheet(context: context, builder: (ctx) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(leading: const Icon(Icons.camera_alt), title: const Text("Tirar Foto"), onTap: () { Navigator.pop(ctx); _pickFile(true); }),
-              ListTile(leading: const Icon(Icons.attach_file), title: const Text("Buscar Arquivo"), onTap: () { Navigator.pop(ctx); _pickFile(false); }),
-            ],
-          ));
-        },
-        child: _isUploading 
-          ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2) 
-          : const Icon(Icons.add),
+      floatingActionButton: const FloatingActionButton(
+        onPressed: null,
+        tooltip: 'Envio temporariamente indisponível por segurança',
+        child: Icon(Icons.lock_outline),
       ),
       body: Column(
         children: [
+          // Upload bloqueado até existir um fluxo privado/autenticado. Os
+          // documentos previamente cadastrados continuam consultáveis.
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.lock_outline, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'O envio de novos arquivos está temporariamente desativado por segurança. Os documentos existentes continuam disponíveis.',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Filtros (Chips)
           Container(
             color: AppColors.surface,
