@@ -577,6 +577,9 @@ service cloud.firestore {
         get(pref).data.get('clinicId', '') == data.get('clinicId', '') &&
         get(pref).data.get('lgpdPortalConsent', {}).get('accepted', false) == true;
     }
+    function _portalTokenCurrent(token) {
+      return _portalTokenSourceMatches(token, resource.data);
+    }
     function _portalStaffFieldsOnly(data) {
       return data.keys().hasOnly([
           'patientId', 'clinicId', 'clinicName', 'sessions', 'debts',
