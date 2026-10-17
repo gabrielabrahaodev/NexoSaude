@@ -70,6 +70,7 @@ async function seed(admin) {
     clinicId: A, portalToken: 'tok123', anamnesisToken: 'ana456',
     lgpdPortalConsent: { accepted: true },
   });
+  await db.doc('patients/p2').set({ clinicId: B });
   await db.doc('portal/tok123').set({
     patientId: 'p1', clinicId: A, sessions: [], debts: [],
   });
@@ -225,6 +226,19 @@ describe('matriz reavaliação P0/P1', () => {
     await assertFails(ctx('staffB').firestore().doc(`clinics/${A}`).get());
     await assertSucceeds(ctx('staffA').firestore().doc(`clinics/${A}`).get());
     await assertFails(ctx(null).firestore().doc(`clinics/${A}`).get());
+  });
+
+  it('P0: registros operacionais não podem apontar para paciente de outro tenant', async () => {
+    const db = ctx('staffA').firestore();
+    await assertSucceeds(db.doc('appointments/apptSameTenant').set({
+      clinicId: A, patientId: 'p1', status: 'Agendado',
+    }));
+    await assertFails(db.doc('appointments/apptCrossTenant').set({
+      clinicId: A, patientId: 'p2', status: 'Agendado',
+    }));
+    await assertFails(db.doc('appointments/ap1').update({
+      patientId: 'p2',
+    }));
   });
 
   it('P0-2: staff de outra clínica não altera financeiro', async () => {
