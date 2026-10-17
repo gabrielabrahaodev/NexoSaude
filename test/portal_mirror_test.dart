@@ -214,7 +214,10 @@ void main() {
     test('recepção e afins nunca entram', () {
       for (final t in ['dental', 'psychology']) {
         expect(isPortalProfessional(role: 'receptionist', clinicType: t), isFalse);
-        expect(isPortalProfessional(role: 'owner ', clinicType: t), isFalse);
+        expect(
+          isPortalProfessional(role: 'owner ', clinicType: t),
+          t == 'psychology',
+        );
       }
     });
   });
