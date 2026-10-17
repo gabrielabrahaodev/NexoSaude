@@ -24,6 +24,25 @@ bool isPortalProfessional({
   return clinicType == 'psychology' && r == 'owner';
 }
 
+/// IDs dos profissionais ativos usando o espelho público da clínica.
+/// Não lê users/{uid}: as Rules restringem a enumeração dessa coleção a
+/// superadmin; members/{uid} é o diretório mínimo autorizado para a equipe.
+List<String> portalProfessionalIdsFromMembers({
+  required Map<String, Map<String, dynamic>> members,
+  required String clinicType,
+}) {
+  final ids = members.entries
+      .where((entry) => entry.value['status'] == 'Ativo')
+      .where((entry) => isPortalProfessional(
+            role: '${entry.value['role'] ?? ''}',
+            clinicType: clinicType,
+          ))
+      .map((entry) => entry.key)
+      .toList()
+    ..sort();
+  return ids;
+}
+
 /// Token opaco de 32 chars (URL-safe). Quem tem o link, vê o espelho.
 String newPortalToken() {
   final rnd = Random.secure();
@@ -541,18 +560,18 @@ class PortalMirrorSync {
     }
     final grade = await clinicGrade(clinicId);
     final clinicType = await clinicTypeOf(clinicId);
-    final users = await _db
-        .collection('users')
-        .where('allowedClinics', arrayContains: clinicId)
+    final members = await _db
+        .collection('clinics')
+        .doc(clinicId)
+        .collection('members')
         .get();
-    final dentists = users.docs
-        .where((d) => isPortalProfessional(
-              role: '${(d.data())['role'] ?? ''}',
-              clinicType: clinicType,
-            ))
-        .map((d) => d.id)
-        .toList();
-    if (dentists.isEmpty) return;
+    final professionals = portalProfessionalIdsFromMembers(
+      members: {
+        for (final doc in members.docs) doc.id: doc.data(),
+      },
+      clinicType: clinicType,
+    );
+    if (professionals.isEmpty) return;
     final appts = await _db
         .collection('appointments')
         .where('clinicId', isEqualTo: clinicId)
@@ -579,7 +598,7 @@ class PortalMirrorSync {
       }
     }
     final data = <String, dynamic>{};
-    for (final did in dentists) {
+    for (final did in professionals) {
       for (var i = 0; i < 14; i++) {
         final day = start.add(Duration(days: i));
         final key = '$did.${_dayKey(day)}';
