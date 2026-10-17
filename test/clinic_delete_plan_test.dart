@@ -109,6 +109,10 @@ void main() {
       expect(docs, contains('portal_slots/$clinic'));
       expect(subcollections, contains('clinics/$clinic/members'));
       expect(subcollections, contains('clinics/$clinic/members_private'));
+      expect(
+        subcollections,
+        contains('clinics/$clinic/settings/integrations/cloudinary'),
+      );
     });
 
     test('clinica vazia nao gera plano', () {
