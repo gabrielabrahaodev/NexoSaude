@@ -566,22 +566,56 @@ service cloud.firestore {
     // clínica).
     // O espelho só fica acessível anonimamente enquanto o token atual do
     // paciente coincidir com o token do doc e houver consentimento LGPD.
-    function _portalTokenCurrent(token) {
-      let pid = resource.data.get('patientId', '');
+    function _portalTokenSourceMatches(token, data) {
+      let pid = data.get('patientId', '');
       let pref = /databases/$(database)/documents/patients/$(pid);
       return pid is string && pid != '' &&
         exists(pref) &&
         get(pref).data.get('portalToken', '') == token &&
+        get(pref).data.get('clinicId', '') == data.get('clinicId', '') &&
         get(pref).data.get('lgpdPortalConsent', {}).get('accepted', false) == true;
+    }
+    function _portalStaffFieldsOnly(data) {
+      return data.keys().hasOnly([
+          'patientId', 'clinicId', 'clinicName', 'sessions', 'debts',
+          'debtsTotal', 'debtsCount', 'debtsTruncated', 'pixKey',
+          'propostasRecusadas', 'updatedAt'
+        ]) &&
+        data.get('patientId', '') is string &&
+        data.get('clinicId', '') is string &&
+        data.get('clinicName', '') is string &&
+        data.get('sessions', []) is list &&
+        data.get('sessions', []).size() <= 3 &&
+        data.get('debts', []) is list &&
+        data.get('debts', []).size() <= 3 &&
+        data.get('debtsTotal', 0) is number &&
+        data.get('debtsCount', 0) is number &&
+        data.get('debtsTruncated', false) is bool &&
+        data.get('pixKey', '') is string &&
+        data.get('pixKey', '').size() <= 200 &&
+        data.get('propostasRecusadas', []) is list;
     }
     match /portal/{token} {
       allow get: if _portalTokenCurrent(token);
       allow create: if isAuthenticated() &&
-          clinicScoped(request.resource.data.get('clinicId', ''));
+          clinicScoped(request.resource.data.get('clinicId', '')) &&
+          _portalStaffFieldsOnly(request.resource.data) &&
+          _portalTokenSourceMatches(token, request.resource.data);
       allow delete: if isAuthenticated() &&
           clinicScoped(resource.data.get('clinicId', ''));
       allow update: if (isAuthenticated() &&
-          clinicScoped(_docClinic(resource.data, request.resource.data))) ||
+          clinicScoped(_docClinic(resource.data, request.resource.data)) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'patientId', 'clinicId', 'clinicName', 'sessions', 'debts',
+            'debtsTotal', 'debtsCount', 'debtsTruncated', 'pixKey',
+            'propostasRecusadas', 'updatedAt'
+          ]) &&
+          request.resource.data.get('patientId', '') ==
+            resource.data.get('patientId', '') &&
+          request.resource.data.get('clinicId', '') ==
+            resource.data.get('clinicId', '') &&
+          _portalStaffFieldsOnly(request.resource.data) &&
+          _portalTokenSourceMatches(token, request.resource.data)) ||
         (!isAuthenticated() && _portalTokenCurrent(token) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
