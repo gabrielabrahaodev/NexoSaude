@@ -51,7 +51,7 @@ jobs:
                   attrs, script = match.group(1), match.group(2)
                   if not script.strip():
                       continue
-              suffix = ".mjs" if 'type="module"' in attrs.lower() or "type='module'" in attrs.lower() else ".js"
+                  suffix = ".mjs" if 'type="module"' in attrs.lower() or "type='module'" in attrs.lower() else ".js"
                   js_path = out / f"{html_path.stem}-{index}{suffix}"
                   js_path.write_text(script, encoding="utf-8")
                   subprocess.run(["node", "--check", str(js_path)], check=True)
