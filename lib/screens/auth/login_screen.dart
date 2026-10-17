@@ -233,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Center(
                     child: Image.asset('assets/logo.png', height: 150)),
                 const SizedBox(height: 20),
-                const Text("Bem-vindo(a)", style: AppTextStyles.h1, textAlign: TextAlign.center),
+                Text("Bem-vindo(a)", style: AppTextStyles.h1, textAlign: TextAlign.center),
                 const SizedBox(height: 8),
                 Text("Controle de Clínicas", style: AppTextStyles.subtitle, textAlign: TextAlign.center),
               const SizedBox(height: 30),
