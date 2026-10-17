@@ -9,6 +9,9 @@ const portal = fs.readFileSync(path.join(root, 'web', 'portal.html'), 'utf8');
 const assinatura = fs.readFileSync(path.join(root, 'web', 'assinatura.html'), 'utf8');
 
 test('Master não insere WhatsApp de solicitante em JavaScript inline', () => {
+  assert.doesNotMatch(master, /onclick\s*=/i);
+  assert.match(master, /data-action="go-tab"/);
+  assert.match(master, /data-action="create-owner"/);
   assert.match(master, /data-action="whatsapp"/);
   assert.match(master, /button\.addEventListener\('click', \(\) => chamarZap/);
   assert.doesNotMatch(master, /onclick="chamarZap\(/);
