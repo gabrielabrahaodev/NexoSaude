@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import 'clinic_capabilities.dart';
+
 /// Lógica pura do espelho do portal (testada em
 /// `test/portal_mirror_test.dart`). Escrita no Firestore vive em
 /// `syncPortalMirror` (glue fino, sem teste) + rules A4.
@@ -10,18 +12,17 @@ import 'package:flutter/foundation.dart';
 const _tokenChars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-/// Quem tem agenda no portal: papéis clínicos + owner de clínica
-/// psicológica (psicólogo atuante). Puro e testado; usado pelo rebuild
-/// da janela (`ensureWindow`) e replicado em `migrate/slots-backfill.js`.
+/// Quem tem agenda no portal: profissionais compatíveis com o tipo da clínica.
+/// Owner só aparece como profissional atuante em clínica psicológica.
 bool isPortalProfessional({
   required String role,
   required String clinicType,
 }) {
-  final r = role.toLowerCase();
-  if (r.contains('dentist') || r == 'dentista' || r == 'psicologo') {
-    return true;
+  final normalized = ClinicCapabilities.normalizeRole(role);
+  if (clinicType == 'psychology') {
+    return normalized == 'psicologo' || normalized == 'owner';
   }
-  return clinicType == 'psychology' && r == 'owner';
+  return normalized == 'dentista';
 }
 
 /// IDs dos profissionais ativos usando o espelho público da clínica.
