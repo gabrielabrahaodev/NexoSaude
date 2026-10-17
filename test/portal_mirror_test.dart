@@ -219,4 +219,31 @@ void main() {
       }
     });
   });
+
+  group('portalProfessionalIdsFromMembers', () {
+    test('usa o diretório público e considera apenas profissionais ativos', () {
+      final ids = portalProfessionalIdsFromMembers(
+        members: {
+          'dentistaA': {'status': 'Ativo', 'role': 'dentista'},
+          'dentistaInativo': {'status': 'Desativado', 'role': 'dentista'},
+          'recepcao': {'status': 'Ativo', 'role': 'recepcionista'},
+          'ownerPsico': {'status': 'Ativo', 'role': 'owner'},
+        },
+        clinicType: 'psychology',
+      );
+
+      expect(ids, ['dentistaA', 'ownerPsico']);
+    });
+
+    test('owner não entra como profissional em clínica odontológica', () {
+      final ids = portalProfessionalIdsFromMembers(
+        members: {
+          'owner': {'status': 'Ativo', 'role': 'owner'},
+        },
+        clinicType: 'dental',
+      );
+
+      expect(ids, isEmpty);
+    });
+  });
 }
