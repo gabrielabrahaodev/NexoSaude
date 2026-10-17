@@ -1,11 +1,20 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/patient_document_model.dart';
 
 /// Resultado do upload: URL pública + identificadores para destroy remoto.
 typedef CloudUpload = ({String url, String? publicId, String resourceType});
+
+/// Identifica metadados cujo arquivo remoto precisa ser removido antes de
+/// apagar o registro ou o paciente. URLs antigas também contam, mesmo se o
+/// publicId não foi salvo no Firestore.
+bool requiresRemoteCloudinaryCleanup(Map<String, dynamic> metadata) {
+  final url = '${metadata['url'] ?? ''}';
+  final publicId = '${metadata['publicId'] ?? ''}';
+  return url.contains('cloudinary.com') || publicId.isNotEmpty;
+}
 
 /// Validação pré-upload (espelha as travas do preset unsigned).
 /// Pura e testada. Retorna a mensagem de erro ou null se ok.
@@ -95,17 +104,21 @@ class DocumentService {
     return false;
   }
 
-  /// Limpeza remota em lote (ex.: cascata de paciente). No plano Spark o
-  /// destroy é desabilitado: só registra quantos órfãos ficaram na nuvem.
+  /// Fail-closed para exclusões em lote: não permite que uma cascata apague
+  /// os metadados que seriam necessários para localizar os binários antigos.
+  /// Os arquivos precisam ser removidos pelo fluxo administrativo seguro
+  /// antes de apagar o paciente.
   Future<void> purgePatientFiles({
     required String clinicId,
     required List<Map<String, dynamic>> docs,
   }) async {
-    final withRemote =
-        docs.where((d) => '${d['publicId'] ?? ''}'.isNotEmpty).length;
+    final withRemote = docs.where(requiresRemoteCloudinaryCleanup).length;
     if (withRemote > 0) {
-      debugPrint('Cloudinary: $withRemote arquivo(s) mantidos como órfãos '
-          '(destroy desabilitado no plano Spark).');
+      throw StateError(
+        'Exclusão cancelada: há $withRemote arquivo(s) remoto(s) do Cloudinary. '
+        'Remova primeiro o binário e seus metadados com o processo '
+        'administrativo autenticado; nenhum arquivo será esquecido como órfão.',
+      );
     }
   }
 
@@ -127,8 +140,10 @@ class DocumentService {
     final data = snapshot.data() ?? <String, dynamic>{};
     final storedUrl = '${data['url'] ?? ''}';
     final storedPublicId = publicId ?? data['publicId']?.toString();
-    final isCloudinary = storedUrl.contains('cloudinary.com') ||
-        (storedPublicId ?? '').isNotEmpty;
+    final isCloudinary = requiresRemoteCloudinaryCleanup({
+      'url': storedUrl,
+      'publicId': storedPublicId,
+    });
 
     if (isCloudinary) {
       final removed = await deleteRemoteFile(
