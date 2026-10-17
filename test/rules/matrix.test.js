@@ -49,6 +49,18 @@ async function seed(admin) {
     name: 'B', ownerId: 'ownerB', trialEndsAt: TRIAL_END,
     blockedByAdmin: true,
   });
+  for (const [clinicId, uid, role, status, email, name] of [
+    [A, 'ownerA', 'owner', 'Ativo', 'a@x', 'Owner A'],
+    [A, 'staffA', 'recepcionista', 'Ativo', 's@x', 'Staff A'],
+    [A, 'pendingU', 'recepcionista', 'pending_approval', 'p@x', 'Pending'],
+    [B, 'ownerB', 'owner', 'Ativo', 'o@x', 'Owner B'],
+    [B, 'staffB', 'recepcionista', 'Ativo', 'b@x', 'Staff B'],
+  ]) {
+    await db.doc(`clinics/${clinicId}/members/${uid}`).set({
+      uid, name, email, role, status, allowedClinics: [clinicId],
+      createdAt: new Date(),
+    });
+  }
   await db.doc(`patients/p1`).set({
     clinicId: A, portalToken: 'tok123', anamnesisToken: 'ana456',
     lgpdPortalConsent: { accepted: true },
@@ -120,14 +132,20 @@ describe('matriz reavaliação P0/P1', () => {
       db.doc('users/staffA').update({ status: 'Ativo' }));
   });
 
-  it('P0: users é listado somente com prova de clínica compartilhada', async () => {
+  it('P0: users não pode ser enumerado; diretório de membros é por clínica', async () => {
     const staff = ctx('staffA').firestore();
     await assertFails(staff.collection('users').get());
-    await assertSucceeds(staff.collection('users')
+    await assertFails(staff.collection('users')
       .where('allowedClinics', 'array-contains', A).get());
+    await assertSucceeds(ctx('root').firestore().collection('users').get());
     await assertFails(staff.doc('users/staffB').get());
     await assertSucceeds(staff.doc('users/staffA').get());
-    await assertFails(ctx(null).firestore().collection('users').get());
+    await assertSucceeds(staff.collection('clinics').doc(A)
+      .collection('members').get());
+    await assertFails(ctx('staffB').firestore().collection('clinics')
+      .doc(A).collection('members').get());
+    await assertFails(ctx(null).firestore().collection('clinics')
+      .doc(A).collection('members').get());
   });
 
   it('P0: clinics não é enumerável entre tenants', async () => {

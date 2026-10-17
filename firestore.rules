@@ -96,6 +96,26 @@ service cloud.firestore {
          clinicActive(clinicId));
     }
 
+    function _memberMirrorMatches(clinicId, memberId) {
+      let userPath = /databases/$(database)/documents/users/$(memberId);
+      return exists(userPath) &&
+        get(userPath).data.get('allowedClinics', []) is list &&
+        get(userPath).data.get('allowedClinics', []).hasAny([clinicId]) &&
+        request.resource.data.keys().hasOnly([
+          'uid', 'name', 'email', 'role', 'status', 'phone', 'whatsapp',
+          'cpf', 'menuAccess', 'allowedClinics', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.get('uid', '') == memberId &&
+        request.resource.data.get('email', '') ==
+          get(userPath).data.get('email', '') &&
+        request.resource.data.get('role', '') ==
+          get(userPath).data.get('role', '') &&
+        request.resource.data.get('status', '') ==
+          get(userPath).data.get('status', '') &&
+        request.resource.data.get('allowedClinics', []) is list &&
+        request.resource.data.get('allowedClinics', []).hasAny([clinicId]);
+    }
+
     // 2e. Mesma clínica entre usuários: SÓ para leituras por doc (get) de
     // perfis ATIVOS. NUNCA em LISTAS (tudo-ou-nada nega a query inteira).
     function sharesClinic(targetAllowed) {
@@ -172,10 +192,9 @@ service cloud.firestore {
       allow get: if isAuthenticated() &&
           (request.auth.uid == userId || isSuperAdmin() ||
            sharesClinic(resource.data.get('allowedClinics', [])));
-      allow list: if isSuperAdmin() ||
-          (_isActiveUser() &&
-           resource.data.get('allowedClinics', []) is list &&
-           resource.data.get('allowedClinics', []).hasAny(_updaterClinics()));
+      // O perfil completo contém PII: clientes comuns não podem enumerá-lo.
+      // As telas de equipe usam clinics/{clinicId}/members.
+      allow list: if isSuperAdmin();
       // Auto-cadastro (email/Google): o próprio uid, pendente, sem clínica,
       // sem cargo de poder, allowlist de campos de perfil.
       allow create: if isAuthenticated() && request.auth.uid == userId
@@ -377,6 +396,15 @@ service cloud.firestore {
     // público (só nome + WhatsApp; sem listagem = sem enumeração); escrita
     // do dono/superadmin com allowlist estrita. O app espelha ao criar a
     // clínica (ver clinic_management_screen).
+    match /clinics/{clinicId}/members/{memberId} {
+      allow get, list: if clinicScoped(clinicId);
+      allow create, update: if isSuperAdmin() ||
+          (_isActiveUser() && ownsClinic(clinicId) && clinicActive(clinicId) &&
+           _memberMirrorMatches(clinicId, memberId));
+      allow delete: if isSuperAdmin() ||
+          (_isActiveUser() && ownsClinic(clinicId));
+    }
+
     match /public_clinics/{clinicId} {
       allow get: if true;
       allow list: if false;

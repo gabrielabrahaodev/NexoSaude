@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import 'clinic_capabilities.dart';
 import 'session_manager.dart';
+import 'clinic_member_directory.dart';
 
 /// Dentista padrão da próxima sessão (puro e testado): mantém o atual
 /// se ainda atende; senão o primeiro da lista; sem lista, o atual.
@@ -19,7 +20,7 @@ class UserService {
   final CollectionReference<Map<String, dynamic>> _users = 
       FirebaseFirestore.instance.collection('users');
       
-  final CollectionReference _clinics = FirebaseFirestore.instance.collection('clinics');
+  final CollectionReference<Map<String, dynamic>> _clinics = FirebaseFirestore.instance.collection('clinics');
 
   Future<({String type, String? ownerId})> _getClinicInfo(
       String clinicId) async {
@@ -43,9 +44,8 @@ class UserService {
       if (clinicId.isEmpty) return [];
 
       // Busca profissionais que têm acesso a esta clínica
-      final workersSnapshot = await _users
-          .where('allowedClinics', arrayContains: clinicId)
-          .get();
+      final workersSnapshot = await _clinics.doc(clinicId)
+          .collection('members').get();
 
       final professionals = workersSnapshot.docs
           .map((doc) => UserModel.fromMap(doc.id, doc.data()))
@@ -84,8 +84,8 @@ class UserService {
       final ownerId = clinicData?['ownerId'];
       
       // 3. Query base por allowedClinics
-      Query<Map<String, dynamic>> query = _users
-          .where('allowedClinics', arrayContains: clinicId);
+      Query<Map<String, dynamic>> query =
+          _clinics.doc(clinicId).collection('members');
 
       final snapshot = await query.get();
       List<Map<String, dynamic>> users = snapshot.docs.map((doc) {
@@ -116,8 +116,8 @@ class UserService {
   /// Inclui `menuAccess` (Map) quando existir.
   Stream<List<Map<String, dynamic>>> watchClinicUsers(String clinicId) {
     if (clinicId.isEmpty) return Stream.value([]);
-    return _users
-        .where('allowedClinics', arrayContains: clinicId)
+    return _clinics.doc(clinicId)
+        .collection('members')
         .snapshots()
         .map((snap) => snap.docs.map((doc) {
               final data = doc.data();
@@ -128,7 +128,10 @@ class UserService {
 
   /// Salva o mapa de acesso ao menu (`menuAccess`) do usuário.
   /// Regra Firestore: escrita em `users` só p/ owner.
-  Future<void> updateMenuAccess(String uid, Map<String, bool> access) {
-    return _users.doc(uid).update({'menuAccess': access});
+  Future<void> updateMenuAccess(String uid, Map<String, bool> access) async {
+    await _users.doc(uid).update({'menuAccess': access});
+    final clinicId = SessionManager().currentClinicId;
+    if (clinicId == null || clinicId.isEmpty || clinicId == 'ALL') return;
+    await ClinicMemberDirectory.syncUserForClinic(uid: uid, clinicId: clinicId);
   }
 }
