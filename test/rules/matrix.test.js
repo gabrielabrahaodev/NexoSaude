@@ -26,7 +26,8 @@ async function seed(admin) {
     role: 'owner', name: 'Owner A', allowedClinics: [A], status: 'Ativo', email: 'a@x',
   });
   await db.doc(`users/staffA`).set({
-    role: 'recepcionista', name: 'Staff A', allowedClinics: [A], status: 'Ativo', email: 's@x',
+    role: 'recepcionista', name: 'Staff A', allowedClinics: [A], status: 'Ativo',
+    email: 's@x', phone: null, whatsapp: null, cpf: null, menuAccess: null,
   });
   await db.doc(`users/staffB`).set({
     role: 'recepcionista', name: 'Staff B', allowedClinics: [B], status: 'Ativo', email: 'b@x',
