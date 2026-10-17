@@ -75,7 +75,14 @@
         clearTimeout(toastT);
         toastT = setTimeout(() => t.classList.remove('show'), 3200);
     }
-    function esc(s) { return String(s ?? '').replace(/</g, '&lt;'); }
+    function esc(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
     function ts2d(ts) { return ts && ts.toDate ? ts.toDate() : (ts ? new Date(ts) : null); }
 
     let tab = 'owners';
@@ -189,17 +196,29 @@
             html += '<div class="card"><div class="big">' + esc(m.nome || '') + '</div>'
                 + '<div class="muted">' + esc(m.email || '') + ' • ' + esc(m.whatsapp || '') + '<br>'
                 + esc(m.clinicName || '') + ' (' + esc(m.type || '') + ')</div>'
-                + '<div class="btn-row"><button class="btn-ghost" onclick="chamarZap(\'' + esc(m.whatsapp || '') + '\')">WhatsApp</button>'
+                + '<div class="btn-row"><button class="btn-ghost" data-action="whatsapp" data-phone="' + esc(m.whatsapp || '') + '">WhatsApp</button>'
                 + '<button class="btn-ghost" onclick="aprovarPedido(\'' + r.id + '\')">Aprovar + criar</button>'
                 + '<button class="btn-ghost" onclick="recusarPedido(\'' + r.id + '\')">Recusar</button></div></div>';
         });
         body.innerHTML = html;
+        body.querySelectorAll('[data-action="whatsapp"]').forEach((button) => {
+            button.addEventListener('click', () => chamarZap(button.dataset.phone || ''));
+        });
     }
 
     function chamarZap(phone) {
-        const clean = String(phone || '').replace(/\D/g, '');
+        let clean = String(phone || '').replace(/\D/g, '').slice(0, 15);
         if (!clean) { toast('Sem WhatsApp no pedido.'); return; }
-        window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent('Olá! Aqui é do NexoSaúde sobre seu teste grátis.'), '_blank');
+        if (clean.length === 10 || clean.length === 11) {
+            // O formulário pede DDD+número brasileiro; normaliza para wa.me.
+            // Se já vier com DDI 55 (12/13 dígitos), preserva.
+            clean = '55' + clean;
+        }
+        if (clean.length < 12 || clean.length > 15) {
+            toast('WhatsApp inválido; confira DDD e número.');
+            return;
+        }
+        window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent('Olá! Aqui é do NexoSaúde sobre seu teste grátis.'), '_blank', 'noopener,noreferrer');
     }
 
     async function writeOwnerMemberMirrors(clinicId, uid, user) {
