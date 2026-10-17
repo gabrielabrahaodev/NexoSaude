@@ -358,13 +358,24 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await _docService.deleteDocument(
-                widget.patientId,
-                doc.id,
-                clinicId: SessionManager().currentClinicId,
-                publicId: doc.publicId,
-                resourceType: doc.resourceType,
-              );
+              try {
+                await _docService.deleteDocument(
+                  widget.patientId,
+                  doc.id,
+                  clinicId: SessionManager().currentClinicId,
+                  publicId: doc.publicId,
+                  resourceType: doc.resourceType,
+                );
+                if (mounted) toast(context, 'Documento excluído.', ok: true);
+              } catch (e) {
+                if (mounted) {
+                  toast(
+                    context,
+                    'Não foi possível excluir o arquivo remoto. A referência foi preservada: $e',
+                    error: true,
+                  );
+                }
+              }
             },
             child: const Text("Excluir", style: TextStyle(color: Colors.red))
           )
