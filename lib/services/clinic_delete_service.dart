@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'document_service.dart';
 
 /// Uma etapa da exclusão de clínica em cascata.
 ///
@@ -178,6 +179,27 @@ class ClinicDeleteService {
         .where('clinicId', isEqualTo: clinicId)
         .get();
     final patientIds = [for (final d in pats.docs) d.id];
+
+    // Protege binários legados: não apagar a metadata que identifica o arquivo
+    // remoto. A verificação é somente leitura e antecede qualquer batch.
+    stage = 'verificar documentos remotos legados';
+    final remoteDocPaths = <String>[];
+    for (final patient in pats.docs) {
+      final docSnap = await patient.reference.collection('docs').get();
+      for (final fileDoc in docSnap.docs) {
+        if (requiresRemoteCloudinaryCleanup(fileDoc.data())) {
+          remoteDocPaths.add('patients/${patient.id}/docs/${fileDoc.id}');
+        }
+      }
+    }
+    if (remoteDocPaths.isNotEmpty) {
+      throw StateError(
+        'Exclusão cancelada antes de qualquer escrita: existem '
+        '${remoteDocPaths.length} arquivo(s) do Cloudinary. Remova os binários '
+        'legados pelo processo administrativo e repita a exclusão.',
+      );
+    }
+
     // Tokens dos espelhos (delete direto por id; list é negado pela regra).
     final portalTokens = <String>{};
     for (final d in pats.docs) {
