@@ -430,10 +430,31 @@ class _SettingsTabState extends State<SettingsTab> {
                             }
                             setState(() => _savingWa = true);
                             try {
-                              await FirebaseFirestore.instance
-                                  .collection('clinics')
-                                  .doc(clinicId)
-                                  .update({'whatsappNumber': norm});
+                              final db = FirebaseFirestore.instance;
+                              final clinicRef =
+                                  db.collection('clinics').doc(clinicId);
+                              final publicRef =
+                                  db.collection('public_clinics').doc(clinicId);
+                              final publicSnap = await publicRef.get();
+                              final batch = db.batch();
+                              batch.update(
+                                  clinicRef, {'whatsappNumber': norm});
+                              if (publicSnap.exists) {
+                                batch.update(publicRef, {
+                                  'whatsappNumber': norm,
+                                  'updatedAt': FieldValue.serverTimestamp(),
+                                });
+                              } else if (SessionManager().isOwner) {
+                                batch.set(publicRef, {
+                                  'name': '${data?['name'] ?? 'Clínica'}',
+                                  'whatsappNumber': norm,
+                                  'updatedAt': FieldValue.serverTimestamp(),
+                                });
+                              } else {
+                                throw StateError(
+                                    'A projeção pública da clínica não existe; peça ao owner para corrigir o cadastro.');
+                              }
+                              await batch.commit();
                               _waCtrl.text = norm;
                               _snack("WhatsApp salvo.");
                             } catch (e) {

@@ -18,6 +18,7 @@ const RULES = fs.readFileSync(
 
 const A = 'clinicA';
 const B = 'clinicB';
+const TRIAL_END = new Date('2099-01-01T00:00:00.000Z');
 
 async function seed(admin) {
   const db = admin.firestore();
@@ -40,9 +41,13 @@ async function seed(admin) {
   await db.doc(`users/root`).set({
     role: 'superadmin', allowedClinics: [], status: 'Ativo', email: 'r@x',
   });
-  await db.doc(`clinics/${A}`).set({ name: 'A', ownerId: 'ownerA' });
+  await db.doc(`clinics/${A}`).set({
+    name: 'A', ownerId: 'ownerA', trialEndsAt: TRIAL_END,
+    blockedByAdmin: false,
+  });
   await db.doc(`clinics/${B}`).set({
-    name: 'B', ownerId: 'ownerB', blockedByAdmin: true,
+    name: 'B', ownerId: 'ownerB', trialEndsAt: TRIAL_END,
+    blockedByAdmin: true,
   });
   await db.doc(`patients/p1`).set({
     clinicId: A, portalToken: 'tok123', anamnesisToken: 'ana456',
@@ -63,7 +68,15 @@ async function seed(admin) {
   await db.doc(`password_reset_requests/reqA`).set({
     email: 'a@a.com', status: 'pending', createdAt: new Date(), clinicId: A,
   });
-  await db.doc(`financial/f1`).set({ clinicId: A, amount: 100 });
+  await db.doc(`financial/f1`).set({
+    clinicId: A, patientId: 'p1', amount: 100,
+  });
+  await db.doc('patients/pDelete').set({ clinicId: A, name: 'Delete fixture' });
+  await db.doc('inventory/iA').set({ clinicId: A, name: 'item A' });
+  await db.doc('inventory/iB').set({ clinicId: B, name: 'item B' });
+  await db.doc('suppliers/sA').set({ clinicId: A, name: 'supplier A' });
+  await db.doc('expenses/eA').set({ clinicId: A, amount: 10 });
+  await db.doc('lab_orders/lA').set({ clinicId: A, status: 'new' });
   await db.doc(`portal_slots/${A}`).set({ 'staff.d1': [] });
 }
 
@@ -100,9 +113,24 @@ describe('matriz reavaliação P0/P1', () => {
       db.doc('users/staffA').update({ status: 'Ativo' }));
   });
 
-  it('P0-1: staff lista users; anônimo não', async () => {
-    await assertSucceeds(ctx('staffA').firestore().collection('users').get());
+  it('P0: users é listado somente com prova de clínica compartilhada', async () => {
+    const staff = ctx('staffA').firestore();
+    await assertFails(staff.collection('users').get());
+    await assertSucceeds(staff.collection('users')
+      .where('allowedClinics', 'array-contains', A).get());
+    await assertFails(staff.doc('users/staffB').get());
+    await assertSucceeds(staff.doc('users/staffA').get());
     await assertFails(ctx(null).firestore().collection('users').get());
+  });
+
+  it('P0: clinics não é enumerável entre tenants', async () => {
+    const owner = ctx('ownerA').firestore();
+    await assertFails(owner.collection('clinics').get());
+    await assertSucceeds(owner.collection('clinics')
+      .where('ownerId', '==', 'ownerA').get());
+    await assertFails(ctx('staffB').firestore().doc(`clinics/${A}`).get());
+    await assertSucceeds(ctx('staffA').firestore().doc(`clinics/${A}`).get());
+    await assertFails(ctx(null).firestore().doc(`clinics/${A}`).get());
   });
 
   it('P0-2: staff de outra clínica não altera financeiro', async () => {
@@ -110,9 +138,19 @@ describe('matriz reavaliação P0/P1', () => {
     await assertFails(db.doc('financial/f1').update({ amount: 999 }));
   });
 
-  it('P0-2: anônimo só avisoPagamento; outro campo nega', async () => {
+  it('P1: aviso financeiro anônimo exige token atual do paciente vinculado', async () => {
     const db = ctx(null).firestore();
-    await assertSucceeds(db.doc('financial/f1').update({ avisoPagamento: true }));
+    await assertFails(db.doc('financial/f1').update({
+      avisoPagamento: { at: new Date() }, updatedAt: new Date(),
+    }));
+    await assertFails(db.doc('financial/f1').update({
+      avisoPagamento: { at: new Date(), portalToken: 'wrong' },
+      updatedAt: new Date(),
+    }));
+    await assertSucceeds(db.doc('financial/f1').update({
+      avisoPagamento: { at: new Date(), portalToken: 'tok123' },
+      updatedAt: new Date(),
+    }));
     await assertFails(db.doc('financial/f1').update({ amount: 1 }));
   });
 
@@ -208,20 +246,46 @@ describe('matriz reavaliação P0/P1', () => {
     await assertSucceeds(ctx(null).firestore().doc(`portal_slots/${A}`).get());
   });
 
-  it('P1: owner cria a própria clínica; com trial nega; superadmin cria', async () => {
+  it('P1: owner só cria unidade herdando trial; staff e extensão negados', async () => {
     const ownerA = ctx('ownerA').firestore();
     await assertSucceeds(ownerA.collection('clinics').add({
       name: 'Unidade 2', type: 'dental', ownerId: 'ownerA',
-      createdAt: new Date(),
+      trialEndsAt: TRIAL_END, blockedByAdmin: false, createdAt: new Date(),
+    }));
+    await assertFails(ownerA.collection('clinics').add({
+      name: 'Sem trial', type: 'dental', ownerId: 'ownerA',
+      createdAt: new Date(), blockedByAdmin: false,
     }));
     await assertFails(ownerA.collection('clinics').add({
       name: 'Fake', type: 'dental', ownerId: 'ownerA',
-      trialEndsAt: new Date(), createdAt: new Date(),
+      trialEndsAt: new Date('2100-01-01T00:00:00.000Z'),
+      blockedByAdmin: false, createdAt: new Date(),
+    }));
+    await assertFails(ctx('staffA').firestore().collection('clinics').add({
+      name: 'Staff clinic', type: 'dental', ownerId: 'staffA',
+      trialEndsAt: TRIAL_END, blockedByAdmin: false, createdAt: new Date(),
     }));
     await assertSucceeds(ctx('root').firestore().collection('clinics').add({
       name: 'M', type: 'dental', ownerId: 'ownerA',
-      trialEndsAt: new Date(), blockedByAdmin: false, createdAt: new Date(),
+      trialEndsAt: TRIAL_END, blockedByAdmin: false, createdAt: new Date(),
     }));
+  });
+
+  it('P1: deletes operacionais usam o clinicId antigo sem request.resource', async () => {
+    const owner = ctx('ownerA').firestore();
+    await assertSucceeds(owner.doc('patients/pDelete').delete());
+    await assertSucceeds(owner.doc('inventory/iA').delete());
+    await assertSucceeds(owner.doc('suppliers/sA').delete());
+    await assertSucceeds(owner.doc('expenses/eA').delete());
+    await assertSucceeds(owner.doc('lab_orders/lA').delete());
+    await assertFails(owner.doc('inventory/iB').delete());
+  });
+
+  it('P1: um tenant não transfere documentos operacionais para sua clínica', async () => {
+    await assertFails(ctx('ownerA').firestore().doc('inventory/iB')
+      .update({ clinicId: A }));
+    await assertFails(ctx('ownerA').firestore().doc('suppliers/sA')
+      .update({ clinicId: B }));
   });
 
   it('P1: staff não se dá menuAccess; owner gerencia e staff opera', async () => {
@@ -292,6 +356,9 @@ describe('matriz reavaliação P0/P1', () => {
     }));
     // Prova certa + allowlist: permite (link válido do WhatsApp).
     await assertSucceeds(anon.doc('anamnesis/p1').update({
+      patientId: 'p1', smoker: true, proofToken: 'ana456',
+    }));
+    await assertFails(anon.doc('anamnesis/p2').set({
       patientId: 'p1', smoker: true, proofToken: 'ana456',
     }));
     // Campo fora da allowlist mesmo com prova: nega.

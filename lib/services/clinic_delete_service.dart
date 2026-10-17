@@ -70,10 +70,13 @@ class ClinicDeleteStep {
       case ClinicDeleteStep.kDoc:
       case ClinicDeleteStep.kSubcollection:
         final p = collection;
-        if (p == 'clinics/$clinicId' || p == 'portal_slots/$clinicId') {
+        if (p == 'clinics/$clinicId' ||
+            p == 'portal_slots/$clinicId' ||
+            p == 'public_clinics/$clinicId') {
           return true;
         }
-        if (p.startsWith('clinics/$clinicId/settings/')) return true;
+        if (p.startsWith('clinics/$clinicId/settings/') ||
+            p == 'public_clinics/$clinicId/leads') return true;
         // Pacientes e derivados: só ids comprovados da clínica.
         final m = RegExp(r'^(?:patients|anamnesis)/([^/]+)').firstMatch(p);
         if (m != null) return patientIds.contains(m.group(1));
@@ -106,6 +109,9 @@ List<ClinicDeleteStep> clinicDeletePlan(
       'inventory',
     ])
       ClinicDeleteStep.query(c, clinicId),
+    // Leads e projeção da avaliação pública não devem sobreviver à cascata.
+    ClinicDeleteStep.subcollection('public_clinics/$clinicId/leads'),
+    ClinicDeleteStep.doc('public_clinics/$clinicId'),
     // Portal por token (nunca por list — ver kPortalTokens).
     ClinicDeleteStep.portalTokens(clinicId),
     for (final pid in patientIds)

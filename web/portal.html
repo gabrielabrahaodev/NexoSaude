@@ -380,7 +380,13 @@
 
     async function avisarUm(id) {
         try {
-            try { await db.collection('financial').doc(id).update({avisoPagamento: {at: new Date()}, updatedAt: new Date()}); } catch (e) {}
+            // O Firestore valida o token atual do paciente vinculado ao débito.
+            try {
+                await db.collection('financial').doc(id).update({
+                    avisoPagamento: {at: new Date(), portalToken: token},
+                    updatedAt: new Date()
+                });
+            } catch (e) {}
             const prev = (mirror.avisoPagamento && mirror.avisoPagamento.ids) || [];
             const ids = prev.includes(id) ? prev : prev.concat([id]);
             await mirrorRef.update({avisoPagamento: {ids: ids, at: new Date()}, updatedAt: new Date()});

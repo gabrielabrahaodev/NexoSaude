@@ -149,13 +149,36 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
     }
 
     try {
-      DocumentReference newClinicRef = await FirebaseFirestore.instance.collection('clinics').add({
+      // A unidade herda a expiração da primeira clínica vinculada. Sem
+      // trialEndsAt legado, o suporte precisa regularizar o backfill primeiro.
+      if (_myClinicIds.isEmpty) {
+        throw StateError('Nenhuma clínica vinculada para herdar o trial.');
+      }
+      final source = await FirebaseFirestore.instance
+          .collection('clinics')
+          .doc(_myClinicIds.first)
+          .get();
+      final sourceData = source.data();
+      final trialEndsAt = sourceData?['trialEndsAt'];
+      if (sourceData == null ||
+          trialEndsAt is! Timestamp ||
+          sourceData['blockedByAdmin'] == true ||
+          !trialEndsAt.toDate().isAfter(DateTime.now())) {
+        throw StateError(
+            'O trial da clínica atual precisa ser regularizado/ativo antes de criar outra unidade.');
+      }
+
+      final newClinicRef =
+          FirebaseFirestore.instance.collection('clinics').doc();
+      await newClinicRef.set({
         'name': name,
         'phone': phone,
         'address': address,
-        'type': type, // Salva no banco: 'dental', 'psychology', etc.
-        'ownerId': user.uid, 
+        'type': type,
+        'ownerId': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
+        'trialEndsAt': trialEndsAt,
+        'blockedByAdmin': false,
       });
 
       // Vínculo próprio via team-manage (leitura + set, não arrayUnion):
