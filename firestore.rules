@@ -140,6 +140,7 @@ service cloud.firestore {
         _updaterRole() == 'owner' &&
         mine.size() > 0 &&
         exists(sourcePath) &&
+        get(sourcePath).data.get('ownerId', '') == request.auth.uid &&
         clinicActive(sourceId) &&
         get(sourcePath).data.get('trialEndsAt', null) is timestamp &&
         request.resource.data.get('ownerId', '') == request.auth.uid &&
@@ -478,15 +479,25 @@ service cloud.firestore {
     // de paciente); SEM listagem (o app/portal nunca listam); escrita
     // escopada (antes: qualquer autenticado reescrevia slots de qualquer
     // clínica).
+    // O espelho só fica acessível anonimamente enquanto o token atual do
+    // paciente coincidir com o token do doc e houver consentimento LGPD.
+    function _portalTokenCurrent(token) {
+      let pid = resource.data.get('patientId', '');
+      let pref = /databases/$(database)/documents/patients/$(pid);
+      return pid is string && pid != '' &&
+        exists(pref) &&
+        get(pref).data.get('portalToken', '') == token &&
+        get(pref).data.get('lgpdPortalConsent', {}).get('accepted', false) == true;
+    }
     match /portal/{token} {
-      allow get: if true;
+      allow get: if _portalTokenCurrent(token);
       allow create: if isAuthenticated() &&
           clinicScoped(request.resource.data.get('clinicId', ''));
       allow delete: if isAuthenticated() &&
           clinicScoped(resource.data.get('clinicId', ''));
       allow update: if (isAuthenticated() &&
           clinicScoped(_docClinic(resource.data, request.resource.data))) ||
-        (!isAuthenticated() &&
+        (!isAuthenticated() && _portalTokenCurrent(token) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
           ]));

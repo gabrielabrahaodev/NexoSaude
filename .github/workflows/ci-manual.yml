@@ -1,11 +1,13 @@
 name: ci-manual
 
-# Sem gatilho automático (decisão operacional 16/10): rode manualmente
-# pela aba Actions (Run workflow) ou via CLI:
-#   gh workflow run ci-manual --ref master
-# A publicação de Rules depende da matriz verde + ordem explícita.
+# Execução automática em branch/PR para detectar regressões.
+# A publicação de Rules continua manual e exige aprovação explícita.
 on:
   workflow_dispatch:
+  push:
+    branches: [master, producao, nova-audit]
+  pull_request:
+    branches: [master, producao]
 
 jobs:
   flutter:

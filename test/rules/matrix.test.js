@@ -51,6 +51,13 @@ async function seed(admin) {
   });
   await db.doc(`patients/p1`).set({
     clinicId: A, portalToken: 'tok123', anamnesisToken: 'ana456',
+    lgpdPortalConsent: { accepted: true },
+  });
+  await db.doc('portal/tok123').set({
+    patientId: 'p1', clinicId: A, sessions: [], debts: [],
+  });
+  await db.doc('portal/oldTok').set({
+    patientId: 'p1', clinicId: A, sessions: [], debts: [],
   });
   await db.doc(`appointments/ap1`).set({
     clinicId: A, patientId: 'p1', status: 'Agendado', portalToken: null,
@@ -152,6 +159,19 @@ describe('matriz reavaliação P0/P1', () => {
       updatedAt: new Date(),
     }));
     await assertFails(db.doc('financial/f1').update({ amount: 1 }));
+  });
+
+  it('P1: portal só lê espelho com token atual e consentimento aceito', async () => {
+    const anon = ctx(null).firestore();
+    await assertSucceeds(anon.doc('portal/tok123').get());
+    await assertFails(anon.doc('portal/oldTok').get());
+    await assertFails(anon.doc('portal/not-a-token').get());
+    await assertSucceeds(anon.doc('portal/tok123').update({
+      avisoPagamento: { ids: ['f1'], at: new Date() },
+    }));
+    await assertFails(anon.doc('portal/oldTok').update({
+      avisoPagamento: { ids: ['f1'], at: new Date() },
+    }));
   });
 
   it('P1-5: anônimo confirma COM token ATUAL; sem token e velho negam', async () => {

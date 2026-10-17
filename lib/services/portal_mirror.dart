@@ -317,7 +317,7 @@ class PortalMirrorSync {
       final raw = mirror.data()?['propostasRecusadas'];
       if (raw is List) refused.addAll(raw.map((e) => '$e'));
     } catch (_) {}
-    await _db.collection('portal').doc(token).set(buildPortalMirror(
+    final mirrorData = buildPortalMirror(
       clinicId: '${pdata['clinicId'] ?? ''}',
       clinicName: clinicName,
       sessions: sessions,
@@ -326,7 +326,12 @@ class PortalMirrorSync {
       now: now,
       refusedIso: refused,
       debtsTruncated: debtsTruncated,
-    ), SetOptions(merge: true)); // merge: preserva campos do portal (statusSessao, pedidos, avisos)
+    );
+    // As Rules validam este vínculo para invalidar espelhos com token antigo.
+    mirrorData['patientId'] = patientId;
+    await _db.collection('portal').doc(token).set(
+        mirrorData,
+        SetOptions(merge: true)); // preserva statusSessao, pedidos e avisos
   }
 
   /// Delta: token do paciente (1 leitura) ou null.

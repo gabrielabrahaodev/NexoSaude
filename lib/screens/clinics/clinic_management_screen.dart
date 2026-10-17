@@ -89,8 +89,6 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                       items: const [
                         DropdownMenuItem(value: 'dental', child: Text("Odontológica (Padrão)")),
                         DropdownMenuItem(value: 'psychology', child: Text("Psicológica")),
-                        DropdownMenuItem(value: 'physiotherapy', child: Text("Fisioterapêutica")),
-                        DropdownMenuItem(value: 'yoga', child: Text("Estúdio de Ioga")),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -161,6 +159,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
       final sourceData = source.data();
       final trialEndsAt = sourceData?['trialEndsAt'];
       if (sourceData == null ||
+          sourceData['ownerId'] != user.uid ||
           trialEndsAt is! Timestamp ||
           sourceData['blockedByAdmin'] == true ||
           !trialEndsAt.toDate().isAfter(DateTime.now())) {

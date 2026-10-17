@@ -121,11 +121,9 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
     if (ok != true) return;
     setState(() => _workingLink = true);
     try {
-      await FirebaseFirestore.instance
-          .collection('portal')
-          .doc(oldToken)
-          .delete()
-          .catchError((_) {});
+      // Primeiro revoga no documento-fonte. As Rules do espelho conferem
+      // o token atual, então o link antigo perde acesso mesmo se a limpeza
+      // física de um espelho legado falhar.
       await FirebaseFirestore.instance
           .collection('patients')
           .doc(docId)
@@ -136,6 +134,14 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
           'revokedAt': FieldValue.serverTimestamp(),
         },
       });
+      try {
+        await FirebaseFirestore.instance
+            .collection('portal')
+            .doc(oldToken)
+            .delete();
+      } catch (_) {
+        // O bloqueio lógico já ocorreu por meio do token-fonte revogado.
+      }
       if (mounted) toast(context, "Acesso ao portal revogado.", ok: true);
     } catch (e) {
       if (mounted) toast(context, "Falha ao revogar: $e", error: true);
