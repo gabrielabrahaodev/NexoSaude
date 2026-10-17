@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/session_manager.dart';
 import '../../services/clinic_delete_service.dart';
+import '../../services/clinic_member_directory.dart';
 import '../../utils/display.dart';
 import '../dashboard/main_web_dashboard.dart'; 
 
@@ -193,6 +194,8 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
           'allowedClinics': [...mine, newClinicRef.id]
         });
       }
+      await ClinicMemberDirectory.syncUserForClinic(
+          uid: user.uid, clinicId: newClinicRef.id);
       // Projeção pública p/ avaliação online (só nome + WhatsApp).
       await FirebaseFirestore.instance
           .collection('public_clinics')
@@ -228,28 +231,29 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
   bool _deleting = false;
 
   Future<Map<String, int>> _clinicCounts(String clinicId) async {
-    Future<int> count(String collection, {bool array = false}) async {
+    Future<int> count(String collection) async {
       try {
-        final q = array
-            ? FirebaseFirestore.instance
-                .collection(collection)
-                .where('allowedClinics', arrayContains: clinicId)
-            : FirebaseFirestore.instance
-                .collection(collection)
-                .where('clinicId', isEqualTo: clinicId);
-        final c = await q.count().get();
+        final c = await FirebaseFirestore.instance
+            .collection(collection)
+            .where('clinicId', isEqualTo: clinicId).count().get();
         return c.count ?? 0;
       } catch (_) {
         return 0;
       }
     }
-
+    Future<int> countMembers() async {
+      try {
+        final c = await FirebaseFirestore.instance
+            .collection('clinics').doc(clinicId).collection('members')
+            .count().get();
+        return c.count ?? 0;
+      } catch (_) {
+        return 0;
+      }
+    }
     final entries = await Future.wait([
-      count('patients'),
-      count('appointments'),
-      count('financial'),
-      count('budgets'),
-      count('users', array: true),
+      count('patients'), count('appointments'), count('financial'),
+      count('budgets'), countMembers(),
     ]);
     return {
       'Pacientes': entries[0],
