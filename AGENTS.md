@@ -100,7 +100,7 @@ main.dart → AuthWrapper (StreamBuilder<FirebaseAuth>)
 3. **Operacional** (`F + expenses/lab + subcoleções`): `clinicScoped` = superadmin OU usuário ativo vinculado/dono da clínica ATIVA. Clínica bloqueada/trial vencido não permite operações; clínicas legadas sem `trialEndsAt` ainda são tratadas como ativas até backfill revisado.
 4. **Listas são tudo-ou-nada**: consultas precisam provar escopo nas Rules. `users` só admite listagem superadmin; equipe lê `clinics/{clinicId}/members`; `clinics` exige posse/IDs autorizados; `public_clinics` e `portal_slots` não admitem listagem pública.
 5. **Público**: `portal/{token}` get/update anônimo só enquanto `patients/{patientId}.portalToken` coincidir com o token e houver aceite LGPD; o espelho guarda `patientId` e exige backfill antes do deploy. `portal_slots` get público sem list; `appointments` confirma/remarca com token atual; `anamnesis` sem get anônimo, escrita com token dedicado; `trial_requests` exige uid autenticado; `public_clinics` get + leads anônimos validados.
-6. **`clinics/{id}/settings/**`: leitura da EQUIPE (telas leem taxas); escrita owner-da-clínica/superadmin fora de segredos. **`settings/integrations/**` (segredos): SÓ dono DA clínica ou superadmin** — destroy Cloudinary DESABILITADO no app (`deleteRemoteFile` retorna `false`; órfãos com limpeza manual — sem Function no Spark).
+6. **`clinics/{id}/settings/**`: leitura da EQUIPE (telas leem taxas); escrita owner-da-clínica/superadmin fora de segredos. `settings/integrations/**` (segredos): só owner da clínica/superadmin. Novos uploads Cloudinary unsigned estão bloqueados; `deleteDocument` preserva metadados se o binário remoto não tiver sido removido; as cascatas de paciente/clínica abortam antes de escrever se encontrarem arquivos Cloudinary legados. Limpeza individual exige `migrate/delete-cloudinary-document.js` com credenciais por variável de ambiente, dry-run e dupla confirmação. O preset unsigned ainda precisa ser desativado no painel Cloudinary.
 7. Subcoleções `patients/{id}/{...}`: auth + clínica do paciente pai (`patientClinicOk`).
 8. **Anamnese**: get público negado; o HTML precisa de `id` + token dedicado `t`; escrita anônima restrita por allowlist e token atual; equipe via clínica do paciente; delete só escopado.
 9. **Publicar rules** SOMENTE com ordem explícita: validar (`node migrate/rules-validate.js`) → matriz `test/rules/` no emulator (CI) → `rules-release.js` → `rules-inspect.js` confirma. `plans`/`anticipations` sem regra (= negado). Toda query nova DEVE filtrar por `clinicId`.
@@ -145,8 +145,8 @@ Psicologia: 0 Dashboard, 1 Agenda, 2 Pacientes, 7 Cobranças, 11 Fluxo Terapêut
 - Ficha: dental = **9 abas**, psicologia = **6 abas** (sem ORÇAMENTOS/ODONTOGRAMA/LABORATÓRIO)
 
 ### Documentos (Cloudinary)
-- Upload unsigned p/ `https://api.cloudinary.com/v1_1/dbbh601ay/auto/upload` (`upload_preset=dbbh601ay`, `resource_type=auto`); metadados em `patients/{id}/docs`
-- Exclusão apaga **só o Firestore** (plano Spark, sem destroy remoto — binários viram órfãos; limpeza manual ocasional pelo painel Cloudinary); `purgePatientFiles` só loga a contagem, após o commit OK em blocos de 450
+- Upload unsigned direto está bloqueado no cliente até existir endpoint autenticado/assinado; o bloqueio não desativa o preset no painel Cloudinary
+- Documentos legados ficam em `patients/{id}/docs`; quando URL/publicId aponta para Cloudinary, exclusão de arquivo/paciente/clínica falha antes de perder os metadados se o binário não tiver sido removido. Cleanup individual usa `migrate/delete-cloudinary-document.js`; o Admin SDK de `migrate/delete-clinic.js` também faz preflight e aborta se encontrar arquivos legados
 
 ### Registro e avaliação pública
 - Novo cadastro nasce com `allowedClinics: []` + `status: 'pending_approval'` — owner libera em Funcionários (antes caía hardcoded com acesso imediato)
