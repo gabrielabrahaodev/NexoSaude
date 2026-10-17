@@ -276,7 +276,6 @@ class PortalMirrorSync {
     // Débitos sem corte de data (inadimplência antiga precisa aparecer),
     // teto 500 + flag de truncamento.
     final monthStart = DateTime(now.year, now.month - 1, 1);
-    setStage('consultar appointments da clínica $clinicId na janela de 14 dias');
     final appts = await _db
         .collection('appointments')
         .where('patientId', isEqualTo: patientId)
@@ -590,6 +589,7 @@ class PortalMirrorSync {
       clinicType: clinicType,
     );
     if (professionals.isEmpty) return;
+    setStage('consultar appointments da clínica $clinicId na janela de 14 dias');
     final appts = await _db
         .collection('appointments')
         .where('clinicId', isEqualTo: clinicId)
