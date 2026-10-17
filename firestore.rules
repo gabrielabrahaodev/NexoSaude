@@ -209,7 +209,7 @@ service cloud.firestore {
            'trialEndsAt', 'blockedByAdmin']) &&
         request.resource.data.get('name', '') is string &&
         request.resource.data.get('type', '') in
-          ['dental', 'psychology', 'multi'];
+          ['dental', 'psychology'];
     }
 
     // 3c. Papéis de equipe (nunca owner/superadmin via cliente).
@@ -377,7 +377,7 @@ service cloud.firestore {
           request.resource.data.clinicName is string &&
           request.resource.data.clinicName.size() > 1 &&
           request.resource.data.clinicName.size() < 100 &&
-          request.resource.data.type in ['dental', 'psychology', 'multi'];
+          request.resource.data.type in ['dental', 'psychology'];
       allow read, update, delete: if isSuperAdmin();
     }
 
