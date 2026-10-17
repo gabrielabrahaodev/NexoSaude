@@ -60,6 +60,10 @@
     const BRL = (v) => 'R$ ' + Number(v || 0).toFixed(2);
 
     let toastT = null;
+    // Impede que onAuthStateChanged tente carregar o perfil enquanto
+    // o fluxo de cadastro ainda está criando users/{uid} e trial_requests.
+    let signupInProgress = false;
+
     function toast(msg) {
         const t = document.getElementById('toast');
         t.textContent = msg;
@@ -88,6 +92,7 @@
     });
 
     auth.onAuthStateChanged(async (user) => {
+        if (signupInProgress) return;
         if (!user) return loginView();
         content.innerHTML = '<div class="skel"></div><div class="skel"></div>';
         try {
@@ -218,6 +223,7 @@
         }
         const btn = document.getElementById('s-btn');
         btn.disabled = true;
+        signupInProgress = true;
         // uid FORA do try (o catch precisa dele p/ limpar órfãos — P1).
         let uid = null;
         try {
@@ -234,20 +240,26 @@
                 type: document.getElementById('s-tipo').value,
                 uid: uid, status: 'solicitado', createdAt: new Date(),
             });
-            toast('Pedido enviado! Aguarde nosso contato.');
+            content.innerHTML = '<div class="card"><div class="big">Solicitação enviada</div>'
+                + '<p class="muted">Recebemos seu pedido de teste. Aguarde nosso contato pelo WhatsApp; sua conta só terá acesso após aprovação.</p>'
+                + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
+            // A sessão de inscrição não precisa permanecer aberta. O listener
+            // não substitui a confirmação porque signupInProgress segue true.
+            await auth.signOut();
         } catch (e) {
-            // Sem conta órfã (reavaliação §4): se o pedido falhou após
-            // criar Auth/perfil, apaga o perfil pendente + a conta e libera
-            // nova tentativa no mesmo e-mail.
+            // Se qualquer gravação falhar, tente remover o perfil e a conta
+            // provisórios; o fluxo não deixa uma conta utilizável sem pedido.
             try {
                 const u = auth.currentUser;
                 if (uid && u && u.uid === uid) {
                     await db.collection('users').doc(uid).delete().catch(() => {});
-                    await u.delete();
+                    await u.delete().catch(() => {});
                 }
             } catch (_) {}
             toast(e.code === 'auth/email-already-in-use' ? 'E-mail já cadastrado. Entre.' : 'Falha. Tente de novo.');
             btn.disabled = false;
+        } finally {
+            signupInProgress = false;
         }
     }
 
