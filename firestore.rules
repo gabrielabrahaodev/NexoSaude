@@ -438,9 +438,10 @@ service cloud.firestore {
     // Diretório público: identidade funcional mínima, sem PII nem permissões internas.
     match /clinics/{clinicId}/members/{memberId} {
       allow get, list: if clinicScoped(clinicId);
-      allow create, update: if isSuperAdmin() ||
-          (_isActiveUser() && ownsClinic(clinicId) && clinicActive(clinicId) &&
-           _publicMemberMirrorMatches(clinicId, memberId));
+      allow create, update: if
+          (isSuperAdmin() ||
+           (_isActiveUser() && ownsClinic(clinicId) && clinicActive(clinicId))) &&
+          _publicMemberMirrorMatches(clinicId, memberId);
       allow delete: if isSuperAdmin() ||
           (_isActiveUser() && ownsClinic(clinicId));
     }
@@ -450,10 +451,11 @@ service cloud.firestore {
       allow get, list: if isSuperAdmin() ||
           (_isActiveUser() && _updaterRole() == 'owner' &&
            ownsClinic(clinicId) && clinicActive(clinicId));
-      allow create, update: if isSuperAdmin() ||
-          (_isActiveUser() && _updaterRole() == 'owner' &&
-           ownsClinic(clinicId) && clinicActive(clinicId) &&
-           _privateMemberMirrorMatches(clinicId, memberId));
+      allow create, update: if
+          (isSuperAdmin() ||
+           (_isActiveUser() && _updaterRole() == 'owner' &&
+            ownsClinic(clinicId) && clinicActive(clinicId))) &&
+          _privateMemberMirrorMatches(clinicId, memberId);
       allow delete: if isSuperAdmin() ||
           (_isActiveUser() && _updaterRole() == 'owner' &&
            ownsClinic(clinicId));
