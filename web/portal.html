@@ -92,7 +92,33 @@
 
     let mirror = null, mirrorRef = null;
 
-    function esc(s) { return String(s ?? '').replace(/</g, '&lt;'); }
+    function esc(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Eventos para controles criados dinamicamente: nenhum dado do Firestore
+    // é interpolado em código JavaScript inline.
+    content.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button || !content.contains(button)) return;
+        const { action, id, day, time, dateTime } = button.dataset;
+        switch (action) {
+            case 'confirmar': confirmar(id); break;
+            case 'remarcar': abrirRemarcar(id); break;
+            case 'toggle-pix': togglePix(id); break;
+            case 'copiar-pix': copiarPixCode(id); break;
+            case 'avisar-pagamento': avisarUm(id); break;
+            case 'escolher-dia': escolherDia(id, day); break;
+            case 'selecionar-hora': selecionarHora(id, day, time); break;
+            case 'propor-remarcacao': propor(id, dateTime); break;
+            default: break;
+        }
+    });
 
     // BR Code Pix estático (padrão Bacen, 100% local) — espelha pix_brcode.dart.
     function crc16(s) {
@@ -191,14 +217,14 @@
                 + '<div class="info"><div style="font-weight:700">' + esc(s.professional || 'Sessão') + '</div>' + pillFor(st) + '</div>'
                 + '</div>';
             if (podeConfirmar(st)) {
-                html += '<div class="actions"><button class="btn-ok" onclick="confirmar(\'' + s.id + '\')">Confirmar presença</button>'
-                    + '<button class="btn-ghost" onclick="abrirRemarcar(\'' + s.id + '\')">Remarcar</button></div>'
-                    + '<div id="rem-' + s.id + '"></div>';
+                html += '<div class="actions"><button class="btn-ok" data-action="confirmar" data-id="' + esc(s.id) + '">Confirmar presença</button>'
+                    + '<button class="btn-ghost" data-action="remarcar" data-id="' + esc(s.id) + '">Remarcar</button></div>'
+                    + '<div id="rem-' + esc(s.id) + '"></div>';
             } else if (String(st).toLowerCase() === 'remarcar') {
                 html += '<div class="note">Pedido de remarcação enviado. Aguarde a recepção.</div>';
             } else if (String(st).toLowerCase() === 'confirmado') {
-                html += '<div class="actions"><button class="btn-ghost" onclick="abrirRemarcar(\'' + s.id + '\')">Pedir remarcação</button></div>'
-                    + '<div id="rem-' + s.id + '"></div>';
+                html += '<div class="actions"><button class="btn-ghost" data-action="remarcar" data-id="' + esc(s.id) + '">Pedir remarcação</button></div>'
+                    + '<div id="rem-' + esc(s.id) + '"></div>';
             }
             html += '</div>';
         }
@@ -233,15 +259,15 @@
                 + '<div style="font-size:12px;color:var(--mut)">' + (isLate ? 'venceu ' : 'vence ') + due
                 + (paid > 0 ? ' • falta ' + fmtBRL(rest) + ' de ' + fmtBRL(amount) : '') + '</div></div>'
                 + '<div class="val">' + fmtBRL(rest) + '</div></div>'
-                + '<div class="actions"><button class="btn-ghost" onclick="togglePix(\'' + x.id + '\')">Pagar com Pix</button></div>'
-                + '<div id="pix-' + x.id + '" style="display:none;">'
+                + '<div class="actions"><button class="btn-ghost" data-action="toggle-pix" data-id="' + esc(x.id) + '">Pagar com Pix</button></div>'
+                + '<div id="pix-' + esc(x.id) + '" style="display:none;">'
                 + '<div class="pixbox">'
                 + (mirror.pixKey
                     ? '<div style="display:flex;justify-content:center;margin-bottom:8px"><div id="qr-' + x.id + '"></div></div>'
-                      + '<div class="pixkey" id="code-' + x.id + '"></div>'
-                      + '<div class="actions"><button class="btn-ghost" onclick="copiarPixCode(\'' + x.id + '\')">Copiar código</button></div>'
+                      + '<div class="pixkey" id="code-' + esc(x.id) + '"></div>'
+                      + '<div class="actions"><button class="btn-ghost" data-action="copiar-pix" data-id="' + esc(x.id) + '">Copiar código</button></div>'
                     : '<p style="font-size:13px;color:var(--mut);margin:0">Pix não cadastrado. Fale com a recepção.</p>')
-                + '<button class="btn-warn" id="av-' + x.id + '" onclick="avisarUm(\'' + x.id + '\')">Avisei que paguei</button>'
+                + '<button class="btn-warn" id="av-' + esc(x.id) + '" data-action="avisar-pagamento" data-id="' + esc(x.id) + '">Avisei que paguei</button>'
                 + '</div></div></div>';
         }
         if (debts.length) {
@@ -318,7 +344,7 @@
                 const parts = day.split('-');
                 const dt = new Date(+parts[0], +parts[1] - 1, +parts[2]);
                 const wd = dt.toLocaleDateString('pt-BR', {weekday: 'short'}).replace('.', '');
-                html += '<button class="daycard' + (i === 0 ? ' sel' : '') + '" data-day="' + day + '" onclick="escolherDia(\'' + id + '\',\'' + day + '\')">' + parts[2] + '/' + parts[1] + '<small>' + wd + ' • ' + byDay[day].length + '</small></button>';
+                html += '<button class="daycard' + (i === 0 ? ' sel' : '') + '" data-action="escolher-dia" data-id="' + esc(id) + '" data-day="' + esc(day) + '">' + parts[2] + '/' + parts[1] + '<small>' + esc(wd) + ' • ' + byDay[day].length + '</small></button>';
             });
             html += '</div><div style="font-size:13px;font-weight:700;color:var(--mut);margin-top:10px">Horários</div><div class="timegrid" id="tg-' + id + '"></div><div id="cf-' + id + '"></div></div>';
             box.innerHTML = html;
@@ -332,7 +358,7 @@
         const box = document.getElementById('rem-' + id);
         box.querySelectorAll('.daycard').forEach((b) => b.classList.toggle('sel', b.dataset.day === day));
         document.getElementById('tg-' + id).innerHTML = (byDay[day] || []).map((t) =>
-            '<button class="timecard" onclick="selecionarHora(\'' + id + '\',\'' + day + '\',\'' + t + '\')">' + t + '</button>'
+            '<button class="timecard" data-action="selecionar-hora" data-id="' + esc(id) + '" data-day="' + esc(day) + '" data-time="' + esc(t) + '">' + esc(t) + '</button>'
         ).join('');
         document.getElementById('cf-' + id).innerHTML = '';
     }
@@ -343,7 +369,7 @@
         const parts = day.split('-');
         document.getElementById('cf-' + id).innerHTML =
             '<div class="confirmbar"><span>Trocar para <b>' + parts[2] + '/' + parts[1] + ' ' + t + '</b>?</span>'
-            + '<button class="btn-ok" onclick="propor(\'' + id + '\',\'' + day + 'T' + t + '\')">Confirmar troca</button></div>';
+            + '<button class="btn-ok" data-action="propor-remarcacao" data-id="' + esc(id) + '" data-date-time="' + esc(day + 'T' + t) + '">Confirmar troca</button></div>';
     }
 
     async function propor(id, iso) {
