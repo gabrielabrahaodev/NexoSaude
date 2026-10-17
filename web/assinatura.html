@@ -67,7 +67,24 @@
         clearTimeout(toastT);
         toastT = setTimeout(() => t.classList.remove('show'), 3200);
     }
-    function esc(s) { return String(s ?? '').replace(/</g, '&lt;'); }
+    function esc(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Eventos de itens dinâmicos nunca são interpolados como JavaScript inline.
+    content.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button || !content.contains(button)) return;
+        const { action, id } = button.dataset;
+        if (action === 'toggle-pix') togglePix(id);
+        if (action === 'copy-pix') copiarPix();
+        if (action === 'avisar') avisar(id);
+    });
 
     auth.onAuthStateChanged(async (user) => {
         if (!user) return loginView();
@@ -197,12 +214,12 @@
                 + '<div class="muted">' + (paid ? 'Pago' : 'Pendente') + (noticed && !paid ? ' • Avisei que paguei' : '') + '</div></div>'
                 + '<div class="big">' + BRL(m.amount) + '</div></div>';
             if (!paid) {
-                html += '<button class="btn-ghost" onclick="togglePix(\'' + d.id + '\')">Pagar com Pix</button>'
-                    + '<div id="pix-' + d.id + '" style="display:none;"><div class="pixbox">'
+                html += '<button class="btn-ghost" data-action="toggle-pix" data-id="' + esc(d.id) + '">Pagar com Pix</button>'
+                    + '<div id="pix-' + esc(d.id) + '" style="display:none;"><div class="pixbox">'
                     + (pixKey ? '<div class="muted">Chave Pix</div><div class="pixkey">' + esc(pixKey) + '</div>'
-                      + '<div class="row" style="margin-top:8px"><button class="btn-ghost" style="flex:1" onclick="copiarPix()">Copiar chave</button></div>'
+                      + '<div class="row" style="margin-top:8px"><button class="btn-ghost" style="flex:1" data-action="copy-pix">Copiar chave</button></div>'
                       : '<p class="muted" style="margin:0">Pix não cadastrado. Fale com o suporte.</p>')
-                    + '<button class="btn-warn" id="av-' + d.id + '" onclick="avisar(\'' + d.id + '\')"'
+                    + '<button class="btn-warn" id="av-' + esc(d.id) + '" data-action="avisar" data-id="' + esc(d.id) + '"'
                     + (noticed ? ' disabled' : '') + '>' + (noticed ? 'Avisado ✓' : 'Avisei que paguei') + '</button>'
                     + '</div></div>';
             }
