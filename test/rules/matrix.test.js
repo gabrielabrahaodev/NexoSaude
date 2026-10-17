@@ -382,6 +382,12 @@ describe('matriz reavaliação P0/P1', () => {
       ctx('ownerA').firestore().collection('trial_requests').add({
         ...good, type: 'multi',
       }));
+    // Campos expostos em HTML público só aceitam caracteres de telefone,
+    // evitando payload de atributo/JavaScript em dados que o Master renderiza.
+    await assertFails(
+      ctx('ownerA').firestore().collection('trial_requests').add({
+        ...good, whatsapp: '11999999999" onclick="alert(1)',
+      }));
   });
 
   it('P1-6: projeção pública lê sem login; sem listagem; lead válido passa', async () => {
