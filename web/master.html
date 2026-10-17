@@ -368,8 +368,8 @@
                 if (ownerSnap.exists &&
                     owner.role === 'owner' &&
                     owner.status === 'pending_approval' &&
-                    Array.isArray(owner.allowedClinics) &&
-                    owner.allowedClinics.length === 0) {
+                    (!Array.isArray(owner.allowedClinics) ||
+                     owner.allowedClinics.length === 0)) {
                     batch.update(ownerRef, { status: 'rejected', updatedAt: new Date() });
                 }
             }
