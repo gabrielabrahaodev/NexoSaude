@@ -616,6 +616,41 @@ service cloud.firestore {
         data.get('pixKey', '').size() <= 200 &&
         data.get('propostasRecusadas', []) is list;
     }
+    // O paciente usa o token como bearer credential; suas atualizações
+    // são limitadas por campo E formato para impedir payloads arbitrários no espelho.
+    function _portalPatientPatchValid() {
+      let data = request.resource.data;
+      let old = resource.data;
+      let changed = data.diff(old).affectedKeys();
+      let statusMap = data.get('statusSessao', old.get('statusSessao', {}));
+      let reschedule = data.get('pedidoRemarcacao', old.get('pedidoRemarcacao', {}));
+      let notice = data.get('avisoPagamento', old.get('avisoPagamento', {}));
+      return changed.hasOnly([
+          'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
+        ]) &&
+        data.get('patientId', '') == old.get('patientId', '') &&
+        data.get('clinicId', '') == old.get('clinicId', '') &&
+        (!changed.hasAny(['updatedAt']) ||
+          data.get('updatedAt', null) is timestamp) &&
+        (!changed.hasAny(['statusSessao']) ||
+          (statusMap is map && statusMap.keys().size() <= 100)) &&
+        (!changed.hasAny(['pedidoRemarcacao']) ||
+          (reschedule is map &&
+           reschedule.keys().hasOnly(['sessaoId', 'novaData']) &&
+           reschedule.keys().hasAll(['sessaoId', 'novaData']) &&
+           reschedule.get('sessaoId', '') is string &&
+           reschedule.get('sessaoId', '').size() > 0 &&
+           reschedule.get('sessaoId', '').size() <= 150 &&
+           reschedule.get('novaData', null) is timestamp)) &&
+        (!changed.hasAny(['avisoPagamento']) ||
+          (notice is map &&
+           notice.keys().hasOnly(['ids', 'at']) &&
+           notice.keys().hasAll(['ids', 'at']) &&
+           notice.get('ids', []) is list &&
+           notice.get('ids', []).size() <= 500 &&
+           notice.get('at', null) is timestamp));
+    }
+
     match /portal/{token} {
       allow get: if _portalTokenCurrent(token);
       allow create: if isAuthenticated() &&
@@ -643,9 +678,7 @@ service cloud.firestore {
           _portalStaffFieldsOnly(request.resource.data) &&
           _portalTokenSourceMatches(token, request.resource.data)) ||
         (!isAuthenticated() && _portalTokenCurrent(token) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'statusSessao', 'pedidoRemarcacao', 'avisoPagamento', 'updatedAt'
-          ]));
+          _portalPatientPatchValid());
     }
     match /portal_slots/{clinicId} {
       allow get: if true;
