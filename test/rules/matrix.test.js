@@ -23,20 +23,20 @@ const TRIAL_END = new Date('2099-01-01T00:00:00.000Z');
 async function seed(admin) {
   const db = admin.firestore();
   await db.doc(`users/ownerA`).set({
-    role: 'owner', allowedClinics: [A], status: 'Ativo', email: 'a@x',
+    role: 'owner', name: 'Owner A', allowedClinics: [A], status: 'Ativo', email: 'a@x',
   });
   await db.doc(`users/staffA`).set({
-    role: 'recepcionista', allowedClinics: [A], status: 'Ativo', email: 's@x',
+    role: 'recepcionista', name: 'Staff A', allowedClinics: [A], status: 'Ativo', email: 's@x',
   });
   await db.doc(`users/staffB`).set({
-    role: 'recepcionista', allowedClinics: [B], status: 'Ativo', email: 'b@x',
+    role: 'recepcionista', name: 'Staff B', allowedClinics: [B], status: 'Ativo', email: 'b@x',
   });
   await db.doc(`users/pendingU`).set({
-    role: 'recepcionista', allowedClinics: [A], status: 'pending_approval',
+    role: 'recepcionista', name: 'Pending', allowedClinics: [A], status: 'pending_approval',
     email: 'p@x',
   });
   await db.doc(`users/ownerB`).set({
-    role: 'owner', allowedClinics: [B], status: 'Ativo', email: 'o@x',
+    role: 'owner', name: 'Owner B', allowedClinics: [B], status: 'Ativo', email: 'o@x',
   });
   await db.doc(`users/root`).set({
     role: 'superadmin', allowedClinics: [], status: 'Ativo', email: 'r@x',
