@@ -371,7 +371,7 @@ service cloud.firestore {
           request.resource.data.whatsapp is string &&
           request.resource.data.whatsapp.size() >= 8 &&
           request.resource.data.whatsapp.size() < 20 &&
-          request.resource.data.whatsapp.matches('^[+0-9() .-]{8,19}
+          request.resource.data.whatsapp.matches('^[+0-9() .-]{8,19}$') &&
           request.resource.data.email.size() > 3 &&
           request.resource.data.email.size() < 100 &&
           request.resource.data.clinicName is string &&
