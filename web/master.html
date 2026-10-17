@@ -95,9 +95,6 @@
         if (!button || !content.contains(button)) return;
         const id = button.dataset.id || '';
         switch (button.dataset.action) {
-            case 'whatsapp':
-                chamarZap(button.dataset.phone || '');
-                break;
             case 'toggle-block':
                 toggleBlock(id, button.dataset.blocked === 'true');
                 break;
@@ -239,6 +236,9 @@
                 + '<button class="btn-ghost" data-action="refuse-trial" data-id="' + esc(r.id) + '">Recusar</button></div></div>';
         });
         body.innerHTML = html;
+        body.querySelectorAll('[data-action="whatsapp"]').forEach((button) => {
+            button.addEventListener('click', () => chamarZap(button.dataset.phone || ''));
+        });
     }
 
     function chamarZap(phone) {
