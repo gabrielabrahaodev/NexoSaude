@@ -23,7 +23,7 @@ Finalizar atendimento, aprovar orçamento, odontograma, anamnese, docs, lab.
 - `lib/services/clinical_record_service.dart` — CRUD de `clinical_records`
 - `lib/services/treatment_service.dart` — `getPlansStream`, `approveBudgetWithFinancials`, `createFromBudget`, `closePlan`
 - `lib/services/budget_service.dart`, `lib/services/lab_service.dart` (`createOrder`, `updateStatus`, `addInteraction`)
-- Tabs: `treatments_tab` (agrupa por `planId`), `budgets_tab`, `clinical_record_screen`, `odontogram_screen` (`patients/{id}/clinical_data/odontogram`), `anamnesis_tab` (`anamnesis/{patientId}` — escrita pública), `patient_docs_tab`, `patient_lab_tab`
+- Tabs: `treatments_tab` (agrupa por `planId`), `budgets_tab`, `clinical_record_screen`, `odontogram_screen` (`patients/{id}/clinical_data/odontogram`), `anamnesis_tab` (`anamnesis/{patientId}` — token dedicado; sem leitura pública), `patient_docs_tab`, `patient_lab_tab`
 
 ## Fluxos
 
@@ -32,7 +32,7 @@ Finalizar atendimento, aprovar orçamento, odontograma, anamnese, docs, lab.
 
 ## Regras / Gotchas
 
-- `anamnesis` tem escrita pública (link WhatsApp) — não mover para collection restrita sem ajustar rules.
+- `anamnesis` não tem leitura pública; o link WhatsApp envia `id` + token dedicado `t`, e as Rules limitam escrita a campos permitidos.
 - Odontograma salva `teeth` + `lastUpdate` em `clinical_data/odontogram`.
 - Abas Orçamento/Odontograma/Lab escondidas na psico via `ClinicCapabilities`.
 
