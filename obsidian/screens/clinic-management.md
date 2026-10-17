@@ -14,7 +14,7 @@ description: CRUD de clínicas (owner) com vínculo de ownerId e nome.
 
 ## O que é
 
-Lista `clinics` do owner (`where ownerId`) — ou as liberadas (`documentId whereIn allowedClinics`, máx 10) para não-owner com o item. Cria clínica (`name/type/ownerId`) só owner e atualiza `users` no vínculo.
+Lista clínicas próprias ou vinculadas; as queries precisam provar escopo nas Rules. A UI oferece apenas tipos implementados: `dental` e `psychology`. Novas unidades exigem owner ativo e herdam exatamente o `trialEndsAt` de uma unidade própria ativa.
 
 ## Quando usar
 
@@ -22,7 +22,7 @@ Nova clínica, renomear, trocar tipo dental/psicologia.
 
 ## Fluxos
 
-- Criar: `clinics.add` + update do usuário.
+- Criar: valida unidade fonte, grava `trialEndsAt` herdado + `blockedByAdmin:false`, depois atualiza vínculo e cria a projeção em `public_clinics/{id}`.
 - Primeira clínica: volta ao dashboard para sair do modo setup (só Clínicas).
 - `DropdownButtonFormField value` depreciado → `initialValue` ao tocar.
 - **Gerenciar troca de verdade**: `setClinic` + rebuild do dashboard na unidade (antes era só toast).
@@ -38,3 +38,5 @@ Nova clínica, renomear, trocar tipo dental/psicologia.
 - [[main-dashboard]] — seletor que troca sem sair da tela
 - [[session-multitenant]] — `setClinic` + isolamento
 - [[employee-manager]] — quem pode entrar em cada unidade
+
+- Excluir: a cascata inclui leads e projeção pública. Em clínica expirada/bloqueada, a exclusão completa pode falhar porque as Rules bloqueiam leitura/operações dessa clínica; necessário fluxo administrativo/servidor.
