@@ -44,6 +44,7 @@ class UserService {
           .collection('members').get();
 
       final professionals = workersSnapshot.docs
+          .where((doc) => doc.data()['status'] == 'Ativo')
           .map((doc) => UserModel.fromMap(doc.id, doc.data()))
           .toList();
 
@@ -72,13 +73,17 @@ class UserService {
       
       // 3. Lê somente a projeção pública mínima da clínica.
       final snapshot = await _clinics.doc(clinicId).collection('members').get();
-      List<Map<String, dynamic>> users = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final users = snapshot.docs
+          .where((doc) => doc.data()['status'] == 'Ativo')
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          })
+          .toList();
 
-      // 4. Filtra por tipo sem ler perfis completos de colegas.
+      // 4. Só profissionais ativos; aliases legados são normalizados pela
+      // ClinicCapabilities, sem leitura dos perfis completos dos colegas.
       return users.where((user) {
         final role = (user['role'] ?? '').toString();
         return _matchesClinicType(role, clinicType);
