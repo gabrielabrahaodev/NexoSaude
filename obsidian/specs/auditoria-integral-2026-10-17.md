@@ -33,7 +33,7 @@ Data: 2026-10-17. Base: commit anterior à auditoria `5fb7aaf`.
 
 ## Riscos que permanecem
 
-- **Cloudinary (parcialmente mitigado):** o app agora bloqueia novos uploads unsigned por padrão e não remove metadados quando a exclusão remota falha. URLs/arquivos antigos ainda podem ser acessados por quem conhece a URL, e a cascata de paciente não apaga o binário. Não reativar uploads até existir endpoint privado/autenticado de upload/delete ou Storage privado validado; inventariar e migrar os arquivos existentes.
+- **Cloudinary (parcialmente mitigado):** o app bloqueia uploads unsigned, mas isso NÃO desativa o preset unsigned no próprio Cloudinary; até desativá-lo/restringi-lo no painel, terceiros ainda podem enviar arquivos diretamente. O app também preserva metadata quando a exclusão remota falha. URLs/arquivos antigos podem continuar acessíveis por quem conhece a URL, e a cascata de paciente não apaga o binário. Não reativar uploads até existir endpoint privado/autenticado ou Storage privado validado; inventariar e migrar os arquivos existentes.
 - **Trial legado:** clínica sem `trialEndsAt` permanece ativa pelas Rules até backfill aprovado com data correta. Não inventar datas nem publicar fail-closed sem regularização.
 - **Rate limit/CAPTCHA:** leads, reset público e outros formulários precisam de backend para limite confiável.
 - **Exclusão de clínica bloqueada/expirada:** cascata pode falhar ao ler/apagar dados operacionais, pois `clinicScoped` bloqueia acesso operacional. Precisa de fluxo administrativo/servidor.
