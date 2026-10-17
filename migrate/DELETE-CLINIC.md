@@ -14,7 +14,7 @@ Use este procedimento apenas quando a cascata de exclusão dentro do sistema Web
 node migrate/delete-clinic.js --clinic ID_DA_CLINICA
 ```
 
-Revise o ID/nome e todas as contagens. O modo padrão é somente leitura.
+Revise o ID/nome e todas as contagens. O modo padrão é somente leitura. O preflight também varre `patients/{id}/docs` e lista metadados que apontam para binários do Cloudinary; o script interromperá o `--apply` antes de qualquer escrita se encontrar esses arquivos.
 
 ## 2. Exclusão efetiva
 
@@ -30,5 +30,5 @@ O ID deve aparecer duas vezes, exatamente igual. A operação desvincula contas 
 
 - A pré-verificação ocorre antes das escritas, mas a exclusão é composta por várias operações e pode ficar parcialmente concluída se houver falha de rede ou permissão IAM durante o processo. A rotina é idempotente para exclusões já realizadas; execute novamente o dry-run antes de qualquer repetição.
 - Solicitações de trial são mantidas como histórico.
-- Esta rotina não apaga binários do Cloudinary. A limpeza de arquivos remotos exige o fluxo administrativo próprio do provedor.
+- Esta rotina não apaga binários do Cloudinary. Se o preflight listar algum caminho `patients/{patientId}/docs/{documentId}`, remova primeiro esse arquivo usando `migrate/delete-cloudinary-document.js` em dry-run e depois `--apply --confirm-delete CLINICA/PACIENTE/DOCUMENTO`. Refaça o dry-run da clínica; a cascata só prossegue quando não houver mais metadados remotos.
 - Nunca rode esse script por rotina nem sem backup e revisão humana do relatório.
