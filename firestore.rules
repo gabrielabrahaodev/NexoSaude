@@ -718,6 +718,20 @@ service cloud.firestore {
       allow delete: if patientClinicOk(patientId);
     }
 
+    // Relacionamento operacional: se um registro informa patientId, o
+    // paciente pai precisa existir e pertencer à mesma clínica. Registros de
+    // pacientes não se auto-referenciam; campos ausentes/vazios seguem válidos
+    // para lançamentos da clínica que não pertencem a um paciente específico.
+    function _patientReferenceConsistent(collection, data) {
+      let patientId = data.get('patientId', '');
+      let clinicId = data.get('clinicId', '');
+      return collection == 'patients' ||
+        patientId == null || patientId == '' ||
+        (patientId is string && clinicId is string &&
+         exists(/databases/$(database)/documents/patients/$(patientId)) &&
+         get(/databases/$(database)/documents/patients/$(patientId)).data.get('clinicId', '') == clinicId);
+    }
+
     // F. DADOS OPERACIONAIS (escopo por clínica + clínica ativa; sem owner
     // global). Cura legados sem clinicId pelo campo novo no update/delete
     // (leitura de legado sem clínica = negada; base verificada com campo).
@@ -732,14 +746,16 @@ service cloud.firestore {
           (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
           clinicScoped(_docClinic(resource.data, request.resource.data)) &&
           resource.data.get('clinicId', '') ==
-            request.resource.data.get('clinicId', '');
+            request.resource.data.get('clinicId', '') &&
+          _patientReferenceConsistent(collection, request.resource.data);
       allow delete: if isAuthenticated() &&
           (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
           clinicScoped(resource.data.get('clinicId', ''));
 
       allow create: if isAuthenticated() &&
           (collection in ['patients', 'appointments', 'financial', 'treatments', 'treatment_plans', 'budgets', 'clinical_records', 'psychology_schedules']) &&
-          clinicScoped(request.resource.data.clinicId);
+          clinicScoped(request.resource.data.clinicId) &&
+          _patientReferenceConsistent(collection, request.resource.data);
     }
 
     // --- MÓDULO DE GESTÃO (escopo por clínica) ---
