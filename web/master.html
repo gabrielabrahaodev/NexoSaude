@@ -87,6 +87,44 @@
 
     let tab = 'owners';
 
+    // Dados vindos do Firestore nunca são interpolados em handlers JavaScript.
+    // IDs de documentos podem ser escolhidos pelo cliente e devem ser tratados
+    // como entrada não confiável mesmo quando normalmente são auto-gerados.
+    content.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button || !content.contains(button)) return;
+        const id = button.dataset.id || '';
+        switch (button.dataset.action) {
+            case 'whatsapp':
+                chamarZap(button.dataset.phone || '');
+                break;
+            case 'toggle-block':
+                toggleBlock(id, button.dataset.blocked === 'true');
+                break;
+            case 'generate-debit':
+                genDebit(id);
+                break;
+            case 'approve-trial':
+                aprovarPedido(id);
+                break;
+            case 'refuse-trial':
+                recusarPedido(id);
+                break;
+            case 'dismiss-reset':
+                dismissReset(id);
+                break;
+            case 'settle-debit': {
+                const amount = Number(button.dataset.amount);
+                if (Number.isFinite(amount) && amount >= 0) settle(id, amount);
+                else toast('Valor do débito inválido.');
+                break;
+            }
+            case 'dismiss-notice':
+                dismissNotice(id);
+                break;
+        }
+    });
+
     auth.onAuthStateChanged(async (user) => {
         if (!user) return loginView();
         content.innerHTML = '<div class="skel"></div>';
@@ -172,8 +210,8 @@
             html += '<div class="card"><div class="row"><div><div class="big">' + esc(m.name || '') + '</div>'
                 + '<div class="muted">' + esc(m.type || '') + ' • ' + n + ' usuário(s) • ' + tr.txt + '</div></div>'
                 + '<span class="pill ' + tr.cls + '">' + (tr.blocked || tr.over ? 'ATENÇÃO' : 'OK') + '</span></div>'
-                + '<div class="btn-row"><button class="btn-ghost" onclick="toggleBlock(\'' + c.id + '\',' + (!tr.blocked) + ')">' + (tr.blocked ? 'Liberar' : 'Bloquear') + '</button>'
-                + '<button class="btn-ghost" onclick="genDebit(\'' + c.id + '\')">Gerar mensalidade</button></div></div>';
+            html += '<div class="btn-row"><button class="btn-ghost" data-action="toggle-block" data-id="' + esc(c.id) + '" data-blocked="' + (!tr.blocked) + '">' + (tr.blocked ? 'Liberar' : 'Bloquear') + '</button>'
+                + '<button class="btn-ghost" data-action="generate-debit" data-id="' + esc(c.id) + '">Gerar mensalidade</button></div></div>';
         }
         body.innerHTML = html;
     }
@@ -197,12 +235,10 @@
                 + '<div class="muted">' + esc(m.email || '') + ' • ' + esc(m.whatsapp || '') + '<br>'
                 + esc(m.clinicName || '') + ' (' + esc(m.type || '') + ')</div>'
                 + '<div class="btn-row"><button class="btn-ghost" data-action="whatsapp" data-phone="' + esc(m.whatsapp || '') + '">WhatsApp</button>'
-                + '<button class="btn-ghost" onclick="aprovarPedido(\'' + r.id + '\')">Aprovar + criar</button>'
-                + '<button class="btn-ghost" onclick="recusarPedido(\'' + r.id + '\')">Recusar</button></div></div>';
+                + '<button class="btn-ghost" data-action="approve-trial" data-id="' + esc(r.id) + '">Aprovar + criar</button>'
+                + '<button class="btn-ghost" data-action="refuse-trial" data-id="' + esc(r.id) + '">Recusar</button></div></div>';
         });
         body.innerHTML = html;
-        body.querySelectorAll('[data-action="whatsapp"]').forEach((button) => {
-            button.addEventListener('click', () => chamarZap(button.dataset.phone || ''));
         });
     }
 
@@ -301,7 +337,7 @@
             const m = r.data();
             html += '<div class="card"><div class="big">' + esc(m.email || '') + '</div>'
                 + '<div class="muted">' + (m.clinicId ? 'clínica: ' + esc(m.clinicId) : 'login (sem clínica)') + '</div>'
-                + '<div class="btn-row"><button class="btn-ghost" onclick="dismissReset(\'' + r.id + '\')">Dispensar</button></div></div>';
+                + '<div class="btn-row"><button class="btn-ghost" data-action="dismiss-reset" data-id="' + esc(r.id) + '">Dispensar</button></div></div>';
         });
         body.innerHTML = html;
     }
@@ -423,8 +459,8 @@
                 + '<div class="muted">' + esc(m.ownerEmail || '') + ' • ' + (paid ? 'Pago' : 'Pendente') + (noticed && !paid ? ' • Avisei que paguei' : '') + '</div></div>'
                 + '<div class="big">' + BRL(m.amount) + '</div></div>';
             if (!paid) {
-                html += '<div class="btn-row"><button class="btn-ghost" onclick="settle(\'' + d.id + '\',' + Number(m.amount || 0) + ')">Dar baixa</button>';
-                if (noticed) html += '<button class="btn-ghost" onclick="dismissNotice(\'' + d.id + '\')">Dispensar aviso</button>';
+                html += '<div class="btn-row"><button class="btn-ghost" data-action="settle-debit" data-id="' + esc(d.id) + '" data-amount="' + Number(m.amount || 0) + '">Dar baixa</button>';
+                if (noticed) html += '<button class="btn-ghost" data-action="dismiss-notice" data-id="' + esc(d.id) + '">Dispensar aviso</button>';
                 html += '</div>';
             }
             html += '</div>';
@@ -458,7 +494,7 @@
             const over = t < new Date();
             html += '<div class="card"><div class="row"><div><div class="big">' + esc(m.name || '') + '</div>'
                 + '<div class="muted">' + (over ? 'trial expirado' : 'vence ' + fmtD(t)) + (m.blockedByAdmin === true ? ' • BLOQUEADA' : '') + '</div></div>'
-                + '<button class="btn-ghost" onclick="toggleBlock(\'' + c.id + '\',' + (m.blockedByAdmin !== true) + ')">' + (m.blockedByAdmin === true ? 'Liberar' : 'Bloquear') + '</button>'
+                + '<button class="btn-ghost" data-action="toggle-block" data-id="' + esc(c.id) + '" data-blocked="' + (m.blockedByAdmin !== true) + '">' + (m.blockedByAdmin === true ? 'Liberar' : 'Bloquear') + '</button>'
                 + '</div></div>';
         });
         body.innerHTML = html || '<div class="card"><p class="muted">Nenhum trial vencendo.</p></div>';
