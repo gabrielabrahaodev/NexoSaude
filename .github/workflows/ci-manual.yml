@@ -29,6 +29,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Test public HTML security regressions
+        run: node --test test/web_security.test.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
