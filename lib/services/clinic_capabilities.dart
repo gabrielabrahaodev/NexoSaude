@@ -31,9 +31,30 @@ class ClinicCapabilities {
   String get professionalRole => isPsychology ? 'psicologo' : 'dentista';
   String get professionalLabel => isPsychology ? 'Psicólogo' : 'Dentista';
 
+  /// Normaliza papéis antigos em inglês e português para evitar que
+  /// usuários legados desapareçam dos seletores de profissionais.
+  static String normalizeRole(String role) {
+    final value = role.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
+    switch (value) {
+      case 'dentist':
+      case 'dental_professional':
+        return 'dentista';
+      case 'psychologist':
+      case 'psychologist_therapist':
+      case 'psychoterapist':
+        return 'psicologo';
+      case 'receptionist':
+      case 'reception':
+        return 'recepcionista';
+      default:
+        return value;
+    }
+  }
+
   bool matchesProfessionalRole(String role) {
-    if (role == 'owner') return true;
-    return role == professionalRole;
+    final normalized = normalizeRole(role);
+    if (normalized == 'owner') return true;
+    return normalized == professionalRole;
   }
 
   /// Contagem exata das abas renderizadas em `patient_details_screen.dart`:
