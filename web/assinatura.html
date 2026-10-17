@@ -84,6 +84,7 @@
         if (action === 'toggle-pix') togglePix(id);
         if (action === 'copy-pix') copiarPix();
         if (action === 'avisar') avisar(id);
+        if (action === 'retry-trial') resubmitTrialRequest(id, button);
     });
 
     auth.onAuthStateChanged(async (user) => {
@@ -98,10 +99,19 @@
                 await auth.signOut();
                 return;
             }
+            if (role === 'owner' && (udata.status || '') === 'rejected') {
+                rejectedTrialView(user.uid, udata);
+                return;
+            }
             if ((udata.status || '') === 'pending_approval') {
                 content.innerHTML = '<div class="card"><div class="big">Cadastro em análise</div>'
                     + '<p class="muted">Recebemos seu pedido de teste. Retornamos no WhatsApp com a liberação e o link do sistema.</p>'
                     + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
+                return;
+            }
+            if (role !== 'superadmin' && (udata.status || '') !== 'Ativo') {
+                content.innerHTML = '<p class="err">Esta conta não está ativa. Entre em contato com o suporte.</p>';
+                await auth.signOut();
                 return;
             }
             await mainView(user.uid);
@@ -126,6 +136,65 @@
         try {
             await auth.signInWithEmailAndPassword(em, pw);
         } catch (e) { toast('Login inválido. Confira os dados.'); }
+    }
+
+    function rejectedTrialView(uid, profile) {
+        const name = profile.name || '';
+        const whatsapp = profile.whatsapp || profile.phone || '';
+        const email = auth.currentUser?.email || profile.email || '';
+        content.innerHTML = '<div class="card"><div class="big">Pedido não aprovado</div>'
+            + '<p class="muted">Sua conta foi preservada. Você pode enviar uma nova solicitação sem criar outro usuário.</p>'
+            + '<div class="muted">E-mail: ' + esc(email) + '</div>'
+            + '<input id="r-nome" value="' + esc(name) + '" placeholder="Seu nome">'
+            + '<input id="r-wa" type="tel" value="' + esc(whatsapp) + '" placeholder="WhatsApp (DDD+número)">'
+            + '<input id="r-clinica" placeholder="Nome da clínica">'
+            + '<select id="r-tipo"><option value="dental">Odontologia</option><option value="psychology">Psicologia</option><option value="multi">Multidisciplinar</option></select>'
+            + '<button class="btn-ok" data-action="retry-trial" data-id="' + esc(uid) + '">Solicitar nova análise</button>'
+            + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
+    }
+
+    async function resubmitTrialRequest(uid, button) {
+        const value = (id) => document.getElementById(id)?.value.trim() || '';
+        const name = value('r-nome');
+        const whatsapp = value('r-wa');
+        const clinicName = value('r-clinica');
+        const type = value('r-tipo');
+        const email = auth.currentUser?.email || '';
+        if (!auth.currentUser || auth.currentUser.uid !== uid) {
+            toast('Sessão inválida. Entre novamente.');
+            return;
+        }
+        if (name.length < 2 || name.length >= 100 ||
+            whatsapp.length < 8 || whatsapp.length >= 20 ||
+            email.length < 4 || email.length >= 100 ||
+            clinicName.length < 2 || clinicName.length >= 100 ||
+            !['dental', 'psychology', 'multi'].includes(type)) {
+            toast('Confira nome, WhatsApp e nome da clínica.');
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            const userRef = db.collection('users').doc(uid);
+            const requestRef = db.collection('trial_requests').doc();
+            const batch = db.batch();
+            batch.set(requestRef, {
+                nome, whatsapp, email, clinicName, type,
+                uid, status: 'solicitado', createdAt: new Date(),
+            });
+            batch.update(userRef, {
+                status: 'pending_approval',
+                updatedAt: new Date(),
+            });
+            await batch.commit();
+            content.innerHTML = '<div class="card"><div class="big">Nova solicitação enviada</div>'
+                + '<p class="muted">Seu pedido foi enviado para análise. A conta e o e-mail continuam os mesmos.</p>'
+                + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
+        } catch (e) {
+            console.error('Falha ao reenviar solicitação:', e);
+            toast('Não foi possível reenviar o pedido. Tente novamente.');
+            button.disabled = false;
+        }
     }
 
     function signupView() {
@@ -195,8 +264,16 @@
         const pixKey = (cfg && cfg.data().pixKey) || '';
         const staff = new Set();
         for (const cid of cids) {
-            const us = await db.collection('users').where('allowedClinics', 'array-contains', cid).get();
-            us.forEach((d) => { if ((d.data().role || '') !== 'owner') staff.add(d.id); });
+            // Owners não enumeram users. A contagem usa o diretório público
+            // mínimo da própria clínica, filtrando papéis e estados ativos.
+            const members = await db.collection('clinics').doc(cid)
+                .collection('members').get();
+            members.forEach((d) => {
+                const member = d.data() || {};
+                if ((member.role || '') !== 'owner' && member.status === 'Ativo') {
+                    staff.add(d.id);
+                }
+            });
         }
         const n = staff.size;
         const amount = n <= 0 ? 0 : base + extra * (n - 1);
