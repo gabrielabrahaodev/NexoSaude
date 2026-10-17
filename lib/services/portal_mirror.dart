@@ -276,6 +276,7 @@ class PortalMirrorSync {
     // Débitos sem corte de data (inadimplência antiga precisa aparecer),
     // teto 500 + flag de truncamento.
     final monthStart = DateTime(now.year, now.month - 1, 1);
+    setStage('consultar appointments da clínica $clinicId na janela de 14 dias');
     final appts = await _db
         .collection('appointments')
         .where('patientId', isEqualTo: patientId)
@@ -547,10 +548,26 @@ class PortalMirrorSync {
   }
 
   static Future<void> _ensureWindowUnsafe(String clinicId) async {
+    var stage = 'inicialização da janela';
+    try {
+      await _buildWindowUnsafe(clinicId, (value) => stage = value);
+    } catch (e, stack) {
+      Error.throwWithStackTrace(
+        StateError('etapa "$stage", clinicId="$clinicId": $e'),
+        stack,
+      );
+    }
+  }
+
+  static Future<void> _buildWindowUnsafe(
+    String clinicId,
+    void Function(String) setStage,
+  ) async {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 14));
     // Throttle: 1 leitura; se a janela foi construída há < 6h, não faz nada.
+    setStage('ler portal_slots/$clinicId');
     final slotsRef = _db.collection('portal_slots').doc(clinicId);
     final old = await slotsRef.get();
     final builtAt = (old.data()?['windowBuiltAt'] as Timestamp?)?.toDate();
@@ -560,6 +577,7 @@ class PortalMirrorSync {
     }
     final grade = await clinicGrade(clinicId);
     final clinicType = await clinicTypeOf(clinicId);
+    setStage('listar clinics/$clinicId/members');
     final members = await _db
         .collection('clinics')
         .doc(clinicId)
@@ -616,6 +634,7 @@ class PortalMirrorSync {
         prune[k] = FieldValue.delete();
       }
     }
+    setStage('gravar portal_slots/$clinicId');
     await slotsRef.set(
         {...data, ...prune, 'windowBuiltAt': Timestamp.fromDate(now)},
         SetOptions(merge: true));
