@@ -227,6 +227,22 @@ describe('matriz reavaliação P0/P1', () => {
     await assertFails(db.doc('financial/f1').update({ amount: 1 }));
   });
 
+  it('P1: portal limita escritas autenticadas ao espelho do token atual', async () => {
+    const owner = ctx('ownerA').firestore();
+    await assertSucceeds(owner.doc('portal/tok123').update({
+      clinicName: 'Clínica A atualizada',
+    }));
+    await assertFails(owner.doc('portal/tok123').update({
+      unexpectedField: 'not allowed',
+    }));
+    await assertFails(owner.doc('portal/tok123').update({
+      patientId: 'p2',
+    }));
+    await assertFails(owner.doc('portal/tok123').update({
+      clinicId: B,
+    }));
+  });
+
   it('P1: portal só lê espelho com token atual e consentimento aceito', async () => {
     const anon = ctx(null).firestore();
     await assertSucceeds(anon.doc('portal/tok123').get());
