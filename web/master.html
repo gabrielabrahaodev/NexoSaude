@@ -210,7 +210,7 @@
             html += '<div class="card"><div class="row"><div><div class="big">' + esc(m.name || '') + '</div>'
                 + '<div class="muted">' + esc(m.type || '') + ' • ' + n + ' usuário(s) • ' + tr.txt + '</div></div>'
                 + '<span class="pill ' + tr.cls + '">' + (tr.blocked || tr.over ? 'ATENÇÃO' : 'OK') + '</span></div>'
-            html += '<div class="btn-row"><button class="btn-ghost" data-action="toggle-block" data-id="' + esc(c.id) + '" data-blocked="' + (!tr.blocked) + '">' + (tr.blocked ? 'Liberar' : 'Bloquear') + '</button>'
+                + '<div class="btn-row"><button class="btn-ghost" data-action="toggle-block" data-id="' + esc(c.id) + '" data-blocked="' + (!tr.blocked) + '">' + (tr.blocked ? 'Liberar' : 'Bloquear') + '</button>'
                 + '<button class="btn-ghost" data-action="generate-debit" data-id="' + esc(c.id) + '">Gerar mensalidade</button></div></div>';
         }
         body.innerHTML = html;
@@ -237,9 +237,7 @@
                 + '<div class="btn-row"><button class="btn-ghost" data-action="whatsapp" data-phone="' + esc(m.whatsapp || '') + '">WhatsApp</button>'
                 + '<button class="btn-ghost" data-action="approve-trial" data-id="' + esc(r.id) + '">Aprovar + criar</button>'
                 + '<button class="btn-ghost" data-action="refuse-trial" data-id="' + esc(r.id) + '">Recusar</button></div></div>';
-        });
         body.innerHTML = html;
-        });
     }
 
     function chamarZap(phone) {
