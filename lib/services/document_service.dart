@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 import '../models/patient_document_model.dart';
 
 /// Resultado do upload: URL pública + identificadores para destroy remoto.
@@ -30,14 +28,11 @@ String? validateUpload({required String fileName, required int sizeBytes}) {
 class DocumentService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // --- CONFIGURAÇÃO CLOUDINARY ---
-  // Preencha com os dados do seu painel Cloudinary
-  final String cloudName = "dbbh601ay"; 
-  final String uploadPreset = "dbbh601ay"; 
-  // -------------------------------
-
-  // Upload Híbrido (Web e Mobile) para Cloudinary
-  // Retorna URL + public_id/resource_type (para destroy remoto depois)
+  /// Upload direto unsigned ao Cloudinary está desativado de propósito.
+  /// O preset/URL do Cloudinary fica visível no navegador, e não é seguro
+  /// para documentos clínicos sem endpoint assinado/autenticado no servidor.
+  /// Os registros antigos continuam legíveis pelos seus metadados; esta trava
+  /// só impede a criação de novos uploads públicos.
   Future<CloudUpload?> uploadFile({
     File? file,
     Uint8List? bytes,
@@ -49,52 +44,11 @@ class DocumentService {
     final blocked = validateUpload(fileName: fileName, sizeBytes: size);
     if (blocked != null) throw Exception(blocked);
 
-    var uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/auto/upload");
-    var request = http.MultipartRequest("POST", uri);
-
-    // Configurações obrigatórias
-    request.fields['upload_preset'] = uploadPreset;
-    request.fields['resource_type'] = "auto"; // Aceita imagem e pdf
-
-    // Anexa o arquivo
-    if (kIsWeb) {
-      if (bytes == null) throw Exception("Bytes obrigatórios na Web");
-      request.files.add(http.MultipartFile.fromBytes(
-        'file', 
-        bytes, 
-        filename: fileName
-      ));
-    } else {
-      if (file == null) throw Exception("Arquivo obrigatório no Mobile");
-      request.files.add(await http.MultipartFile.fromPath(
-        'file', 
-        file.path
-      ));
-    }
-
-    try {
-      var response = await request.send();
-      
-      if (response.statusCode == 200) {
-        var responseData = await response.stream.toBytes();
-        var responseString = String.fromCharCodes(responseData);
-        var jsonMap = jsonDecode(responseString);
-
-        // Retorna a URL segura + identificadores para destroy remoto
-        return (
-          url: '${jsonMap['secure_url']}',
-          publicId: jsonMap['public_id']?.toString(),
-          resourceType:
-              jsonMap['resource_type']?.toString() ?? 'image',
-        );
-      } else {
-        debugPrint("Erro Cloudinary: ${response.statusCode}");
-        return null;
-      }
-    } catch (e) {
-      debugPrint("Erro no upload: $e");
-      return null;
-    }
+    throw StateError(
+      'Upload temporariamente bloqueado por segurança. Documentos clínicos '
+      'precisam de um endpoint de upload autenticado/assinado; não envie '
+      'dados reais até essa integração ser configurada.',
+    );
   }
 
   // Salva os dados no Firestore (Igual ao anterior)
@@ -163,19 +117,34 @@ class DocumentService {
     String? publicId,
     String? resourceType,
   }) async {
-    if (clinicId != null) {
-      await deleteRemoteFile(
-        clinicId: clinicId,
-        publicId: publicId,
-        resourceType: resourceType ?? 'image',
-      );
-    }
-    await _db
+    final ref = _db
         .collection('patients')
         .doc(patientId)
         .collection('docs')
-        .doc(docId)
-        .delete();
+        .doc(docId);
+    final snapshot = await ref.get();
+    if (!snapshot.exists) return;
+    final data = snapshot.data() ?? <String, dynamic>{};
+    final storedUrl = '${data['url'] ?? ''}';
+    final storedPublicId = publicId ?? data['publicId']?.toString();
+    final isCloudinary = storedUrl.contains('cloudinary.com') ||
+        (storedPublicId ?? '').isNotEmpty;
+
+    if (isCloudinary) {
+      final removed = await deleteRemoteFile(
+        clinicId: clinicId ?? '',
+        publicId: storedPublicId,
+        resourceType: resourceType ?? data['resourceType']?.toString() ?? 'image',
+      );
+      if (!removed) {
+        throw StateError(
+          'O arquivo remoto ainda não foi apagado. Os metadados foram '
+          'preservados para não indicar uma exclusão que não ocorreu. '
+          'A remoção física precisa ser feita por um processo administrativo autenticado.',
+        );
+      }
+    }
+    await ref.delete();
   }
 
   Stream<List<PatientDocumentModel>> getDocs(String patientId, {String? categoryFilter}) {
