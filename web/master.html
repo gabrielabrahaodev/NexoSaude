@@ -349,16 +349,38 @@
         } catch (e) { toast('Falha. Tente de novo.'); }
     }
 
-    async function recusarPedido(rid) {        try {
-            const r = await db.collection('trial_requests').doc(rid).get();
-            const m = r.data() || {};
-            if (m.uid) {
-                try { await db.collection('users').doc(m.uid).delete(); } catch (e) {}
+    async function recusarPedido(rid) {
+        try {
+            const requestRef = db.collection('trial_requests').doc(rid);
+            const requestSnap = await requestRef.get();
+            if (!requestSnap.exists || requestSnap.data().status !== 'solicitado') {
+                toast('Este pedido já foi processado.');
+                return;
             }
-            await db.collection('trial_requests').doc(rid).update({status: 'recusado'});
-            toast('Pedido recusado.');
+            const m = requestSnap.data() || {};
+            const batch = db.batch();
+            if (m.uid) {
+                const ownerRef = db.collection('users').doc(m.uid);
+                const ownerSnap = await ownerRef.get();
+                const owner = ownerSnap.exists ? ownerSnap.data() || {} : {};
+                // Preserva a conta Auth: deixar só o e-mail existente sem
+                // perfil impediria nova solicitação com o mesmo endereço.
+                if (ownerSnap.exists &&
+                    owner.role === 'owner' &&
+                    owner.status === 'pending_approval' &&
+                    Array.isArray(owner.allowedClinics) &&
+                    owner.allowedClinics.length === 0) {
+                    batch.update(ownerRef, { status: 'rejected', updatedAt: new Date() });
+                }
+            }
+            batch.update(requestRef, { status: 'recusado' });
+            await batch.commit();
+            toast('Pedido recusado. A conta foi preservada e poderá solicitar nova análise.');
             loadTab();
-        } catch (e) { toast('Falha. Tente de novo.'); }
+        } catch (e) {
+            console.error('Falha ao recusar pedido:', e);
+            toast('Falha ao recusar. Confira o estado do pedido antes de repetir.');
+        }
     }
 
     async function genDebit(cid) {
