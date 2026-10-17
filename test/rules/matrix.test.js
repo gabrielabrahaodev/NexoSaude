@@ -185,6 +185,27 @@ describe('matriz reavaliação P0/P1', () => {
       .update({ updatedAt: new Date() }));
   });
 
+  it('P0: perfil e espelhos de novo funcionário são atômicos', async () => {
+    const owner = ctx('ownerA').firestore();
+    const batch = owner.batch();
+    const uid = 'newStaff';
+    const now = new Date();
+    batch.set(owner.doc('users/' + uid), {
+      name: 'Novo Funcionário', cpf: '123', email: 'new@example.test',
+      role: 'dentist', allowedClinics: [A], createdAt: now, status: 'Ativo',
+    });
+    batch.set(owner.doc('clinics/' + A + '/members/' + uid), {
+      uid, name: 'Novo Funcionário', role: 'dentist', status: 'Ativo',
+      createdAt: now, updatedAt: now,
+    });
+    batch.set(owner.doc('clinics/' + A + '/members_private/' + uid), {
+      uid, name: 'Novo Funcionário', email: 'new@example.test',
+      role: 'dentist', status: 'Ativo', phone: '', whatsapp: '', cpf: '123',
+      menuAccess: {}, allowedClinics: [A], createdAt: now, updatedAt: now,
+    });
+    await assertSucceeds(batch.commit());
+  });
+
   it('P0: espelho privado valida campos contra users e é restrito ao owner', async () => {
     const owner = ctx('ownerA').firestore();
     const privateRef = owner.doc('clinics/clinicA/members_private/staffA');
