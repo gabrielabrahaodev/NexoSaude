@@ -23,6 +23,9 @@ Branch de trabalho: `nova-audit`. Nenhum merge para `producao`, deploy ou escrit
 - **Provisionamento atômico:** cadastro de funcionário grava perfil e dois espelhos em um batch; conta Auth recém-criada é removida best-effort se o batch falhar. O Master provisiona owner, clínica, projeção pública e diretórios em batch; aprovar trial também é transacional no Firestore.
 - **Cadastros órfãos:** o cadastro genérico de funcionário foi removido do login Flutter; a tela encaminha para o fluxo público de teste. Novos logins Google não criam perfil pendente sem fila de aprovação.
 - **Papéis profissionais:** aliases legados em português/inglês são normalizados, e listas de profissionais excluem membros inativos.
+- **Trial rejeitado:** a recusa mantém a conta Auth e marca o perfil `rejected`; o proprietário pode reenviar uma solicitação com a mesma conta, sem recuperar acesso operacional. A página de assinatura consulta o diretório `members` para contagem, não enumera `users`.
+- **Tipos não implementados:** as Rules e formulários de trial aceitam apenas `dental` e `psychology`; `multi` foi removido porque não existe implementação funcional dessa capacidade.
+- **Cascatas com arquivos remotos:** exclusões de paciente e clínica abortam antes da primeira escrita se encontrarem metadados que apontem para arquivos Cloudinary; a documentação e o script administrativo explicam a limpeza individual.
 - **Cloudinary:** novos uploads unsigned ficam bloqueados no cliente; uma exclusão de documento cujo binário remoto não foi removido retorna erro e preserva a metadata. `migrate/delete-cloudinary-document.js` oferece limpeza individual, autenticada por credenciais de ambiente e com dry-run/dupla confirmação.
 - **Regressões:** foram adicionados testes estáticos para as páginas HTML e testes de Rules para espelhos atômicos, portal e referências de pacientes entre tenants.
 
