@@ -193,28 +193,27 @@ void main() {
     });
   });
 
-  group('isPortalProfessional (owner-psicólogo)', () {
-    test('papeis clínicos passam nos dois tipos', () {
-      for (final t in ['dental', 'psychology']) {
-        expect(isPortalProfessional(role: 'dentista', clinicType: t), isTrue);
-        expect(isPortalProfessional(role: 'psicologo', clinicType: t), isTrue);
-        expect(isPortalProfessional(role: 'Dentist', clinicType: t), isTrue);
-      }
+  group('isPortalProfessional (tipo de clínica)', () {
+    test('aceita aliases do papel correspondente à clínica', () {
+      expect(isPortalProfessional(role: 'dentista', clinicType: 'dental'), isTrue);
+      expect(isPortalProfessional(role: 'Dentist', clinicType: 'dental'), isTrue);
+      expect(isPortalProfessional(role: 'psicologo', clinicType: 'psychology'), isTrue);
+      expect(isPortalProfessional(role: 'Psychologist', clinicType: 'psychology'), isTrue);
+    });
+
+    test('não mistura papéis clínicos entre tipos de clínica', () {
+      expect(isPortalProfessional(role: 'dentista', clinicType: 'psychology'), isFalse);
+      expect(isPortalProfessional(role: 'psicologo', clinicType: 'dental'), isFalse);
     });
 
     test('owner entra só na psicologia', () {
-      expect(
-          isPortalProfessional(role: 'owner', clinicType: 'psychology'),
-          isTrue);
-      expect(isPortalProfessional(role: 'owner', clinicType: 'dental'),
-          isFalse);
+      expect(isPortalProfessional(role: 'owner', clinicType: 'psychology'), isTrue);
+      expect(isPortalProfessional(role: 'owner', clinicType: 'dental'), isFalse);
     });
 
     test('recepção e afins nunca entram', () {
       for (final t in ['dental', 'psychology']) {
-        expect(
-            isPortalProfessional(role: 'receptionist', clinicType: t),
-            isFalse);
+        expect(isPortalProfessional(role: 'receptionist', clinicType: t), isFalse);
         expect(isPortalProfessional(role: 'owner ', clinicType: t), isFalse);
       }
     });
@@ -224,15 +223,16 @@ void main() {
     test('usa o diretório público e considera apenas profissionais ativos', () {
       final ids = portalProfessionalIdsFromMembers(
         members: {
-          'dentistaA': {'status': 'Ativo', 'role': 'dentista'},
-          'dentistaInativo': {'status': 'Desativado', 'role': 'dentista'},
+          'psicologoA': {'status': 'Ativo', 'role': 'psychologist'},
+          'psicologoInativo': {'status': 'Desativado', 'role': 'psicologo'},
+          'dentista': {'status': 'Ativo', 'role': 'dentista'},
           'recepcao': {'status': 'Ativo', 'role': 'recepcionista'},
           'ownerPsico': {'status': 'Ativo', 'role': 'owner'},
         },
         clinicType: 'psychology',
       );
 
-      expect(ids, ['dentistaA', 'ownerPsico']);
+      expect(ids, ['ownerPsico', 'psicologoA']);
     });
 
     test('owner não entra como profissional em clínica odontológica', () {
