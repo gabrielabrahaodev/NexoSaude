@@ -263,7 +263,7 @@
                 + '<div id="pix-' + esc(x.id) + '" style="display:none;">'
                 + '<div class="pixbox">'
                 + (mirror.pixKey
-                    ? '<div style="display:flex;justify-content:center;margin-bottom:8px"><div id="qr-' + x.id + '"></div></div>'
+                    ? '<div style="display:flex;justify-content:center;margin-bottom:8px"><div id="qr-' + esc(x.id) + '"></div></div>'
                       + '<div class="pixkey" id="code-' + esc(x.id) + '"></div>'
                       + '<div class="actions"><button class="btn-ghost" data-action="copiar-pix" data-id="' + esc(x.id) + '">Copiar código</button></div>'
                     : '<p style="font-size:13px;color:var(--mut);margin:0">Pix não cadastrado. Fale com a recepção.</p>')
