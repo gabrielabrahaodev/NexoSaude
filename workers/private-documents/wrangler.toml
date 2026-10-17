@@ -1,0 +1,13 @@
+name = "nexosaude-private-documents"
+main = "src/index.js"
+compatibility_date = "2026-10-17"
+workers_dev = true
+
+[vars]
+FIREBASE_PROJECT_ID = "nexosaude"
+# Configure com a(s) origem(ns) EXATA(S) do Hosting; sem barra no final.
+ALLOWED_ORIGINS = "https://nexosaude.web.app,https://nexosaude.firebaseapp.com"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "nexosaude-private-documents"
