@@ -221,14 +221,15 @@
         window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent('Olá! Aqui é do NexoSaúde sobre seu teste grátis.'), '_blank', 'noopener,noreferrer');
     }
 
-    async function writeOwnerMemberMirrors(clinicId, uid, user) {
-        const createdAt = user.createdAt || new Date();
+    function writeOwnerMemberMirrors(batch, clinicId, uid, user) {
+        const createdAt = user.createdAt || user.created_at || new Date();
+        const clinicRef = db.collection('clinics').doc(clinicId);
         const common = {
             uid: uid, name: user.name || '', role: user.role || 'owner',
             status: user.status || 'Ativo', createdAt: createdAt, updatedAt: new Date()
         };
-        await db.collection('clinics').doc(clinicId).collection('members').doc(uid).set(common);
-        await db.collection('clinics').doc(clinicId).collection('members_private').doc(uid).set({
+        batch.set(clinicRef.collection('members').doc(uid), common);
+        batch.set(clinicRef.collection('members_private').doc(uid), {
             ...common,
             email: user.email || '', phone: user.phone || '', whatsapp: user.whatsapp || '',
             cpf: user.cpf || '',
@@ -240,30 +241,53 @@
 
     async function aprovarPedido(rid) {
         try {
-            const r = await db.collection('trial_requests').doc(rid).get();
-            const m = r.data() || {};
-            if (!m.uid) { toast('Pedido sem uid. Crie pelo Novo owner.'); return; }
+            const requestRef = db.collection('trial_requests').doc(rid);
+            const requestSnap = await requestRef.get();
+            if (!requestSnap.exists) { toast('Pedido não encontrado.'); return; }
+            const m = requestSnap.data() || {};
+            if (m.status !== 'solicitado' || !m.uid) {
+                toast('Este pedido já foi processado ou não tem uid válido.');
+                return;
+            }
+            const ownerRef = db.collection('users').doc(m.uid);
+            const ownerSnap = await ownerRef.get();
+            if (!ownerSnap.exists) { toast('Perfil do proprietário não encontrado.'); return; }
+            const owner = ownerSnap.data() || {};
+            if (owner.role !== 'owner' || owner.status !== 'pending_approval' ||
+                (Array.isArray(owner.allowedClinics) && owner.allowedClinics.length > 0)) {
+                toast('O perfil não está no estado esperado para aprovação.');
+                return;
+            }
+
             const clinicRef = db.collection('clinics').doc();
-            await clinicRef.set({
-                name: m.clinicName || 'Clínica', type: m.type || 'dental',
-                ownerId: m.uid, createdAt: new Date(),
+            const clinicName = m.clinicName || 'Clínica';
+            const now = new Date();
+            const clinic = {
+                name: clinicName, type: ['dental', 'psychology'].includes(m.type) ? m.type : 'dental',
+                ownerId: m.uid, createdAt: now,
                 trialEndsAt: new Date(Date.now() + 7 * 86400000), blockedByAdmin: false,
+            };
+            const batch = db.batch();
+            batch.set(clinicRef, clinic);
+            batch.set(db.collection('public_clinics').doc(clinicRef.id), {
+                name: clinicName, whatsappNumber: m.whatsapp || '',
+                updatedAt: now,
             });
-            // Projeção pública p/ avaliação online (P1: todo onboarding cria).
-            await db.collection('public_clinics').doc(clinicRef.id).set({
-                name: m.clinicName || 'Clínica', whatsappNumber: m.whatsapp || '',
-                updatedAt: new Date(),
+            batch.update(ownerRef, {allowedClinics: [clinicRef.id], status: 'Ativo'});
+            writeOwnerMemberMirrors(batch, clinicRef.id, m.uid, {
+                ...owner,
+                name: owner.name || m.nome || '',
+                role: 'owner', status: 'Ativo',
+                allowedClinics: [clinicRef.id],
             });
-            await db.collection('users').doc(m.uid).update({
-                allowedClinics: [clinicRef.id], status: 'Ativo',
-            });
-            const ownerUserSnap = await db.collection('users').doc(m.uid).get();
-            const ownerUser = ownerUserSnap.data() || {};
-            await writeOwnerMemberMirrors(clinicRef.id, m.uid, ownerUser);
-            await db.collection('trial_requests').doc(rid).update({status: 'aprovado', clinicId: clinicRef.id});
+            batch.update(requestRef, {status: 'aprovado', clinicId: clinicRef.id});
+            await batch.commit();
             toast('Trial liberado por 7 dias.');
             loadTab();
-        } catch (e) { toast('Falha. Tente de novo.'); }
+        } catch (e) {
+            console.error('Falha ao aprovar pedido:', e);
+            toast('Falha ao aprovar. Confira o estado do pedido antes de repetir.');
+        }
     }
 
     // Fila GLOBAL de resets (pedidos do login, sem clinicId): SÓ Master vê.
@@ -343,32 +367,43 @@
         const btn = document.getElementById('n-btn');
         btn.disabled = true;
         let secondary = null;
+        let createdAuthUser = null;
+        let provisioned = false;
         try {
             secondary = firebase.initializeApp(firebaseConfig, 'MasterRegister');
             const cred = await secondary.auth().createUserWithEmailAndPassword(v('n-email'), v('n-senha'));
+            createdAuthUser = cred.user;
             const uid = cred.user.uid;
             const clinicRef = db.collection('clinics').doc();
-            await clinicRef.set({
-                name: v('n-clinica'), type: document.getElementById('n-tipo').value,
-                ownerId: uid, createdAt: new Date(),
+            const now = new Date();
+            const clinicName = v('n-clinica');
+            const type = ['dental', 'psychology'].includes(document.getElementById('n-tipo').value)
+                ? document.getElementById('n-tipo').value : 'dental';
+            const batch = db.batch();
+            batch.set(clinicRef, {
+                name: clinicName, type: type,
+                ownerId: uid, createdAt: now,
                 trialEndsAt: new Date(Date.now() + 7 * 86400000), blockedByAdmin: false,
             });
-            await db.collection('public_clinics').doc(clinicRef.id).set({
-                name: v('n-clinica'), whatsappNumber: '',
-                updatedAt: new Date(),
+            batch.set(db.collection('public_clinics').doc(clinicRef.id), {
+                name: clinicName, whatsappNumber: '', updatedAt: now,
             });
-            await db.collection('users').doc(uid).set({
+            const ownerData = {
                 email: v('n-email'), name: v('n-nome'), role: 'owner',
-                allowedClinics: [clinicRef.id], status: 'Ativo', createdAt: new Date(),
-            });
-            await writeOwnerMemberMirrors(clinicRef.id, uid, {
-                name: v('n-nome'), email: v('n-email'), role: 'owner',
-                status: 'Ativo', phone: '', whatsapp: '', cpf: '', menuAccess: {},
-                allowedClinics: [clinicRef.id], createdAt: new Date()
-            });
-            toast('Owner + clínica criados (trial 7 dias).')
+                allowedClinics: [clinicRef.id], status: 'Ativo', createdAt: now,
+                phone: '', whatsapp: '', cpf: '', menuAccess: {},
+            };
+            batch.set(db.collection('users').doc(uid), ownerData);
+            writeOwnerMemberMirrors(batch, clinicRef.id, uid, ownerData);
+            await batch.commit();
+            provisioned = true;
+            toast('Owner + clínica criados (trial 7 dias).');
             goTab('owners');
         } catch (e) {
+            if (!provisioned && createdAuthUser) {
+                try { await createdAuthUser.delete(); } catch (_) {}
+            }
+            console.error('Falha ao provisionar owner:', e);
             toast(e.code === 'auth/email-already-in-use' ? 'E-mail já em uso.' : 'Falha. Tente de novo.');
             btn.disabled = false;
         } finally {
