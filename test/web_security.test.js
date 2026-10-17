@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const master = fs.readFileSync(path.join(root, 'web', 'master.html'), 'utf8');
 const portal = fs.readFileSync(path.join(root, 'web', 'portal.html'), 'utf8');
+const assinatura = fs.readFileSync(path.join(root, 'web', 'assinatura.html'), 'utf8');
 
 test('Master não insere WhatsApp de solicitante em JavaScript inline', () => {
   assert.match(master, /data-action="whatsapp"/);
@@ -27,4 +28,14 @@ test('Portal escapa texto e atributos de dados vindos do Firestore', () => {
   assert.match(portal, /id="qr-' \+ esc\(x\.id\)/);
   assert.match(portal, /id="tg-' \+ esc\(id\)/);
   assert.match(portal, /id="cf-' \+ esc\(id\)/);
+});
+
+test('Página de assinatura não usa IDs dinâmicos em handlers inline', () => {
+  assert.match(assinatura, /data-action="toggle-pix"/);
+  assert.match(assinatura, /data-action="avisar"/);
+  assert.match(assinatura, /content\.addEventListener\('click'/);
+  assert.doesNotMatch(assinatura, /onclick="togglePix\(/);
+  assert.doesNotMatch(assinatura, /onclick="avisar\(/);
+  assert.doesNotMatch(assinatura, /onclick="copiarPix\(/);
+  assert.match(assinatura, /replace\(\/&\/g, '&amp;'\)/);
 });
