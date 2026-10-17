@@ -36,6 +36,10 @@ async function seed(admin) {
     role: 'recepcionista', name: 'Pending', allowedClinics: [A], status: 'pending_approval',
     email: 'p@x',
   });
+  await db.doc(`users/rejectedOwner`).set({
+    role: 'owner', name: 'Rejected Owner', allowedClinics: [],
+    status: 'rejected', email: 'rejected@x',
+  });
   await db.doc(`users/ownerB`).set({
     role: 'owner', name: 'Owner B', allowedClinics: [B], status: 'Ativo', email: 'o@x',
   });
@@ -136,6 +140,24 @@ describe('matriz reavaliação P0/P1', () => {
     const db = ctx('ownerA').firestore();
     await assertSucceeds(
       db.doc('users/staffA').update({ status: 'Ativo' }));
+  });
+
+  it('P1: dono recusado só pode reenviar o próprio pedido sem ganhar acesso', async () => {
+    const rejected = ctx('rejectedOwner').firestore();
+    const ref = rejected.doc('users/rejectedOwner');
+
+    await assertFails(ref.update({ status: 'Ativo' }));
+    await assertFails(ref.update({
+      status: 'pending_approval',
+      allowedClinics: [A],
+    }));
+    await assertFails(ref.update({ role: 'superadmin', status: 'pending_approval' }));
+    await assertSucceeds(ref.update({
+      status: 'pending_approval',
+      updatedAt: new Date(),
+    }));
+    await assertFails(ref.update({ status: 'Ativo' }));
+    await assertFails(ref.update({ allowedClinics: [A] }));
   });
 
   it('P0: users não pode ser enumerado; diretório de membros é por clínica', async () => {
