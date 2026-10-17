@@ -579,7 +579,8 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'patientId', 'clinicId', 'clinicName', 'sessions', 'debts',
           'debtsTotal', 'debtsCount', 'debtsTruncated', 'pixKey',
-          'propostasRecusadas', 'updatedAt'
+          'propostasRecusadas', 'updatedAt', 'statusSessao',
+          'pedidoRemarcacao', 'avisoPagamento'
         ]) &&
         data.get('patientId', '') is string &&
         data.get('clinicId', '') is string &&
@@ -599,6 +600,11 @@ service cloud.firestore {
       allow get: if _portalTokenCurrent(token);
       allow create: if isAuthenticated() &&
           clinicScoped(request.resource.data.get('clinicId', '')) &&
+          request.resource.data.keys().hasOnly([
+            'patientId', 'clinicId', 'clinicName', 'sessions', 'debts',
+            'debtsTotal', 'debtsCount', 'debtsTruncated', 'pixKey',
+            'propostasRecusadas', 'updatedAt'
+          ]) &&
           _portalStaffFieldsOnly(request.resource.data) &&
           _portalTokenSourceMatches(token, request.resource.data);
       allow delete: if isAuthenticated() &&
