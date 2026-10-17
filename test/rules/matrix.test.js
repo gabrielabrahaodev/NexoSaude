@@ -308,6 +308,19 @@ describe('matriz reavaliação P0/P1', () => {
     await assertSucceeds(anon.doc('portal/tok123').update({
       avisoPagamento: { ids: ['f1'], at: new Date() },
     }));
+    await assertFails(anon.doc('portal/tok123').update({
+      avisoPagamento: { ids: ['f1'], at: new Date(), html: '<img src=x onerror=alert(1)>' },
+    }));
+    await assertFails(anon.doc('portal/tok123').update({
+      pedidoRemarcacao: { sessaoId: { nested: 'not-an-id' }, novaData: 'tomorrow' },
+      updatedAt: new Date(),
+    }));
+    const oversizedStatus = Object.fromEntries(
+      Array.from({ length: 101 }, (_, i) => ['session-' + i, 'Confirmado']));
+    await assertFails(anon.doc('portal/tok123').update({
+      statusSessao: oversizedStatus,
+      updatedAt: new Date(),
+    }));
     await assertFails(anon.doc('portal/oldTok').update({
       avisoPagamento: { ids: ['f1'], at: new Date() },
     }));
