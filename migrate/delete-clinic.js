@@ -91,6 +91,24 @@ async function runLimited(items, limit, operation) {
     ]);
 
   const patientIds = patientsSnap.docs.map((d) => d.id);
+
+  // Não apagar patients/{id}/docs enquanto existir binário remoto no
+  // Cloudinary: a metadata é necessária para um destroy autenticado posterior.
+  const cloudinaryDocuments = [];
+  await runLimited(patientsSnap.docs, 8, async (patientDoc) => {
+    const docsSnap = await patientDoc.ref.collection('docs').get();
+    for (const doc of docsSnap.docs) {
+      const data = doc.data() || {};
+      if (String(data.url || '').includes('cloudinary.com') ||
+          String(data.publicId || '').length > 0) {
+        cloudinaryDocuments.push(
+          'patients/' + patientDoc.id + '/docs/' + doc.id,
+        );
+      }
+    }
+  });
+  cloudinaryDocuments.sort();
+
   const portalTokens = new Set(
     portalByClinicSnap.docs.map((d) => d.id),
   );
@@ -103,6 +121,7 @@ async function runLimited(items, limit, operation) {
     clinic: 1,
     patients: patientsSnap.size,
     usersToUnlink: usersSnap.size,
+    cloudinaryLegacyFiles: cloudinaryDocuments.length,
     portalMirrors: portalTokens.size,
     publicClinic: (await db.collection('public_clinics').doc(clinicId).get()).exists ? 1 : 0,
     portalSlots: (await db.collection('portal_slots').doc(clinicId).get()).exists ? 1 : 0,
@@ -122,12 +141,28 @@ async function runLimited(items, limit, operation) {
   console.log('Anamneses a verificar: ' + patientIds.length);
   console.log('Subcoleções de pacientes: docs/clinical_data serão removidas recursivamente.');
   console.log('Subcoleções da clínica: members/members_private/settings serão removidas recursivamente.');
+  if (cloudinaryDocuments.length > 0) {
+    console.log('Arquivos Cloudinary que precisam ser removidos antes da cascata:');
+    for (const path of cloudinaryDocuments.slice(0, 100)) console.log('  ' + path);
+    if (cloudinaryDocuments.length > 100) {
+      console.log('  ... mais ' + (cloudinaryDocuments.length - 100) + ' caminho(s) omitidos');
+    }
+  }
 
   if (!APPLY) {
     console.log('');
     console.log('DRY-RUN: nenhum dado foi alterado.');
     console.log('Revise a clínica e os volumes antes de aplicar.');
     return;
+  }
+
+  if (cloudinaryDocuments.length > 0) {
+    throw new Error(
+      'Exclusão interrompida antes de qualquer escrita: existem ' +
+      cloudinaryDocuments.length + ' arquivo(s) legado(s) no Cloudinary. ' +
+      'Remova cada binário pelo migrate/delete-cloudinary-document.js e rode ' +
+      'novamente o DRY-RUN antes de repetir a exclusão.',
+    );
   }
 
   // 1. Desvincular usuários sem apagar contas nem logins.
