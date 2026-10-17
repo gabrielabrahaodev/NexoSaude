@@ -33,6 +33,24 @@ void main() {
       expect(caps.matchesProfessionalRole('psicologo'), isFalse);
     });
 
+    test('normaliza aliases legados de papéis', () {
+      expect(ClinicCapabilities.normalizeRole(' Dentist '), 'dentista');
+      expect(ClinicCapabilities.normalizeRole('receptionist'), 'recepcionista');
+      expect(ClinicCapabilities.normalizeRole('Psychologist'), 'psicologo');
+      expect(
+        ClinicCapabilities('dental').matchesProfessionalRole('Dentist'),
+        isTrue,
+      );
+      expect(
+        ClinicCapabilities('psychology').matchesProfessionalRole('psychologist'),
+        isTrue,
+      );
+      expect(
+        ClinicCapabilities('dental').matchesProfessionalRole('psychologist'),
+        isFalse,
+      );
+    });
+
     test('tipo desconhecido/nulo cai em dental', () {
       expect(ClinicCapabilities.ofType(null).isDental, isTrue);
       expect(ClinicCapabilities.ofType('fisio').patientTabCount, 9); // cai em dental: todas as abas
