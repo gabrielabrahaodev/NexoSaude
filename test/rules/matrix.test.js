@@ -57,8 +57,12 @@ async function seed(admin) {
     [B, 'staffB', 'recepcionista', 'Ativo', 'b@x', 'Staff B'],
   ]) {
     await db.doc(`clinics/${clinicId}/members/${uid}`).set({
-      uid, name, email, role, status, allowedClinics: [clinicId],
-      createdAt: new Date(),
+      uid, name, role, status, createdAt: new Date(), updatedAt: new Date(),
+    });
+    await db.doc(`clinics/${clinicId}/members_private/${uid}`).set({
+      uid, name, email, role, status, phone: '', whatsapp: '', cpf: '',
+      menuAccess: {}, allowedClinics: [clinicId],
+      createdAt: new Date(), updatedAt: new Date(),
     });
   }
   await db.doc(`patients/p1`).set({
@@ -139,27 +143,56 @@ describe('matriz reavaliação P0/P1', () => {
       .where('allowedClinics', 'array-contains', A).get());
     await assertSucceeds(ctx('root').firestore().collection('users').get());
     await assertFails(staff.doc('users/staffB').get());
+    await assertFails(staff.doc('users/ownerA').get());
+    await assertFails(staff.doc('users/pendingU').get());
     await assertSucceeds(staff.doc('users/staffA').get());
-    await assertSucceeds(staff.collection('clinics').doc(A)
-      .collection('members').get());
+    await assertSucceeds(ctx('ownerA').firestore().doc('users/staffA').get());
+
+    const publicMembers = staff.collection('clinics').doc(A).collection('members');
+    await assertSucceeds(publicMembers.get());
+    const publicMember = await assertSucceeds(publicMembers.doc('staffA').get());
+    for (const field of ['email', 'phone', 'whatsapp', 'cpf', 'menuAccess', 'allowedClinics']) {
+      assert.equal(Object.prototype.hasOwnProperty.call(publicMember.data(), field), false,
+        'o diretório público não deve conter ' + field);
+    }
+
+    const privateMembers = staff.collection('clinics').doc(A).collection('members_private');
+    await assertFails(privateMembers.get());
+    await assertFails(privateMembers.doc('staffA').get());
+    const ownerPrivate = ctx('ownerA').firestore()
+      .collection('clinics').doc(A).collection('members_private');
+    await assertSucceeds(ownerPrivate.get());
+    await assertSucceeds(ownerPrivate.doc('staffA').get());
+
     await assertFails(ctx('staffB').firestore().collection('clinics')
       .doc(A).collection('members').get());
     await assertFails(ctx(null).firestore().collection('clinics')
       .doc(A).collection('members').get());
   });
 
-  it('P0: só owner escreve espelho coerente com users/{uid}', async () => {
+  it('P0: espelho público é mínimo e coerente com users/{uid}', async () => {
     const owner = ctx('ownerA').firestore();
     await assertSucceeds(owner.doc('clinics/clinicA/members/staffA')
       .update({ updatedAt: new Date() }));
+    await assertFails(owner.doc('clinics/clinicA/members/staffA')
+      .update({ email: 'leak@example.test' }));
     await assertFails(owner.doc('clinics/clinicA/members/ghost').set({
-      uid: 'ghost', name: 'Ghost', email: 'ghost@x',
-      role: 'recepcionista', status: 'Ativo', allowedClinics: [A],
-      phone: '', whatsapp: '', cpf: '', menuAccess: {},
+      uid: 'ghost', name: 'Ghost', role: 'recepcionista', status: 'Ativo',
       createdAt: new Date(), updatedAt: new Date(),
     }));
     await assertFails(owner.doc('clinics/clinicA/members/staffB')
       .update({ updatedAt: new Date() }));
+  });
+
+  it('P0: espelho privado valida campos contra users e é restrito ao owner', async () => {
+    const owner = ctx('ownerA').firestore();
+    const privateRef = owner.doc('clinics/clinicA/members_private/staffA');
+    await assertSucceeds(privateRef.update({ updatedAt: new Date() }));
+    await assertFails(privateRef.update({ cpf: '12345678900' }));
+    await assertFails(ctx('staffA').firestore()
+      .doc('clinics/clinicA/members_private/staffA').get());
+    await assertFails(ctx('staffA').firestore()
+      .doc('clinics/clinicA/members_private/staffA').update({ cpf: 'x' }));
   });
 
   it('P0: clinics não é enumerável entre tenants', async () => {

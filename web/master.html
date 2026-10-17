@@ -202,6 +202,23 @@
         window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent('Olá! Aqui é do NexoSaúde sobre seu teste grátis.'), '_blank');
     }
 
+    async function writeOwnerMemberMirrors(clinicId, uid, user) {
+        const createdAt = user.createdAt || new Date();
+        const common = {
+            uid: uid, name: user.name || '', role: user.role || 'owner',
+            status: user.status || 'Ativo', createdAt: createdAt, updatedAt: new Date()
+        };
+        await db.collection('clinics').doc(clinicId).collection('members').doc(uid).set(common);
+        await db.collection('clinics').doc(clinicId).collection('members_private').doc(uid).set({
+            ...common,
+            email: user.email || '', phone: user.phone || '', whatsapp: user.whatsapp || '',
+            cpf: user.cpf || '',
+            menuAccess: user.menuAccess && typeof user.menuAccess === 'object' && !Array.isArray(user.menuAccess)
+                ? user.menuAccess : {},
+            allowedClinics: [clinicId]
+        });
+    }
+
     async function aprovarPedido(rid) {
         try {
             const r = await db.collection('trial_requests').doc(rid).get();
@@ -223,14 +240,7 @@
             });
             const ownerUserSnap = await db.collection('users').doc(m.uid).get();
             const ownerUser = ownerUserSnap.data() || {};
-            await db.collection('clinics').doc(clinicRef.id).collection('members').doc(m.uid).set({
-                uid: m.uid, name: ownerUser.name || '', email: ownerUser.email || '',
-                role: ownerUser.role || 'owner', status: ownerUser.status || 'Ativo',
-                phone: ownerUser.phone || '', whatsapp: ownerUser.whatsapp || '',
-                cpf: ownerUser.cpf || '', menuAccess: ownerUser.menuAccess || {},
-                allowedClinics: [clinicRef.id], createdAt: ownerUser.createdAt || new Date(),
-                updatedAt: new Date(),
-            });
+            await writeOwnerMemberMirrors(clinicRef.id, m.uid, ownerUser);
             await db.collection('trial_requests').doc(rid).update({status: 'aprovado', clinicId: clinicRef.id});
             toast('Trial liberado por 7 dias.');
             loadTab();
@@ -332,10 +342,10 @@
                 email: v('n-email'), name: v('n-nome'), role: 'owner',
                 allowedClinics: [clinicRef.id], status: 'Ativo', createdAt: new Date(),
             });
-            await db.collection('clinics').doc(clinicRef.id).collection('members').doc(uid).set({
-                uid, name: v('n-nome'), email: v('n-email'), role: 'owner',
+            await writeOwnerMemberMirrors(clinicRef.id, uid, {
+                name: v('n-nome'), email: v('n-email'), role: 'owner',
                 status: 'Ativo', phone: '', whatsapp: '', cpf: '', menuAccess: {},
-                allowedClinics: [clinicRef.id], createdAt: new Date(), updatedAt: new Date(),
+                allowedClinics: [clinicRef.id], createdAt: new Date()
             });
             toast('Owner + clínica criados (trial 7 dias).')
             goTab('owners');

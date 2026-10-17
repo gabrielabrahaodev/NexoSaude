@@ -33,8 +33,22 @@ class ClinicMemberDirectory {
     final localAllowed = ownedClinics.docs
         .map((doc) => doc.id).where(allowed.contains).toSet().toList()..sort();
 
-    await _db.collection('clinics').doc(clinicId)
-        .collection('members').doc(uid).set({
+    final createdAt = user['createdAt'] ?? FieldValue.serverTimestamp();
+    final clinicRef = _db.collection('clinics').doc(clinicId);
+    final menuAccess = user['menuAccess'] is Map
+        ? user['menuAccess']
+        : <String, dynamic>{};
+    final batch = _db.batch();
+
+    batch.set(clinicRef.collection('members').doc(uid), {
+      'uid': uid,
+      'name': user['name'] ?? '',
+      'role': user['role'] ?? '',
+      'status': user['status'] ?? '',
+      'createdAt': createdAt,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    batch.set(clinicRef.collection('members_private').doc(uid), {
       'uid': uid,
       'name': user['name'] ?? '',
       'email': user['email'] ?? '',
@@ -43,10 +57,11 @@ class ClinicMemberDirectory {
       'phone': user['phone'] ?? '',
       'whatsapp': user['whatsapp'] ?? '',
       'cpf': user['cpf'] ?? '',
-      'menuAccess': user['menuAccess'] is Map ? user['menuAccess'] : <String, dynamic>{},
+      'menuAccess': menuAccess,
       'allowedClinics': localAllowed,
-      'createdAt': user['createdAt'] ?? FieldValue.serverTimestamp(),
+      'createdAt': createdAt,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await batch.commit();
   }
 }

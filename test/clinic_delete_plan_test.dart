@@ -107,6 +107,8 @@ void main() {
           isTrue);
       expect(docs, contains('clinics/$clinic'));
       expect(docs, contains('portal_slots/$clinic'));
+      expect(subcollections, contains('clinics/$clinic/members'));
+      expect(subcollections, contains('clinics/$clinic/members_private'));
     });
 
     test('clinica vazia nao gera plano', () {

@@ -22,15 +22,11 @@ class UserService {
       
   final CollectionReference<Map<String, dynamic>> _clinics = FirebaseFirestore.instance.collection('clinics');
 
-  Future<({String type, String? ownerId})> _getClinicInfo(
-      String clinicId) async {
+  Future<({String type})> _getClinicInfo(String clinicId) async {
     final doc = await _clinics.doc(clinicId).get();
-    if (!doc.exists) return (type: 'dental', ownerId: null);
+    if (!doc.exists) return (type: 'dental');
     final data = doc.data() as Map<String, dynamic>?;
-    return (
-      type: data?['type']?.toString() ?? 'dental',
-      ownerId: data?['ownerId']?.toString(),
-    );
+    return (type: data?['type']?.toString() ?? 'dental');
   }
 
   bool _matchesClinicType(String role, String clinicType) {
@@ -50,14 +46,6 @@ class UserService {
       final professionals = workersSnapshot.docs
           .map((doc) => UserModel.fromMap(doc.id, doc.data()))
           .toList();
-
-      // Adiciona o owner da clínica se não estiver na lista
-      if (info.ownerId != null && !professionals.any((p) => p.id == info.ownerId)) {
-        final ownerDoc = await _users.doc(info.ownerId!).get();
-        if (ownerDoc.exists) {
-          professionals.add(UserModel.fromMap(ownerDoc.id, ownerDoc.data()!));
-        }
-      }
 
       // Filtra por tipo de clínica
       return professionals.where((u) => _matchesClinicType(u.role, info.type)).toList();
@@ -81,30 +69,16 @@ class UserService {
 
       final clinicData = clinicDoc.data() as Map<String, dynamic>?;
       final clinicType = clinicData?['type'] ?? 'dental';
-      final ownerId = clinicData?['ownerId'];
       
-      // 3. Query base por allowedClinics
-      Query<Map<String, dynamic>> query =
-          _clinics.doc(clinicId).collection('members');
-
-      final snapshot = await query.get();
+      // 3. Lê somente a projeção pública mínima da clínica.
+      final snapshot = await _clinics.doc(clinicId).collection('members').get();
       List<Map<String, dynamic>> users = snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
 
-      // 4. Adiciona owner se não estiver na lista
-      if (ownerId != null && !users.any((u) => u['id'] == ownerId)) {
-        final ownerDoc = await _users.doc(ownerId).get();
-        if (ownerDoc.exists) {
-          final data = ownerDoc.data()!;
-          data['id'] = ownerDoc.id;
-          users.add(data);
-        }
-      }
-
-      // 5. Filtra por tipo de clínica
+      // 4. Filtra por tipo sem ler perfis completos de colegas.
       return users.where((user) {
         final role = (user['role'] ?? '').toString();
         return _matchesClinicType(role, clinicType);
@@ -117,7 +91,7 @@ class UserService {
   Stream<List<Map<String, dynamic>>> watchClinicUsers(String clinicId) {
     if (clinicId.isEmpty) return Stream.value([]);
     return _clinics.doc(clinicId)
-        .collection('members')
+        .collection('members_private')
         .snapshots()
         .map((snap) => snap.docs.map((doc) {
               final data = doc.data();

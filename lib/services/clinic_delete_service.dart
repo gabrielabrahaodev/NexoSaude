@@ -76,6 +76,8 @@ class ClinicDeleteStep {
           return true;
         }
         if (p.startsWith('clinics/$clinicId/settings/') ||
+            p == 'clinics/$clinicId/members' ||
+            p == 'clinics/$clinicId/members_private' ||
             p == 'public_clinics/$clinicId/leads') return true;
         // Pacientes e derivados: só ids comprovados da clínica.
         final m = RegExp(r'^(?:patients|anamnesis)/([^/]+)').firstMatch(p);
@@ -126,6 +128,9 @@ List<ClinicDeleteStep> clinicDeletePlan(
     ClinicDeleteStep.doc('clinics/$clinicId/settings/fees'),
     ClinicDeleteStep.doc('clinics/$clinicId/settings/integrations'),
     ClinicDeleteStep.doc('portal_slots/$clinicId'),
+    // Ambos os diretórios são removidos antes do documento da clínica.
+    ClinicDeleteStep.subcollection('clinics/$clinicId/members'),
+    ClinicDeleteStep.subcollection('clinics/$clinicId/members_private'),
     ClinicDeleteStep.doc('clinics/$clinicId'),
     // Staff: remove o vínculo; o doc do usuário (e o login) é mantido.
     ClinicDeleteStep.arrayRemove('users', 'allowedClinics', clinicId),

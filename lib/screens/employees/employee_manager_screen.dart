@@ -306,13 +306,15 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
       final mergedAllowed = <String>{...external, ...selected}.toList();
       await userRef.update({'allowedClinics': mergedAllowed});
       for (final clinicId in ownedIds) {
-        final memberRef = db.collection('clinics').doc(clinicId)
-            .collection('members').doc(uid);
+        final clinicRef = db.collection('clinics').doc(clinicId);
+        final memberRef = clinicRef.collection('members').doc(uid);
+        final privateMemberRef = clinicRef.collection('members_private').doc(uid);
         if (selected.contains(clinicId)) {
           await ClinicMemberDirectory.syncUserForClinic(
               uid: uid, clinicId: clinicId);
         } else {
           try { await memberRef.delete(); } catch (_) {}
+          try { await privateMemberRef.delete(); } catch (_) {}
         }
       }
       if (mounted) toast(context, "Clínicas de $name atualizadas.", ok: true);
@@ -574,7 +576,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
               child: StreamBuilder<QuerySnapshot>(
                 // Diretório de equipe restrito à clínica atual.
                 stream: FirebaseFirestore.instance.collection('clinics')
-                    .doc(currentClinic).collection('members')
+                    .doc(currentClinic).collection('members_private')
                     .orderBy('createdAt', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
