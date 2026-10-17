@@ -31,6 +31,35 @@ jobs:
           node-version: 20
       - name: Test public HTML security regressions
         run: node --test test/web_security.test.js
+      - name: Check inline JavaScript syntax in HTML pages
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+          import tempfile
+
+          out = Path(tempfile.mkdtemp(prefix="nexosaude-html-js-"))
+          checked = 0
+          for html_path in sorted(Path("web").glob("*.html")):
+              source = html_path.read_text(encoding="utf-8-sig")
+              for index, match in enumerate(re.finditer(
+                  r"<script\\b([^>]*)>([\\s\\S]*?)</script\\s*>",
+                  source,
+                  re.IGNORECASE,
+              )):
+                  attrs, script = match.group(1), match.group(2)
+                  if not script.strip():
+                      continue
+                  suffix = ".mjs" if re.search(r"type=[\\\"']module[\\\"']", attrs, re.I) else ".js"
+                  js_path = out / f"{html_path.stem}-{index}{suffix}"
+                  js_path.write_text(script, encoding="utf-8")
+                  subprocess.run(["node", "--check", str(js_path)], check=True)
+                  checked += 1
+          if checked == 0:
+              raise SystemExit("Nenhum script inline foi validado.")
+          print(f"JavaScript inline validado: {checked} script(s).")
+          PY
       - name: Check guarded administrative script syntax
         run: |
           node --check migrate/delete-clinic.js
