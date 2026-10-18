@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:odonto_controle/services/clinic_delete_service.dart';
 import 'package:odonto_controle/services/menu_access.dart';
 
@@ -117,6 +118,59 @@ void main() {
 
     test('clinica vazia nao gera plano', () {
       expect(() => clinicDeletePlan('', patients), throwsArgumentError);
+    });
+  });
+
+  group('clinicDeleteBlockReason', () {
+    final now = DateTime(2026, 10, 17, 12);
+
+    test('permite clínica ativa com trial futuro', () {
+      expect(
+        clinicDeleteBlockReason({
+          'blockedByAdmin': false,
+          'trialEndsAt': Timestamp.fromDate(now.add(const Duration(days: 7))),
+        }, now: now),
+        isNull,
+      );
+    });
+
+    test('bloqueia clínica bloqueada administrativamente', () {
+      expect(
+        clinicDeleteBlockReason({
+          'blockedByAdmin': true,
+          'trialEndsAt': Timestamp.fromDate(now.add(const Duration(days: 7))),
+        }, now: now),
+        contains('bloqueada'),
+      );
+    });
+
+    test('bloqueia trial expirado ou igual ao instante atual', () {
+      for (final date in [now.subtract(const Duration(seconds: 1)), now]) {
+        expect(
+          clinicDeleteBlockReason({
+            'blockedByAdmin': false,
+            'trialEndsAt': Timestamp.fromDate(date),
+          }, now: now),
+          contains('expirada'),
+        );
+      }
+    });
+
+    test('bloqueia formato inválido, sem fazer operações remotas', () {
+      expect(
+        clinicDeleteBlockReason({
+          'blockedByAdmin': false,
+          'trialEndsAt': 'ontem',
+        }, now: now),
+        isNotNull,
+      );
+    });
+
+    test('trial ausente continua permitido para legados e clínicas de teste', () {
+      expect(
+        clinicDeleteBlockReason({'blockedByAdmin': false}, now: now),
+        isNull,
+      );
     });
   });
 
