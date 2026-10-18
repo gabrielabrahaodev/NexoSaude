@@ -8,6 +8,17 @@ const LEGACY_TRIALLESS_TEST_CLINIC_IDS = new Set([
   "MxftREXD5vjKtE7SyJIH",
   "VlFVjTlNX8yqijeHyczt",
 ]);
+
+// Igual à política das Rules/Flutter: só os IDs de teste explícitos podem
+// não ter trialEndsAt. Exposta para que o comportamento seja testado.
+export function isClinicTrialActive(clinicId, clinic, nowMs = Date.now()) {
+  if (!clinic || clinic.blockedByAdmin === true) return false;
+  const trialEndsAt = clinic.trialEndsAt;
+  if (trialEndsAt == null) return LEGACY_TRIALLESS_TEST_CLINIC_IDS.has(clinicId);
+  return trialEndsAt instanceof Date &&
+    Number.isFinite(trialEndsAt.getTime()) &&
+    trialEndsAt.getTime() > nowMs;
+}
 const ALLOWED_CONTENT_TYPES = new Set([
   "application/pdf",
   "image/jpeg",
@@ -225,16 +236,8 @@ async function authorizePatient(token, uid, clinicId, patientId, env) {
       !(role === "owner" && clinic.ownerId === uid)) {
     throw new ApiError(403, "Sem acesso à clínica informada.");
   }
-  if (!isSuperAdmin) {
-    const trialEndsAt = clinic.trialEndsAt;
-    const trialMissingAllowed =
-      trialEndsAt == null && LEGACY_TRIALLESS_TEST_CLINIC_IDS.has(clinicId);
-    const trialInvalidOrExpired = trialEndsAt == null
-      ? !trialMissingAllowed
-      : !(trialEndsAt instanceof Date) || trialEndsAt.getTime() <= Date.now();
-    if (clinic.blockedByAdmin === true || trialInvalidOrExpired) {
-      throw new ApiError(403, "A clínica está bloqueada ou sem uma data de trial válida/ativa.");
-    }
+  if (!isSuperAdmin && !isClinicTrialActive(clinicId, clinic)) {
+    throw new ApiError(403, "A clínica está bloqueada ou sem uma data de trial válida/ativa.");
   }
 
   const patient = await readFirestoreDocument(token, "patients/" + patientId, env);
