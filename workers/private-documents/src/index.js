@@ -209,6 +209,248 @@ async function readFirestoreDocument(token, path, env) {
   return decodeFirestoreFields(document.fields || {});
 }
 
+
+let cachedServiceToken = null;
+let cachedServiceTokenExpiresAt = 0;
+
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function base64UrlJson(value) {
+  return bytesToBase64Url(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+function privateKeyBytesFromPem(pem) {
+  const normalized = String(pem || "").replace(/\\n/g, "\n").trim();
+  const match = /-----BEGIN PRIVATE KEY-----([\s\S]+?)-----END PRIVATE KEY-----/.exec(normalized);
+  if (!match) throw new ApiError(503, "O endpoint seguro de solicitações ainda não foi configurado.");
+  const binary = atob(match[1].replace(/\s/g, ""));
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+async function googleServiceAccessToken(env) {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedServiceToken && cachedServiceTokenExpiresAt > now + 60) {
+    return cachedServiceToken;
+  }
+  const email = String(env.FIRESTORE_SERVICE_ACCOUNT_EMAIL || "").trim();
+  const privateKeyPem = String(env.FIRESTORE_SERVICE_ACCOUNT_PRIVATE_KEY || "");
+  if (!email || !privateKeyPem) {
+    throw new ApiError(503, "O endpoint seguro de solicitações ainda não foi configurado.");
+  }
+  try {
+    const key = await crypto.subtle.importKey(
+      "pkcs8",
+      privateKeyBytesFromPem(privateKeyPem),
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const header = base64UrlJson({ alg: "RS256", typ: "JWT" });
+    const claims = base64UrlJson({
+      iss: email,
+      scope: "https://www.googleapis.com/auth/datastore",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: now,
+      exp: now + 3600,
+    });
+    const unsigned = header + "." + claims;
+    const signature = new Uint8Array(await crypto.subtle.sign(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      new TextEncoder().encode(unsigned),
+    ));
+    const assertion = unsigned + "." + bytesToBase64Url(signature);
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion,
+      }),
+    });
+    if (!response.ok) throw new ApiError(503, "Não foi possível iniciar a operação segura no banco.");
+    const payload = await response.json();
+    if (typeof payload.access_token !== "string" || !Number.isFinite(payload.expires_in)) {
+      throw new ApiError(503, "O banco não retornou uma credencial de serviço válida.");
+    }
+    cachedServiceToken = payload.access_token;
+    cachedServiceTokenExpiresAt = now + payload.expires_in;
+    return cachedServiceToken;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(503, "Não foi possível iniciar a operação segura no banco.");
+  }
+}
+
+function adminDocumentName(env, path) {
+  const projectId = env.FIREBASE_PROJECT_ID || "nexosaude";
+  return "projects/" + projectId + "/databases/(default)/documents/" + path;
+}
+
+async function readAdminFirestoreDocument(env, path) {
+  const token = await googleServiceAccessToken(env);
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const projectId = env.FIREBASE_PROJECT_ID || "nexosaude";
+  const response = await fetch(
+    "https://firestore.googleapis.com/v1/projects/" + projectId +
+      "/databases/(default)/documents/" + encodedPath,
+    { headers: { Authorization: "Bearer " + token, Accept: "application/json" } },
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) throw new ApiError(503, "Não foi possível consultar a conta para a solicitação.");
+  const document = await response.json();
+  return {
+    data: decodeFirestoreFields(document.fields || {}),
+    name: document.name,
+    updateTime: document.updateTime,
+  };
+}
+
+async function commitAdminFirestoreWrites(env, writes) {
+  const token = await googleServiceAccessToken(env);
+  const projectId = env.FIREBASE_PROJECT_ID || "nexosaude";
+  const response = await fetch(
+    "https://firestore.googleapis.com/v1/projects/" + projectId +
+      "/databases/(default)/documents:commit",
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ writes }),
+    },
+  );
+  if (!response.ok) {
+    if (response.status === 409 || response.status === 400) {
+      throw new ApiError(409, "A solicitação mudou durante o envio. Atualize a página e confira o status.");
+    }
+    throw new ApiError(503, "Não foi possível registrar a solicitação segura.");
+  }
+  return response.json();
+}
+
+export function validateTrialRequestPayload(payload, profile) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new ApiError(400, "Dados da solicitação inválidos.");
+  }
+  const name = typeof payload.name === "string" ? payload.name.trim() : "";
+  const whatsapp = typeof payload.whatsapp === "string" ? payload.whatsapp.trim() : "";
+  const clinicName = typeof payload.clinicName === "string" ? payload.clinicName.trim() : "";
+  const type = payload.type;
+  const email = typeof profile?.email === "string" ? profile.email.trim() : "";
+  const hasControl = (value) => /[\u0000-\u001f\u007f]/.test(value);
+  const at = email.indexOf("@");
+  const emailDomain = at >= 0 ? email.slice(at + 1) : "";
+
+  if (name.length < 2 || name.length >= 100 || hasControl(name) ||
+      clinicName.length < 2 || clinicName.length >= 100 || hasControl(clinicName)) {
+    throw new ApiError(400, "Nome e clínica devem ter entre 2 e 99 caracteres.");
+  }
+  const digits = [...whatsapp].filter((ch) => ch >= "0" && ch <= "9").length;
+  if (whatsapp.length < 8 || whatsapp.length >= 20 ||
+      [...whatsapp].some((ch) => !"+0123456789() .-".includes(ch)) || digits < 8) {
+    throw new ApiError(400, "Informe um WhatsApp válido com DDD.");
+  }
+  if (email.length < 4 || email.length >= 100 || hasControl(email) ||
+      at <= 0 || at !== email.lastIndexOf("@") || email.includes(" ") ||
+      !emailDomain.includes(".") || emailDomain.startsWith(".") || emailDomain.endsWith(".")) {
+    throw new ApiError(400, "A conta não possui um e-mail válido.");
+  }
+  if (!["dental", "psychology"].includes(type)) {
+    throw new ApiError(400, "Tipo de clínica inválido.");
+  }
+  return { name, whatsapp, email, clinicName, type };
+}
+
+export async function enforceTrialRequestIpLimit(env, clientIp) {
+  await enforceRateLimit(
+    env, "TRIAL_REQUEST_IP_RATE_LIMITER",
+    String(clientIp || "unavailable").slice(0, 128),
+    "Muitas solicitações deste endereço. Tente novamente mais tarde.",
+  );
+}
+
+export async function enforceTrialRequestUserLimit(env, uid) {
+  await enforceRateLimit(
+    env, "TRIAL_REQUEST_USER_RATE_LIMITER",
+    String(uid) + ":trial-request",
+    "Você enviou solicitações demais. Tente novamente em um minuto.",
+  );
+}
+
+async function handleTrialRequest(request, env) {
+  const clientIp = String(request.headers.get("CF-Connecting-IP") || "unavailable").slice(0, 128);
+  await enforceTrialRequestIpLimit(env, clientIp);
+  const { uid } = await authenticatedRequest(request, env);
+  await enforceTrialRequestUserLimit(env, uid);
+
+  const declaredLength = Number(request.headers.get("Content-Length") || "0");
+  if (declaredLength > 8192) throw new ApiError(413, "Solicitação muito grande.");
+  let body;
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).length > 8192) throw new ApiError(413, "Solicitação muito grande.");
+    body = JSON.parse(raw);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(400, "JSON da solicitação inválido.");
+  }
+
+  const userDocument = await readAdminFirestoreDocument(env, "users/" + uid);
+  if (!userDocument) throw new ApiError(403, "A conta ainda não foi provisionada.");
+  const profile = userDocument.data || {};
+  const status = String(profile.status || "");
+  const allowedClinics = Array.isArray(profile.allowedClinics) ? profile.allowedClinics : [];
+  if (profile.role !== "owner" || allowedClinics.length !== 0 ||
+      !["pending_approval", "rejected"].includes(status)) {
+    throw new ApiError(403, "Esta conta não pode enviar um pedido de teste grátis.");
+  }
+  if (status === "pending_approval" && profile.trialRequestId) {
+    throw new ApiError(409, "Já existe uma solicitação em análise para esta conta.");
+  }
+  if (!userDocument.updateTime || !userDocument.name) {
+    throw new ApiError(503, "Não foi possível validar o estado da conta.");
+  }
+
+  const fields = validateTrialRequestPayload(body, profile);
+  const requestId = crypto.randomUUID().replaceAll("-", "");
+  const now = new Date();
+  const requestPath = "trial_requests/" + requestId;
+  const writes = [
+    {
+      update: {
+        name: adminDocumentName(env, requestPath),
+        fields: encodeFirestoreFields({
+          nome: fields.name, whatsapp: fields.whatsapp, email: fields.email,
+          clinicName: fields.clinicName, type: fields.type, uid,
+          status: "solicitado", createdAt: now,
+        }),
+      },
+      currentDocument: { exists: false },
+    },
+    {
+      update: {
+        name: userDocument.name,
+        fields: encodeFirestoreFields({
+          name: fields.name, whatsapp: fields.whatsapp,
+          status: "pending_approval", updatedAt: now, trialRequestId: requestId,
+        }),
+      },
+      updateMask: { fieldPaths: ["name", "whatsapp", "status", "updatedAt", "trialRequestId"] },
+      currentDocument: { updateTime: userDocument.updateTime },
+    },
+  ];
+  await commitAdminFirestoreWrites(env, writes);
+  return { ok: true, requestId };
+}
+
+
 function validDocumentId(value) {
   return typeof value === "string" &&
     value.length > 0 &&
@@ -549,6 +791,9 @@ export default {
     }
 
     try {
+      if (url.pathname === "/v1/trial/request" && request.method === "POST") {
+        return jsonResponse(await handleTrialRequest(request, env), 201, cors.headers);
+      }
       if (url.pathname === "/v1/files/content" && request.method === "GET") {
         return await handleContent(request, url, env, cors.headers);
       }

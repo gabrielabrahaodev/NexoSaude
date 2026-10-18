@@ -66,6 +66,7 @@ jobs:
           node --check migrate/delete-cloudinary-document.js
           node --check migrate/cloudinary-inventory.js
           node --check migrate/cloudinary-inventory-core.js
+          node --check migrate/remote-document-classification.js
           node --check workers/private-documents/src/index.js
           node --check workers/private-documents/src/validation.js
       - uses: actions/setup-java@v4

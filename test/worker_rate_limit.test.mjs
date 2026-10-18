@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   enforceRateLimit,
+  enforceTrialRequestIpLimit,
+  enforceTrialRequestUserLimit,
   isClinicTrialActive,
+  validateTrialRequestPayload,
 } from '../workers/private-documents/src/index.js';
 
 test('rate limiter permite requisição quando binding retorna success', async () => {
@@ -62,4 +65,50 @@ test('trial futuro é aceito e trial expirado/bloqueado/inválido é negado', ()
   assert.equal(isClinicTrialActive('clinicA', {
     blockedByAdmin: false, trialEndsAt: 'not-a-timestamp',
   }, now), false);
+});
+
+test('endpoint de trial valida o payload no servidor', () => {
+  const valid = {
+    name: 'Maria Souza',
+    whatsapp: '+55 (11) 99999-9999',
+    clinicName: 'Clinica Central',
+    type: 'dental',
+  };
+  assert.deepEqual(validateTrialRequestPayload(valid, { email: 'maria@example.com' }), {
+    name: 'Maria Souza',
+    whatsapp: '+55 (11) 99999-9999',
+    email: 'maria@example.com',
+    clinicName: 'Clinica Central',
+    type: 'dental',
+  });
+  assert.throws(
+    () => validateTrialRequestPayload({ ...valid, whatsapp: '11999999999" onclick="x' }, { email: 'maria@example.com' }),
+    /WhatsApp válido/,
+  );
+  assert.throws(
+    () => validateTrialRequestPayload({ ...valid, clinicName: '<script>alert(1)</script>' }, { email: 'maria@example.com' }),
+    /Nome e clínica/,
+  );
+  assert.throws(
+    () => validateTrialRequestPayload({ ...valid, type: 'multi' }, { email: 'maria@example.com' }),
+    /Tipo de clínica inválido/,
+  );
+  assert.throws(
+    () => validateTrialRequestPayload(valid, { email: 'not-an-email' }),
+    /e-mail válido/,
+  );
+});
+
+test('rate limits do pedido de trial usam bindings separados por IP e UID', async () => {
+  const observed = [];
+  const env = {
+    TRIAL_REQUEST_IP_RATE_LIMITER: { limit: async ({ key }) => { observed.push(['ip', key]); return { success: true }; } },
+    TRIAL_REQUEST_USER_RATE_LIMITER: { limit: async ({ key }) => { observed.push(['uid', key]); return { success: true }; } },
+  };
+  await enforceTrialRequestIpLimit(env, '203.0.113.10');
+  await enforceTrialRequestUserLimit(env, 'owner-1');
+  assert.deepEqual(observed, [
+    ['ip', '203.0.113.10'],
+    ['uid', 'owner-1:trial-request'],
+  ]);
 });
