@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 import '../models/patient_document_model.dart';
@@ -93,6 +92,8 @@ class DocumentService {
     required String fileName,
     required String clinicId,
     required String patientId,
+    required String category,
+    required String uploaderName,
   }) async {
     final content = bytes ?? (file != null ? await file.readAsBytes() : null);
     if (content == null) throw StateError('Não foi possível ler o arquivo.');
@@ -108,6 +109,9 @@ class DocumentService {
       }),
     );
     request.headers['Authorization'] = 'Bearer $token';
+    request.fields['title'] = fileName;
+    request.fields['category'] = category;
+    request.fields['uploaderName'] = uploaderName;
     request.files.add(
       http.MultipartFile.fromBytes('file', content, filename: fileName),
     );
