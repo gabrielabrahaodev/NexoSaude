@@ -52,3 +52,25 @@ test('Pedidos públicos de trial passam pelo Worker com ID token, nunca direto p
   assert.doesNotMatch(assinatura, /collection\('trial_requests'\)\.add\(/);
   assert.doesNotMatch(assinatura, /batch\.set\(requestRef/);
 });
+
+
+const deployScript = fs.readFileSync(path.join(root, 'deploy.bat'), 'utf8');
+
+test('Deploy interrompe quando build ou Hosting falha e preserva páginas públicas', () => {
+  assert.match(
+    deployScript,
+    /call flutter build web[\\s\\S]*?if errorlevel 1 exit \\/b 1/,
+  );
+  assert.match(
+    deployScript,
+    /call firebase deploy --only hosting --project=nexosaude\\r?\\nif errorlevel 1 \\([\\s\\S]*?exit \\/b 1[\\s\\S]*?\\)\\r?\\n\\r?\\necho --- SUCESSO! SITE ATUALIZADO ---/,
+  );
+  assert.match(
+    deployScript,
+    /if exist sistema-interno\\\\assinatura\\.html move sistema-interno\\\\assinatura\\.html \\./,
+  );
+  assert.match(
+    deployScript,
+    /if exist sistema-interno\\\\worker-config\\.js move sistema-interno\\\\worker-config\\.js \\./,
+  );
+});
