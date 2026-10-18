@@ -379,7 +379,7 @@ describe('matriz reavaliação P0/P1', () => {
     await assertSucceeds(root.collection('patients').add({ clinicId: B }));
   });
 
-  it('P1-3b: clínica sem trial só opera se for uma das duas clínicas de teste', async () => {
+  it('P1-3b: clínica sem trial só opera se for uma das duas clínicas de teste; tipo inválido nega', async () => {
     const testClinicIds = [
       'MxftREXD5vjKtE7SyJIH',
       'VlFVjTlNX8yqijeHyczt',
@@ -393,6 +393,12 @@ describe('matriz reavaliação P0/P1', () => {
           blockedByAdmin: false,
         });
       }
+      await admin.doc('clinics/clinicInvalidTrial').set({
+        name: 'clinicInvalidTrial',
+        ownerId: 'ownerA',
+        blockedByAdmin: false,
+        trialEndsAt: '2099-01-01T00:00:00.000Z',
+      });
     });
     const owner = ctx('ownerA').firestore();
     for (const clinicId of testClinicIds) {
@@ -400,6 +406,9 @@ describe('matriz reavaliação P0/P1', () => {
     }
     await assertFails(
       owner.collection('patients').add({ clinicId: 'clinicMissingTrial' }),
+    );
+    await assertFails(
+      owner.collection('patients').add({ clinicId: 'clinicInvalidTrial' }),
     );
   });
 
