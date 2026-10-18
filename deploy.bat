@@ -3,7 +3,13 @@ echo --- 0. CARIMBANDO VERSAO DO PWA ---
 powershell -ExecutionPolicy Bypass -File tool\bump_version.ps1
 echo --- 1. LIMPANDO E GERANDO BUILD ---
 call flutter clean
-call flutter build web --base-href "/sistema-interno/"
+if "%PRIVATE_FILES_API_URL%"=="" (
+  echo AVISO: PRIVATE_FILES_API_URL nao definido; upload privado permanece bloqueado.
+  call flutter build web --base-href "/sistema-interno/"
+) else (
+  call flutter build web --base-href "/sistema-interno/" --dart-define=PRIVATE_FILES_API_URL=%PRIVATE_FILES_API_URL%
+)
+if errorlevel 1 exit /b 1
 
 echo --- 2. ORGANIZANDO PASTAS DE SEGURANCA ---
 cd build\web
