@@ -49,8 +49,9 @@ if exist version.json move version.json sistema-interno
 if exist sistema-interno\confirmar.html move sistema-interno\confirmar.html .
 if exist sistema-interno\anamnese.html move sistema-interno\anamnese.html .
 if exist sistema-interno\logo.png move sistema-interno\logo.png .
+if exist sistema-interno\assinatura.html move sistema-interno\assinatura.html .
 if exist sistema-interno\worker-config.js move sistema-interno\worker-config.js .
-if exist sistema-interno\master.html move sistema-interno\master.html
+if exist sistema-interno\master.html move sistema-interno\master.html .
 
 :: LANDING NA RAIZ: vira o index.html de nexosaude.web.app/
 :: (portal.html e demais páginas públicas PERMANECEM em /sistema-interno/)
