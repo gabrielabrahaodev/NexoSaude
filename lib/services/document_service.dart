@@ -19,15 +19,20 @@ typedef CloudUpload = ({
 const String _privateFilesApiUrl =
     String.fromEnvironment('PRIVATE_FILES_API_URL');
 
-bool requiresRemoteCloudinaryCleanup(Map<String, dynamic> metadata) {
-  final url = '${metadata['url'] ?? ''}';
-  final publicId = '${metadata['publicId'] ?? ''}';
-  final resourceType = '${metadata['resourceType'] ?? ''}';
+bool requiresRemoteStorageCleanup(Map<String, dynamic> metadata) {
+  final url = '${metadata['url'] ?? ''}'.trim().toLowerCase();
+  final publicId = '${metadata['publicId'] ?? ''}'.trim();
+  final resourceType = '${metadata['resourceType'] ?? ''}'.trim().toLowerCase();
   return url.contains('cloudinary.com') ||
       url.startsWith('r2://') ||
       publicId.isNotEmpty ||
       resourceType == 'r2';
 }
+
+/// Mantido como alias de compatibilidade para os chamadores legados.
+@Deprecated('Use requiresRemoteStorageCleanup')
+bool requiresRemoteCloudinaryCleanup(Map<String, dynamic> metadata) =>
+    requiresRemoteStorageCleanup(metadata);
 
 String? validateUpload({required String fileName, required int sizeBytes}) {
   const maxBytes = 10 * 1024 * 1024;
@@ -228,7 +233,7 @@ class DocumentService {
     required String clinicId,
     required List<Map<String, dynamic>> docs,
   }) async {
-    final withRemote = docs.where(requiresRemoteCloudinaryCleanup).length;
+    final withRemote = docs.where(requiresRemoteStorageCleanup).length;
     if (withRemote > 0) {
       throw StateError(
         'Exclusão cancelada: há $withRemote arquivo(s) em armazenamento remoto. '
@@ -257,7 +262,7 @@ class DocumentService {
     final storedPublicId = data['publicId']?.toString() ?? publicId;
     final actualResourceType =
         data['resourceType']?.toString() ?? resourceType ?? 'image';
-    final isRemote = requiresRemoteCloudinaryCleanup({
+    final isRemote = requiresRemoteStorageCleanup({
       'url': storedUrl,
       'publicId': storedPublicId,
       'path': data['path'],

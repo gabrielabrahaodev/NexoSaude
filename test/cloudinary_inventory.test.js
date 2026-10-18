@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { inventoryCloudinaryDocument } = require('../migrate/cloudinary-inventory-core.js');
+const { classifyRemoteDocument } = require('../migrate/remote-document-classification.js');
 
 test('inventaria Cloudinary sem expor URL nem publicId', () => {
   const record = inventoryCloudinaryDocument({
@@ -50,4 +51,33 @@ test('marca publicId com URL que não é Cloudinary para revisão', () => {
   });
   assert.equal(record.source, 'publicId-present-without-cloudinary-url');
   assert.equal(record.cleanupStatus, 'manual-review');
+});
+
+test('classifica R2 como remoto privado e nunca direciona para o destroy do Cloudinary', () => {
+  assert.deepEqual(classifyRemoteDocument({
+    url: 'r2://clinicA/patientA/documentA.pdf',
+    path: 'clinicA/patientA/documentA.pdf',
+    publicId: 'clinicA/patientA/documentA.pdf',
+    resourceType: 'r2',
+  }), { storage: 'r2', resourceType: 'r2' });
+});
+
+test('classifica Cloudinary conhecido para limpeza individual autenticada', () => {
+  assert.deepEqual(classifyRemoteDocument({
+    url: 'https://res.cloudinary.com/example/image/upload/patient.pdf',
+    publicId: 'patients/patientA/documentA',
+    resourceType: 'raw',
+  }), { storage: 'cloudinary', resourceType: 'raw' });
+});
+
+test('preserva registros com publicId sem provedor inequívoco para revisão manual', () => {
+  assert.deepEqual(classifyRemoteDocument({
+    url: 'https://example.invalid/file',
+    publicId: 'unknown-object',
+    resourceType: 'image',
+  }), { storage: 'manual-review', resourceType: 'image' });
+});
+
+test('ignora metadados locais sem identificador de armazenamento remoto', () => {
+  assert.equal(classifyRemoteDocument({ url: '', title: 'Receita local' }), null);
 });

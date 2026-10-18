@@ -8,6 +8,7 @@
 // essa credencial. O script não executa sozinho; --apply exige confirmação.
 const admin = require('firebase-admin');
 const serviceAccount = require('./new-key.json');
+const { classifyRemoteDocument } = require('./remote-document-classification');
 
 const PROJECT_ID = 'nexosaude';
 const args = process.argv.slice(2);
@@ -92,22 +93,23 @@ async function runLimited(items, limit, operation) {
 
   const patientIds = patientsSnap.docs.map((d) => d.id);
 
-  // Não apagar patients/{id}/docs enquanto existir binário remoto no
-  // Cloudinary: a metadata é necessária para um destroy autenticado posterior.
-  const cloudinaryDocuments = [];
+  // Não remover metadata enquanto o binário remoto ainda existir. Diferencia
+  // Cloudinary legado (script administrativo) de R2 privado (Worker/app) e
+  // preserva metadados ambíguos para revisão manual.
+  const remoteDocuments = [];
   await runLimited(patientsSnap.docs, 8, async (patientDoc) => {
     const docsSnap = await patientDoc.ref.collection('docs').get();
     for (const doc of docsSnap.docs) {
-      const data = doc.data() || {};
-      if (String(data.url || '').includes('cloudinary.com') ||
-          String(data.publicId || '').length > 0) {
-        cloudinaryDocuments.push(
-          'patients/' + patientDoc.id + '/docs/' + doc.id,
-        );
+      const classification = classifyRemoteDocument(doc.data() || {});
+      if (classification) {
+        remoteDocuments.push({
+          path: 'patients/' + patientDoc.id + '/docs/' + doc.id,
+          ...classification,
+        });
       }
     }
   });
-  cloudinaryDocuments.sort();
+  remoteDocuments.sort((a, b) => a.path.localeCompare(b.path));
 
   const portalTokens = new Set(
     portalByClinicSnap.docs.map((d) => d.id),
@@ -121,7 +123,10 @@ async function runLimited(items, limit, operation) {
     clinic: 1,
     patients: patientsSnap.size,
     usersToUnlink: usersSnap.size,
-    cloudinaryLegacyFiles: cloudinaryDocuments.length,
+    remoteFilesToClean: remoteDocuments.length,
+    cloudinaryFilesToClean: remoteDocuments.filter((d) => d.storage === 'cloudinary').length,
+    r2FilesToClean: remoteDocuments.filter((d) => d.storage === 'r2').length,
+    manualReviewRemoteFiles: remoteDocuments.filter((d) => d.storage === 'manual-review').length,
     portalMirrors: portalTokens.size,
     publicClinic: (await db.collection('public_clinics').doc(clinicId).get()).exists ? 1 : 0,
     portalSlots: (await db.collection('portal_slots').doc(clinicId).get()).exists ? 1 : 0,
@@ -141,11 +146,13 @@ async function runLimited(items, limit, operation) {
   console.log('Anamneses a verificar: ' + patientIds.length);
   console.log('Subcoleções de pacientes: docs/clinical_data serão removidas recursivamente.');
   console.log('Subcoleções da clínica: members/members_private/settings serão removidas recursivamente.');
-  if (cloudinaryDocuments.length > 0) {
-    console.log('Arquivos Cloudinary que precisam ser removidos antes da cascata:');
-    for (const path of cloudinaryDocuments.slice(0, 100)) console.log('  ' + path);
-    if (cloudinaryDocuments.length > 100) {
-      console.log('  ... mais ' + (cloudinaryDocuments.length - 100) + ' caminho(s) omitidos');
+  if (remoteDocuments.length > 0) {
+    console.log('Arquivos remotos que precisam ser removidos antes da cascata:');
+    for (const document of remoteDocuments.slice(0, 100)) {
+      console.log('  [' + document.storage + '] ' + document.path);
+    }
+    if (remoteDocuments.length > 100) {
+      console.log('  ... mais ' + (remoteDocuments.length - 100) + ' caminho(s) omitido(s)');
     }
   }
 
@@ -156,12 +163,23 @@ async function runLimited(items, limit, operation) {
     return;
   }
 
-  if (cloudinaryDocuments.length > 0) {
+  if (remoteDocuments.length > 0) {
+    const r2Count = remoteDocuments.filter((d) => d.storage === 'r2').length;
+    const cloudinaryCount = remoteDocuments.filter((d) => d.storage === 'cloudinary').length;
+    const manualCount = remoteDocuments.filter((d) => d.storage === 'manual-review').length;
+    const guidance = [];
+    if (r2Count > 0) {
+      guidance.push(r2Count + ' arquivo(s) R2: exclua cada arquivo pela aplicação autenticada, via Worker, e confirme que a metadata desapareceu.');
+    }
+    if (cloudinaryCount > 0) {
+      guidance.push(cloudinaryCount + ' arquivo(s) Cloudinary: use migrate/delete-cloudinary-document.js para cada documento com publicId/resourceType verificados.');
+    }
+    if (manualCount > 0) {
+      guidance.push(manualCount + ' registro(s) remoto(s) ambíguo(s): revisão manual obrigatória; não apague metadata.');
+    }
     throw new Error(
-      'Exclusão interrompida antes de qualquer escrita: existem ' +
-      cloudinaryDocuments.length + ' arquivo(s) legado(s) no Cloudinary. ' +
-      'Remova cada binário pelo migrate/delete-cloudinary-document.js e rode ' +
-      'novamente o DRY-RUN antes de repetir a exclusão.',
+      'Exclusão interrompida antes de qualquer escrita: ainda existem ' +
+      remoteDocuments.length + ' arquivo(s) remoto(s). ' + guidance.join(' '),
     );
   }
 

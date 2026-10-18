@@ -200,14 +200,14 @@ class ClinicDeleteService {
         .get();
     final patientIds = [for (final d in pats.docs) d.id];
 
-    // Protege binários legados: não apagar a metadata que identifica o arquivo
-    // remoto. A verificação é somente leitura e antecede qualquer batch.
+    // Protege binários remotos: não apague metadata antes do binário. A verificação
+    // é somente leitura e antecede qualquer batch.
     stage = 'verificar documentos remotos legados';
     final remoteDocPaths = <String>[];
     for (final patient in pats.docs) {
       final docSnap = await patient.reference.collection('docs').get();
       for (final fileDoc in docSnap.docs) {
-        if (requiresRemoteCloudinaryCleanup(fileDoc.data())) {
+        if (requiresRemoteStorageCleanup(fileDoc.data())) {
           remoteDocPaths.add('patients/${patient.id}/docs/${fileDoc.id}');
         }
       }
@@ -215,8 +215,8 @@ class ClinicDeleteService {
     if (remoteDocPaths.isNotEmpty) {
       throw StateError(
         'Exclusão cancelada antes de qualquer escrita: existem '
-        '${remoteDocPaths.length} arquivo(s) do Cloudinary. Remova os binários '
-        'legados pelo processo administrativo e repita a exclusão.',
+        '${remoteDocPaths.length} arquivo(s) remotos (Cloudinary legado ou R2). '
+        'Apague-os pelo fluxo autenticado correto, confira a metadata e repita a exclusão.',
       );
     }
 
