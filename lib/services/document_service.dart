@@ -23,12 +23,10 @@ const String _privateFilesApiUrl =
 bool requiresRemoteCloudinaryCleanup(Map<String, dynamic> metadata) {
   final url = '${metadata['url'] ?? ''}';
   final publicId = '${metadata['publicId'] ?? ''}';
-  final path = '${metadata['path'] ?? ''}';
   final resourceType = '${metadata['resourceType'] ?? ''}';
   return url.contains('cloudinary.com') ||
       url.startsWith('r2://') ||
       publicId.isNotEmpty ||
-      path.isNotEmpty ||
       resourceType == 'r2';
 }
 
