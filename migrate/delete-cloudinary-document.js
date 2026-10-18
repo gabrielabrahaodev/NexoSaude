@@ -9,6 +9,7 @@
 const admin = require('firebase-admin');
 const crypto = require('node:crypto');
 const serviceAccount = require('./new-key.json');
+const { validateCloudinaryDocumentMetadata } = require('./remote-document-classification');
 
 const PROJECT_ID = 'nexosaude';
 const args = process.argv.slice(2);
@@ -76,18 +77,12 @@ function cloudinarySignature(params, secret) {
   const docSnap = await docRef.get();
   if (!docSnap.exists) throw new Error('Documento de metadata não encontrado.');
   const metadata = docSnap.data() || {};
-  const url = String(metadata.url || '');
-  const publicId = String(metadata.publicId || '');
-  const resourceType = String(metadata.resourceType || 'image');
-  if (!url.includes('cloudinary.com')) {
-    throw new Error('A URL não parece ser do Cloudinary; nada foi alterado.');
-  }
-  if (!publicId) {
-    throw new Error('Metadata não contém publicId. Não é seguro apagar automaticamente; localize o arquivo no painel.');
-  }
-  if (!['image', 'video', 'raw'].includes(resourceType)) {
-    throw new Error('resourceType inválido: não será tentada a exclusão.');
-  }
+  // Não confie em substring de URL nem presuma "image" quando o tipo falta.
+  // Só permita limpeza quando host, conta, tipo de recurso e publicId conferirem.
+  const { publicId, resourceType } = validateCloudinaryDocumentMetadata(
+    metadata,
+    'dbbh601ay',
+  );
 
   console.log('Projeto: ' + PROJECT_ID);
   console.log('Clínica: ' + clinicId);
