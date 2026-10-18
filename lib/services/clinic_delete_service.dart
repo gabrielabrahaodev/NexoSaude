@@ -145,9 +145,8 @@ List<ClinicDeleteStep> clinicDeletePlan(
 
 /// Executor (owner; regras exigem `isOwner()` nos deletes operacionais).
 /// Retorna o motivo de bloqueio da cascata pelo navegador, sem executar
-/// operações remotas. Trial ausente é aceito por compatibilidade com clínicas
-/// legadas/de teste; formatos inválidos, bloqueio administrativo e expiração
-/// são fail-closed.
+/// operações remotas. Trial ausente ou inválido falha fechado, exceto para os
+/// dois IDs de clínicas de teste explicitamente mantidos em clinic_trial_policy.
 String? clinicDeleteBlockReason(
   Map<String, dynamic> clinicData, {
   String clinicId = '',

@@ -43,7 +43,9 @@ function inventoryCloudinaryDocument(input) {
     sizeBytes: data.sizeBytes != null && Number.isFinite(Number(data.sizeBytes)) ? Number(data.sizeBytes) : null,
     extension: data.extension ? String(data.extension).slice(0, 20) : null,
     uploadedAt: timestampToIso(data.uploadedAt),
-    cleanupStatus: isCloudinaryUrl && publicId && clinic ? 'ready-for-script' : 'manual-review',
+    cleanupStatus: isCloudinaryUrl && publicId && clinic &&
+      ['image', 'video', 'raw'].includes(resourceType)
+      ? 'ready-for-script' : 'manual-review',
   };
 }
 module.exports = { inventoryCloudinaryDocument };

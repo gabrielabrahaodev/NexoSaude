@@ -6,11 +6,11 @@ Este Worker substitui novos uploads públicos do Cloudinary por objetos em um bu
 
 ## O que o Worker implementa
 
-- \`POST /v1/files/upload?clinicId=…&patientId=…\`: exige sessão Firebase válida, paciente da clínica, tamanho máximo de 10 MiB e correspondência entre extensão e assinatura binária; grava o objeto no R2 privado e a metadata em \`patients/{patientId}/docs/{documentId}\`. Se a gravação de metadata for recusada, tenta remover o objeto criado.
-- \`GET /v1/files/download?clinicId=…&patientId=…&documentId=…\`: revalida a sessão e o escopo, verifica a metadata e emite um link temporário.
-- \`GET /v1/files/content?key=…&exp=…&sig=…\`: entrega o objeto apenas com assinatura válida e ainda vigente; inclui \`Cache-Control: private, no-store\` e \`X-Content-Type-Options: nosniff\`.
-- \`POST /v1/files/delete\`: revalida sessão, clínica, paciente, metadata e metadata interna do objeto antes de excluir.
-- CORS restrito a origens explícitas em \`ALLOWED_ORIGINS\`.
+- `POST /v1/files/upload?clinicId=…&patientId=…`: exige sessão Firebase válida, paciente da clínica, tamanho máximo de 10 MiB e correspondência entre extensão e assinatura binária; grava o objeto no R2 privado e a metadata em `patients/{patientId}/docs/{documentId}`. Se a gravação de metadata for recusada, tenta remover o objeto criado.
+- `GET /v1/files/download?clinicId=…&patientId=…&documentId=…`: revalida a sessão e o escopo, verifica a metadata e emite um link temporário.
+- `GET /v1/files/content?key=…&exp=…&sig=…`: entrega o objeto apenas com assinatura válida e ainda vigente; inclui `Cache-Control: private, no-store` e `X-Content-Type-Options: nosniff`.
+- `POST /v1/files/delete`: revalida sessão, clínica, paciente, metadata e metadata interna do objeto antes de excluir.
+- CORS restrito a origens explícitas em `ALLOWED_ORIGINS`.
 - Rate limiting no Cloudflare: uploads (10/min por UID), emissão de links (60/min por UID), exclusões (10/min por UID) e consumo do mesmo link temporário (60/min por combinação caminho/expiração). Os bindings falham fechados se estiverem ausentes ou indisponíveis.
 
 O serviço não aceita URL ou chave arbitrária para deletar arquivo. O caminho do objeto é gerado pelo Worker e fica vinculado à clínica e ao paciente.
@@ -19,86 +19,86 @@ O serviço não aceita URL ou chave arbitrária para deletar arquivo. O caminho 
 
 1. Conta Cloudflare com R2 e Workers habilitados.
 2. Node.js 20 ou superior no computador de desenvolvimento.
-3. Permissão de login no Firebase do projeto \`nexosaude\`.
+3. Permissão de login no Firebase do projeto `nexosaude`.
 4. Uma conta de teste e paciente fictício para o primeiro ensaio. Não teste com documentos médicos reais antes da validação final.
 
 ## Configuração do R2
 
 No terminal, na raiz do repositório:
 
-\`\`\`powershell
+```powershell
 npx wrangler login
 npx wrangler r2 bucket create nexosaude-private-documents
-\`\`\`
+```
 
 Se o bucket já existir, não o recrie; confirme apenas o nome em R2. Mantenha o bucket **sem domínio público/custom domain** e sem acesso público de leitura.
 
 Entre na pasta do Worker e instale a ferramenta:
 
-\`\`\`powershell
+```powershell
 cd workers/private-documents
 npm install
 npm run check
 npm test
-\`\`\`
+```
 
-Confira \`wrangler.toml\`. O nome do bucket deve ser exatamente \`nexosaude-private-documents\`. Altere \`ALLOWED_ORIGINS\` para conter a origem real do Hosting usada pelo app, por exemplo \`https://nexosaude.web.app\` e/ou \`https://nexosaude.firebaseapp.com\`. Cada origem é exata, com protocolo e sem barra no final. Se usar domínio próprio, inclua-o também. Não inclua curingas.
+Confira `wrangler.toml`. O nome do bucket deve ser exatamente `nexosaude-private-documents`. Altere `ALLOWED_ORIGINS` para conter a origem real do Hosting usada pelo app, por exemplo `https://nexosaude.web.app` e/ou `https://nexosaude.firebaseapp.com`. Cada origem é exata, com protocolo e sem barra no final. Se usar domínio próprio, inclua-o também. Não inclua curingas.
 
 ### Rate limiting
 
-O arquivo declara quatro bindings \`[[ratelimits]]\`. Antes do deploy, confirme que os \`namespace_id\` \`9101701\` a \`9101704\` são únicos na conta Cloudflare; se algum já estiver em uso, troque por IDs positivos disponíveis. O rate limit de Workers é distribuído por localidade e eventualmente consistente: reduz abuso simples, mas não substitui outros controles de segurança.
+O arquivo declara quatro bindings `[[ratelimits]]`. Antes do deploy, confirme que os `namespace_id` `9101701` a `9101704` são únicos na conta Cloudflare; se algum já estiver em uso, troque por IDs positivos disponíveis. O rate limit de Workers é distribuído por localidade e eventualmente consistente: reduz abuso simples, mas não substitui outros controles de segurança.
 
 ## Segredo de assinatura
 
 Gere um segredo aleatório forte e configure-o diretamente no Cloudflare. Não cole o segredo no arquivo TOML, Dart, HTML, GitHub ou Firestore.
 
-\`\`\`powershell
+```powershell
 node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
 npx wrangler secret put DOWNLOAD_SIGNING_SECRET
-\`\`\`
+```
 
 O segundo comando pede o valor interativamente. Use um segredo de pelo menos 32 caracteres; o recomendado é o hex aleatório de 96 caracteres gerado acima. Guarde-o em um gerenciador de senhas. Se for perdido, configure um novo segredo; links antigos deixarão de validar.
 
 ## Deploy do Worker
 
-Ainda em \`workers/private-documents\`:
+Ainda em `workers/private-documents`:
 
-\`\`\`powershell
+```powershell
 npx wrangler deploy
-\`\`\`
+```
 
-O comando informa uma URL semelhante a \`https://nexosaude-private-documents.<subdominio>.workers.dev\`. Copie a URL exata, sem acrescentar caminhos de API. Não publique o valor do segredo.
+O comando informa uma URL semelhante a `https://nexosaude-private-documents.<subdominio>.workers.dev`. Copie a URL exata, sem acrescentar caminhos de API. Não publique o valor do segredo.
 
 Teste primeiro o endpoint de saúde:
 
-\`\`\`powershell
+```powershell
 Invoke-RestMethod https://SUA-URL-DO-WORKER/health
-\`\`\`
+```
 
-A resposta esperada contém \`ok: true\`. O endpoint de saúde não verifica a configuração de bucket/segredo; o ensaio autenticado ainda é obrigatório.
+A resposta esperada contém `ok: true`. O endpoint de saúde não verifica a configuração de bucket/segredo; o ensaio autenticado ainda é obrigatório.
 
 ## Conectar o app Flutter Web
 
 Na mesma janela do PowerShell, defina a variável com a URL base fornecida pelo Wrangler:
 
-\`\`\`powershell
+```powershell
 $env:PRIVATE_FILES_API_URL = "https://SUA-URL-DO-WORKER"
-\`\`\`
+```
 
-Volte à raiz do repositório e rode \`deploy.bat\`. O script passa a URL como \`--dart-define\` para o build Web. Se a variável não estiver definida, o build segue, mas a função de envio permanece bloqueada; isso evita enviar dados para um endereço desconhecido.
+Volte à raiz do repositório e rode `deploy.bat`. O script passa a URL como `--dart-define` para o build Web. Se a variável não estiver definida, o build segue, mas a função de envio permanece bloqueada; isso evita enviar dados para um endereço desconhecido.
 
 Para executar build manualmente:
 
-\`\`\`powershell
+```powershell
 flutter build web --base-href "/sistema-interno/" --dart-define=PRIVATE_FILES_API_URL=https://SUA-URL-DO-WORKER
-\`\`\`
+```
 
-O deploy do Worker é separado do deploy do Firebase Hosting. O \`deploy.bat\` não publica o Worker, não publica Firestore Rules e não contém credenciais Cloudflare.
+O deploy do Worker é separado do deploy do Firebase Hosting. O `deploy.bat` não publica o Worker, não publica Firestore Rules e não contém credenciais Cloudflare.
 
 ## Teste funcional obrigatório antes de habilitar em produção
 
 1. Entre com uma conta de teste ativa vinculada a uma clínica de teste.
-2. Envie um PDF de teste pequeno. Confirme que o registro apareceu em \`patients/{patientId}/docs\` com \`resourceType: "r2"\`, \`url: "r2://…"\` e \`sizeBytes\` real.
+2. Envie um PDF de teste pequeno. Confirme que o registro apareceu em `patients/{patientId}/docs` com `resourceType: "r2"`, `url: "r2://…"` e `sizeBytes` real.
 3. Abra o documento: a aplicação deve solicitar link temporário ao Worker e abrir o arquivo.
 4. Tente acessar outro paciente alterando os parâmetros, mantendo o token da primeira clínica. A operação deve falhar.
 5. Tente enviar um HTML renomeado para PDF, arquivo vazio e arquivo acima de 10 MiB. Todos devem ser rejeitados.
@@ -113,12 +113,12 @@ Esta implementação migra **novos uploads** para R2. Os arquivos antigos do Clo
 
 Antes de decidir a migração, faça inventário somente de leitura dos documentos legados. Na raiz do projeto, use:
 
-\`\`\`powershell
+```powershell
 node migrate/cloudinary-inventory.js
 node migrate/cloudinary-inventory.js --clinic ID_DA_CLINICA --out "$env:TEMP/cloudinary-inventory.json"
-\`\`\`
+```
 
-O relatório não inclui URL completa nem \`publicId\`; mostra apenas host, presença do identificador e caminho Firestore para revisão. Metadados sem identificador confiável ficam marcados para revisão manual. O comando sempre opera em leitura e não sobrescreve relatórios existentes.
+O relatório não inclui URL completa nem `publicId`; mostra apenas host, presença do identificador e caminho Firestore para revisão. Metadados sem identificador confiável ficam marcados para revisão manual. O comando sempre opera em leitura e não sobrescreve relatórios existentes.
 
 Revise o inventário com backup e autorização. **Não** faça exclusão em massa, não exponha o API Secret do Cloudinary no cliente e não assuma que todos os objetos antigos são públicos sem verificar o access mode/preset da conta. O app deixar de usar o preset não o desativa: entre no painel Cloudinary e desative/restrinja explicitamente o preset unsigned antigo; verifique também o access mode/entrega dos arquivos existentes.
 

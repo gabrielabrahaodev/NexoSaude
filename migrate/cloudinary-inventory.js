@@ -63,17 +63,28 @@ async function readPatientPage(lastDocument) {
     await runLimited(page.docs, 8, async (patientDoc) => {
       const patient = patientDoc.data() || {};
       const actualClinicId = String(patient.clinicId || '');
-      const docs = await patientDoc.ref.collection('docs').get();
-      scannedDocuments += docs.size;
-      for (const document of docs.docs) {
-        const record = inventoryCloudinaryDocument({
-          clinicId: actualClinicId,
-          patientId: patientDoc.id,
-          documentId: document.id,
-          metadata: document.data(),
-        });
-        if (record) records.push(record);
-      }
+      let lastDocumentInPatient = null;
+      let docsPage;
+      do {
+        let docsQuery = patientDoc.ref.collection('docs')
+          .orderBy(admin.firestore.FieldPath.documentId())
+          .limit(200);
+        if (lastDocumentInPatient) docsQuery = docsQuery.startAfter(lastDocumentInPatient);
+        docsPage = await docsQuery.get();
+        scannedDocuments += docsPage.size;
+        for (const document of docsPage.docs) {
+          const record = inventoryCloudinaryDocument({
+            clinicId: actualClinicId,
+            patientId: patientDoc.id,
+            documentId: document.id,
+            metadata: document.data(),
+          });
+          if (record) records.push(record);
+        }
+        lastDocumentInPatient = docsPage.docs.length
+          ? docsPage.docs[docsPage.docs.length - 1]
+          : null;
+      } while (docsPage.size === 200);
     });
     lastDocument = page.docs.length ? page.docs[page.docs.length - 1] : null;
   } while (page.size === 200);
