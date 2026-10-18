@@ -10,6 +10,8 @@ const assinatura = fs.readFileSync(path.join(root, 'web', 'assinatura.html'), 'u
 
 test('Master não insere WhatsApp de solicitante em JavaScript inline', () => {
   assert.doesNotMatch(master, /onclick\s*=/i);
+  assert.match(master, /canSafelyRollbackAuth = !ownerSnap\.exists && ownedClinics\.empty/);
+  assert.match(master, /Resultado incerto: conta preservada/);
   assert.match(master, /data-action="go-tab"/);
   assert.match(master, /data-action="create-owner"/);
   assert.match(master, /data-action="whatsapp"/);
