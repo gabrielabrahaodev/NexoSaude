@@ -1,0 +1,122 @@
+name: One-time NexoSaude deployment from nova-audit
+
+on:
+  push:
+    branches:
+      - nova-audit
+    paths:
+      - .github/workflows/deploy-one-time.yml
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: ${{ !contains(github.event.head_commit.message, '[skip-deploy]') }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      FIREBASE_CI_TOKEN: ${{ secrets.FIREBASE_TOKEN || secrets.FIREBASE_CI_TOKEN }}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+      PRIVATE_FILES_API_URL: ${{ vars.PRIVATE_FILES_API_URL || secrets.PRIVATE_FILES_API_URL || vars.CF_WORKER_URL || secrets.CF_WORKER_URL }}
+
+    steps:
+      - name: Check required configuration before changing production
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PRIVATE_FILES_API_URL)) {
+            throw "Missing PRIVATE_FILES_API_URL GitHub variable/secret (or CF_WORKER_URL). No deployment performed."
+          }
+          try {
+            $uri = [System.Uri]::new($env:PRIVATE_FILES_API_URL.Trim())
+          } catch {
+            throw "PRIVATE_FILES_API_URL is not a valid HTTPS URL. No deployment performed."
+          }
+          if ($uri.Scheme -ne 'https' -or
+              [string]::IsNullOrWhiteSpace($uri.Host) -or
+              $uri.AbsolutePath -ne '/' -or
+              -not [string]::IsNullOrEmpty($uri.Query) -or
+              -not [string]::IsNullOrEmpty($uri.Fragment) -or
+              -not [string]::IsNullOrEmpty($uri.UserInfo)) {
+            throw "PRIVATE_FILES_API_URL must be only the HTTPS origin of the Worker. No deployment performed."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:FIREBASE_CI_TOKEN) -and
+              [string]::IsNullOrWhiteSpace($env:FIREBASE_SERVICE_ACCOUNT_JSON)) {
+            throw "Missing FIREBASE_TOKEN/FIREBASE_CI_TOKEN or FIREBASE_SERVICE_ACCOUNT/FIREBASE_SERVICE_ACCOUNT_JSON GitHub secret. No deployment performed."
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:FIREBASE_SERVICE_ACCOUNT_JSON)) {
+            try {
+              $account = $env:FIREBASE_SERVICE_ACCOUNT_JSON | ConvertFrom-Json
+            } catch {
+              throw "Firebase service-account secret is not valid JSON. No deployment performed."
+            }
+            if ($account.project_id -ne 'nexosaude' -or
+                [string]::IsNullOrWhiteSpace($account.client_email) -or
+                [string]::IsNullOrWhiteSpace($account.private_key)) {
+              throw "Firebase service account must be complete and belong to project nexosaude. No deployment performed."
+            }
+          }
+          Write-Output "Required deployment configuration validated (secret values withheld)."
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Configure Firebase CLI authentication without printing secrets
+        shell: pwsh
+        run: |
+          $envFile = $env:GITHUB_ENV
+          $utf8 = [System.Text.UTF8Encoding]::new($false)
+          if (-not [string]::IsNullOrWhiteSpace($env:FIREBASE_SERVICE_ACCOUNT_JSON)) {
+            $account = $env:FIREBASE_SERVICE_ACCOUNT_JSON | ConvertFrom-Json
+            $credentialPath = Join-Path $env:RUNNER_TEMP 'nexosaude-firebase-service-account.json'
+            [System.IO.File]::WriteAllText($credentialPath, $env:FIREBASE_SERVICE_ACCOUNT_JSON, $utf8)
+            [System.IO.File]::AppendAllText($envFile, "GOOGLE_APPLICATION_CREDENTIALS=$credentialPath`n", $utf8)
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:FIREBASE_CI_TOKEN)) {
+            [System.IO.File]::AppendAllText($envFile, "FIREBASE_TOKEN=$($env:FIREBASE_CI_TOKEN)`n", $utf8)
+          }
+          Write-Output 'Firebase CLI authentication prepared.'
+
+      - name: Install Firebase CLI
+        shell: pwsh
+        run: |
+          npm install --global firebase-tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preflight Flutter web build and Worker configuration
+        shell: pwsh
+        run: |
+          flutter pub get
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          flutter build web --base-href "/sistema-interno/" "--dart-define=PRIVATE_FILES_API_URL=$env:PRIVATE_FILES_API_URL"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\tool\write_worker_config.ps1 -OutputPath "build\web\worker-config.js" -WorkerUrl $env:PRIVATE_FILES_API_URL
+
+      - name: Publish Firestore Rules to project nexosaude
+        shell: pwsh
+        run: |
+          firebase deploy --only firestore:rules --project=nexosaude --non-interactive
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Execute the repository deploy.bat for Firebase Hosting
+        shell: cmd
+        run: |
+          @echo off
+          set "PAUSE_INPUT=%TEMP%\nexosaude-deploy-pause.txt"
+          > "%PAUSE_INPUT%" echo.
+          call deploy.bat < "%PAUSE_INPUT%"
+          set "DEPLOY_RESULT=%ERRORLEVEL%"
+          del "%PAUSE_INPUT%" >nul 2>&1
+          if not "%DEPLOY_RESULT%"=="0" exit /b %DEPLOY_RESULT%
+
+      - name: Verify deployment targets and exit status
+        shell: pwsh
+        run: |
+          Write-Output "Rules deployment and deploy.bat completed successfully for project nexosaude."
