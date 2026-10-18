@@ -115,7 +115,7 @@ async function verifyFirebaseIdToken(token, env) {
   ) {
     throw new ApiError(401, "Sessão expirada ou inválida.");
   }
-  return { uid: claims.sub };
+  return { uid: claims.sub, email: typeof claims.email === "string" ? claims.email.trim() : "" };
 }
 
 function decodeFirestoreValue(value) {
@@ -389,7 +389,10 @@ export async function enforceTrialRequestUserLimit(env, uid) {
 async function handleTrialRequest(request, env) {
   const clientIp = String(request.headers.get("CF-Connecting-IP") || "unavailable").slice(0, 128);
   await enforceTrialRequestIpLimit(env, clientIp);
-  const { uid } = await authenticatedRequest(request, env);
+  const { uid, email: authenticatedEmail } = await authenticatedRequest(request, env);
+  if (!authenticatedEmail) {
+    throw new ApiError(403, "A conta não possui um e-mail de login válido.");
+  }
   await enforceTrialRequestUserLimit(env, uid);
 
   const declaredLength = Number(request.headers.get("Content-Length") || "0");
@@ -420,7 +423,8 @@ async function handleTrialRequest(request, env) {
     throw new ApiError(503, "Não foi possível validar o estado da conta.");
   }
 
-  const fields = validateTrialRequestPayload(body, profile);
+  // Email de identidade vem do ID token Firebase assinado, não do perfil.
+  const fields = validateTrialRequestPayload(body, { email: authenticatedEmail });
   const requestId = crypto.randomUUID().replaceAll("-", "");
   const now = new Date();
   const requestPath = "trial_requests/" + requestId;
@@ -429,7 +433,7 @@ async function handleTrialRequest(request, env) {
       update: {
         name: adminDocumentName(env, requestPath),
         fields: encodeFirestoreFields({
-          nome: fields.name, whatsapp: fields.whatsapp, email: fields.email,
+          nome: fields.name, whatsapp: fields.whatsapp, email: authenticatedEmail,
           clinicName: fields.clinicName, type: fields.type, uid,
           status: "solicitado", createdAt: now,
         }),
@@ -440,11 +444,11 @@ async function handleTrialRequest(request, env) {
       update: {
         name: userDocument.name,
         fields: encodeFirestoreFields({
-          name: fields.name, whatsapp: fields.whatsapp,
+          name: fields.name, whatsapp: fields.whatsapp, email: authenticatedEmail,
           status: "pending_approval", updatedAt: now, trialRequestId: requestId,
         }),
       },
-      updateMask: { fieldPaths: ["name", "whatsapp", "status", "updatedAt", "trialRequestId"] },
+      updateMask: { fieldPaths: ["name", "whatsapp", "email", "status", "updatedAt", "trialRequestId"] },
       currentDocument: { updateTime: userDocument.updateTime },
     },
   ];
