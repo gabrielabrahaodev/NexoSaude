@@ -128,26 +128,14 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
         fileName: name,
         clinicId: clinicId,
         patientId: widget.patientId,
+        category: category,
+        uploaderName: 'Usuario',
       );
 
       if (uploaded == null) throw Exception("Falha no upload para nuvem.");
 
       String ext = ".${name.split('.').last}";
       if (!name.contains('.')) ext = ".pdf";
-
-      await _docService.saveMetadata(
-        clinicId: clinicId,
-        patientId: widget.patientId,
-        url: uploaded.url,
-        title: name,
-        category: category,
-        ext: ext,
-        uploaderName: "Usuario",
-        publicId: uploaded.publicId,
-        resourceType: uploaded.resourceType,
-        path: uploaded.path,
-        sizeBytes: uploaded.sizeBytes,
-      );
 
       if (mounted) toast(context, "Upload concluído!");
     } catch (e) {
