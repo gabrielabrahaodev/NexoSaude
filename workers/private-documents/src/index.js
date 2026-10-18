@@ -106,6 +106,55 @@ function decodeFirestoreFields(fields) {
   );
 }
 
+function encodeFirestoreValue(value) {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (value instanceof Date) return { timestampValue: value.toISOString() };
+  if (typeof value === "string") return { stringValue: value };
+  if (typeof value === "boolean") return { booleanValue: value };
+  if (typeof value === "number") {
+    return Number.isInteger(value)
+      ? { integerValue: String(value) }
+      : { doubleValue: value };
+  }
+  if (Array.isArray(value)) {
+    return { arrayValue: { values: value.map(encodeFirestoreValue) } };
+  }
+  if (typeof value === "object") return { mapValue: { fields: encodeFirestoreFields(value) } };
+  return { nullValue: null };
+}
+
+function encodeFirestoreFields(fields) {
+  return Object.fromEntries(
+    Object.entries(fields).map(([key, value]) => [key, encodeFirestoreValue(value)]),
+  );
+}
+
+async function createFirestoreDocument(token, path, fields, env) {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const projectId = env.FIREBASE_PROJECT_ID || "nexosaude";
+  const response = await fetch(
+    "https://firestore.googleapis.com/v1/projects/" +
+      projectId +
+      "/databases/(default)/documents/" + encodedPath,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ fields: encodeFirestoreFields(fields) }),
+    },
+  );
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new ApiError(403, "O arquivo foi validado, mas as regras do banco negaram a gravação dos metadados.");
+    }
+    throw new ApiError(503, "Não foi possível registrar os metadados do arquivo.");
+  }
+  return response.json();
+}
+
 async function readFirestoreDocument(token, path, env) {
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");
   const projectId = env.FIREBASE_PROJECT_ID || "nexosaude";
@@ -287,7 +336,22 @@ async function handleUpload(request, url, env) {
   if (file.size > 10 * 1024 * 1024) {
     throw new ApiError(413, "O arquivo excede o limite de 10 MB.");
   }
-  const name = String(file.name || "documento");
+
+  const title = String(form.get("title") || file.name || "Documento").trim();
+  const category = String(form.get("category") || "Exames").trim();
+  const uploaderName = String(form.get("uploaderName") || "Usuário").trim().slice(0, 100);
+  const allowedCategories = new Set([
+    "Exames", "Radiografias", "Documentos Pessoais",
+    "Contratos", "Fotos", "Outros",
+  ]);
+  if (!title || title.length > 150 || /[\u0000-\u001f\u007f]/.test(title)) {
+    throw new ApiError(400, "Informe um nome de arquivo válido (até 150 caracteres).");
+  }
+  if (!allowedCategories.has(category)) {
+    throw new ApiError(400, "Categoria de documento inválida.");
+  }
+
+  const name = String(file.name || title);
   const bytes = new Uint8Array(await file.arrayBuffer());
   let valid;
   try {
@@ -296,7 +360,9 @@ async function handleUpload(request, url, env) {
     throw new ApiError(400, error.message);
   }
 
-  const key = clinicId + "/" + patientId + "/" + crypto.randomUUID() + "." + valid.extension;
+  const documentId = crypto.randomUUID().replaceAll("-", "");
+  const key = clinicId + "/" + patientId + "/" + documentId + "." + valid.extension;
+  const uploadedAt = new Date();
   await env.FILES.put(key, bytes, {
     httpMetadata: {
       contentType: valid.contentType,
@@ -307,11 +373,44 @@ async function handleUpload(request, url, env) {
       clinicId,
       patientId,
       uploadedBy: uid,
-      createdAt: new Date().toISOString(),
+      createdAt: uploadedAt.toISOString(),
     },
   });
-  return {
+
+  const metadata = {
+    title,
+    category,
     url: "r2://" + key,
+    path: key,
+    publicId: key,
+    resourceType: "r2",
+    fileType: valid.contentType.startsWith("image/") ? "image" : "document",
+    extension: "." + valid.extension,
+    sizeBytes: valid.sizeBytes,
+    uploadedAt,
+    uploadedBy: uploaderName || uid,
+  };
+  try {
+    // Arquivo + metadata são provisionados no mesmo endpoint: evita o estado
+    // comum onde o upload teve sucesso mas o app fechou antes de gravar no Firestore.
+    await createFirestoreDocument(
+      token,
+      "patients/" + patientId + "/docs/" + documentId,
+      metadata,
+      env,
+    );
+  } catch (error) {
+    try {
+      await env.FILES.delete(key);
+    } catch (_) {
+      console.error("Não foi possível reverter objeto sem metadata.");
+    }
+    throw error;
+  }
+
+  return {
+    documentId,
+    url: metadata.url,
     path: key,
     publicId: key,
     resourceType: "r2",
