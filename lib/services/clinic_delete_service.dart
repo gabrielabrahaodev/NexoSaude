@@ -143,6 +143,25 @@ List<ClinicDeleteStep> clinicDeletePlan(
 }
 
 /// Executor (owner; regras exigem `isOwner()` nos deletes operacionais).
+/// Retorna o motivo de bloqueio da cascata pelo navegador, sem executar
+/// operações remotas. Trial ausente é aceito por compatibilidade com clínicas
+/// legadas/de teste; formatos inválidos, bloqueio administrativo e expiração
+/// são fail-closed.
+String? clinicDeleteBlockReason(
+  Map<String, dynamic> clinicData, {
+  DateTime? now,
+}) {
+  final trialValue = clinicData['trialEndsAt'];
+  final currentTime = now ?? DateTime.now();
+  final trialInvalid = trialValue != null && trialValue is! Timestamp;
+  final trialExpired = trialValue is Timestamp &&
+      !trialValue.toDate().isAfter(currentTime);
+  if (clinicData['blockedByAdmin'] == true || trialInvalid || trialExpired) {
+    return 'A clínica está bloqueada, expirada ou tem trial inválido. A cascata pelo navegador foi interrompida antes das exclusões. Use migrate/delete-clinic.js em DRY-RUN, revise o relatório e só então confirme a operação administrativa.';
+  }
+  return null;
+}
+
 class ClinicDeleteService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -165,15 +184,8 @@ class ClinicDeleteService {
       if (clinicData == null) {
         throw StateError('Clínica não encontrada.');
       }
-      final trialValue = clinicData['trialEndsAt'];
-      final trialInvalid = trialValue != null && trialValue is! Timestamp;
-      final trialExpired = trialValue is Timestamp &&
-          !trialValue.toDate().isAfter(DateTime.now());
-      if (clinicData['blockedByAdmin'] == true || trialInvalid || trialExpired) {
-        throw StateError(
-          'A clínica está bloqueada, expirada ou tem trial inválido. A cascata pelo navegador foi interrompida antes das exclusões. Use migrate/delete-clinic.js em DRY-RUN, revise o relatório e só então confirme a operação administrativa.',
-        );
-      }
+      final deleteBlockReason = clinicDeleteBlockReason(clinicData);
+      if (deleteBlockReason != null) throw StateError(deleteBlockReason);
 
       // 1. Pacientes comprovados da clínica (base do resto do plano).
       stage = 'localizar pacientes';
