@@ -11,6 +11,7 @@ Este Worker substitui novos uploads públicos do Cloudinary por objetos em um bu
 - \`GET /v1/files/content?key=…&exp=…&sig=…\`: entrega o objeto apenas com assinatura válida e ainda vigente; inclui \`Cache-Control: private, no-store\` e \`X-Content-Type-Options: nosniff\`.
 - \`POST /v1/files/delete\`: revalida sessão, clínica, paciente, metadata e metadata interna do objeto antes de excluir.
 - CORS restrito a origens explícitas em \`ALLOWED_ORIGINS\`.
+- Rate limiting no Cloudflare: uploads (10/min por UID), emissão de links (60/min por UID), exclusões (10/min por UID) e consumo do mesmo link temporário (60/min por combinação caminho/expiração). Os bindings falham fechados se estiverem ausentes ou indisponíveis.
 
 O serviço não aceita URL ou chave arbitrária para deletar arquivo. O caminho do objeto é gerado pelo Worker e fica vinculado à clínica e ao paciente.
 
@@ -42,6 +43,10 @@ npm test
 \`\`\`
 
 Confira \`wrangler.toml\`. O nome do bucket deve ser exatamente \`nexosaude-private-documents\`. Altere \`ALLOWED_ORIGINS\` para conter a origem real do Hosting usada pelo app, por exemplo \`https://nexosaude.web.app\` e/ou \`https://nexosaude.firebaseapp.com\`. Cada origem é exata, com protocolo e sem barra no final. Se usar domínio próprio, inclua-o também. Não inclua curingas.
+
+### Rate limiting
+
+O arquivo declara quatro bindings \`[[ratelimits]]\`. Antes do deploy, confirme que os \`namespace_id\` \`9101701\` a \`9101704\` são únicos na conta Cloudflare; se algum já estiver em uso, troque por IDs positivos disponíveis. O rate limit de Workers é distribuído por localidade e eventualmente consistente: reduz abuso simples, mas não substitui outros controles de segurança.
 
 ## Segredo de assinatura
 
@@ -106,12 +111,21 @@ Se a criação dos metadados for negada pelas Firestore Rules, **não amplie a r
 
 Esta implementação migra **novos uploads** para R2. Os arquivos antigos do Cloudinary não são migrados automaticamente. A tela mantém metadados legados legíveis, mas o app não chama o endpoint destrutivo do Cloudinary nem finge que apagou o binário. A exclusão de uma referência Cloudinary antiga ficará bloqueada até o arquivo ser removido por processo administrativo autenticado.
 
-Antes de decidir a migração, faça inventário somente de leitura de todos os documentos legados (clínica, paciente, ID do documento, presença de \`publicId\`, \`resourceType\`, URL e tamanho). Revise esse inventário com backup e autorização. **Não** faça exclusão em massa, não exponha o API Secret do Cloudinary no cliente e não assuma que todos os objetos antigos são públicos sem verificar o access mode/preset da conta.
+Antes de decidir a migração, faça inventário somente de leitura dos documentos legados. Na raiz do projeto, use:
+
+\`\`\`powershell
+node migrate/cloudinary-inventory.js
+node migrate/cloudinary-inventory.js --clinic ID_DA_CLINICA --out "$env:TEMP/cloudinary-inventory.json"
+\`\`\`
+
+O relatório não inclui URL completa nem \`publicId\`; mostra apenas host, presença do identificador e caminho Firestore para revisão. Metadados sem identificador confiável ficam marcados para revisão manual. O comando sempre opera em leitura e não sobrescreve relatórios existentes.
+
+Revise o inventário com backup e autorização. **Não** faça exclusão em massa, não exponha o API Secret do Cloudinary no cliente e não assuma que todos os objetos antigos são públicos sem verificar o access mode/preset da conta. O app deixar de usar o preset não o desativa: entre no painel Cloudinary e desative/restrinja explicitamente o preset unsigned antigo; verifique também o access mode/entrega dos arquivos existentes.
 
 ## Limitações ainda conhecidas
 
 - As chaves de acesso do Firestore são avaliadas pelas regras existentes. As regras ativas não foram alteradas nem publicadas por este trabalho.
 - CORS não substitui autenticação/autorização; o Worker verifica ambas.
-- Configure rate limiting no Cloudflare para os endpoints autenticados, monitore erros e defina limites de gasto/alertas.
+- Os rate limits protegem os endpoints privados de arquivos, não os formulários públicos de trial/assinatura. Esses formulários ainda precisam de proteção anti-bot e limitação server-side no fluxo confiável. Monitore erros e defina alertas de custo.
 - O link de leitura é uma credencial temporária que pode ser compartilhada enquanto estiver válido; ele expira em cinco minutos.
 - Nenhum arquivo, segredo, bucket ou deploy de produção foi criado/alterado automaticamente por este repositório.

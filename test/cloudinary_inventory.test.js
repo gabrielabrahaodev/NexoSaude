@@ -1,0 +1,53 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { inventoryCloudinaryDocument } = require('../migrate/cloudinary-inventory-core.js');
+
+test('inventaria Cloudinary sem expor URL nem publicId', () => {
+  const record = inventoryCloudinaryDocument({
+    clinicId: 'clinicA', patientId: 'patientA', documentId: 'docA',
+    metadata: {
+      url: 'https://res.cloudinary.com/dbbh601ay/image/upload/v123/private.jpg',
+      publicId: 'patients/patientA/private', resourceType: 'image',
+      sizeBytes: 1234, extension: 'jpg', uploadedAt: '2026-10-01T12:00:00.000Z',
+    },
+  });
+  assert.ok(record);
+  assert.equal(record.source, 'cloudinary-url');
+  assert.equal(record.cleanupStatus, 'ready-for-script');
+  assert.equal(record.urlHost, 'res.cloudinary.com');
+  assert.equal(record.hasPublicId, true);
+  assert.equal(record.sizeBytes, 1234);
+  assert.equal(Object.hasOwn(record, 'url'), false);
+  assert.equal(Object.hasOwn(record, 'publicId'), false);
+});
+
+test('ignora R2 mesmo que metadata tenha publicId', () => {
+  assert.equal(inventoryCloudinaryDocument({
+    clinicId: 'clinicA', patientId: 'patientA', documentId: 'docR2',
+    metadata: { url: 'r2://clinicA/patientA/object.pdf', publicId: 'r2-object', resourceType: 'r2' },
+  }), null);
+});
+
+test('marca Cloudinary sem publicId para revisão manual', () => {
+  const record = inventoryCloudinaryDocument({
+    clinicId: 'clinicA', patientId: 'patientA', documentId: 'legacy',
+    metadata: { url: 'https://res.cloudinary.com/dbbh601ay/image/upload/old.jpg', resourceType: 'image' },
+  });
+  assert.equal(record.cleanupStatus, 'manual-review');
+});
+
+test('ignora documento sem URL remota nem publicId', () => {
+  assert.equal(inventoryCloudinaryDocument({
+    clinicId: 'clinicA', patientId: 'patientA', documentId: 'local',
+    metadata: { title: 'Receita', sizeBytes: 15 },
+  }), null);
+});
+
+test('marca publicId com URL que não é Cloudinary para revisão', () => {
+  const record = inventoryCloudinaryDocument({
+    clinicId: 'clinicA', patientId: 'patientA', documentId: 'uncertain',
+    metadata: { url: 'https://example.invalid/object', publicId: 'legacy-id' },
+  });
+  assert.equal(record.source, 'publicId-present-without-cloudinary-url');
+  assert.equal(record.cleanupStatus, 'manual-review');
+});
