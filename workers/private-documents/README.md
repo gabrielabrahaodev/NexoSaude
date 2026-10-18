@@ -21,6 +21,7 @@ O serviço não aceita URL ou chave arbitrária para deletar arquivo. O caminho 
 2. Node.js 20 ou superior no computador de desenvolvimento.
 3. Permissão de login no Firebase do projeto `nexosaude`.
 4. Uma conta de teste e paciente fictício para o primeiro ensaio. Não teste com documentos médicos reais antes da validação final.
+5. Uma service account dedicada no projeto Google Cloud `nexosaude`, com permissão Firestore para a rota segura de pedidos; não use `migrate/new-key.json`.
 
 ## Configuração do R2
 
@@ -46,7 +47,18 @@ Confira `wrangler.toml`. O nome do bucket deve ser exatamente `nexosaude-private
 
 ### Rate limiting
 
-O arquivo declara quatro bindings `[[ratelimits]]`. Antes do deploy, confirme que os `namespace_id` `9101701` a `9101704` são únicos na conta Cloudflare; se algum já estiver em uso, troque por IDs positivos disponíveis. O rate limit de Workers é distribuído por localidade e eventualmente consistente: reduz abuso simples, mas não substitui outros controles de segurança.
+O arquivo declara seis bindings `[[ratelimits]]`, inclusive os pedidos de trial com limites por IP e UID. Antes do deploy, confirme que os `namespace_id` `9101701` a `9101706` são únicos na conta Cloudflare; se algum já estiver em uso, troque por IDs positivos disponíveis. O rate limit de Workers é distribuído por localidade e eventualmente consistente: reduz abuso simples, mas não substitui outros controles de segurança.
+
+## Credencial do Worker para pedidos de trial
+
+Crie uma service account exclusiva no projeto Google Cloud `nexosaude`. Conceda a permissão mínima necessária para ler/gravar dados do Firestore (por exemplo, uma IAM role dedicada; não conceda Owner/Editor do projeto). Não reutilize a credencial administrativa de migrações. Configure o e-mail e a chave privada PEM exclusivamente como Secrets Cloudflare:
+
+```powershell
+npx wrangler secret put FIRESTORE_SERVICE_ACCOUNT_EMAIL
+npx wrangler secret put FIRESTORE_SERVICE_ACCOUNT_PRIVATE_KEY
+```
+
+Informe o e-mail no primeiro prompt e a chave PEM completa no segundo. Esses valores nunca devem entrar no repositório, TOML, Dart, HTML ou nos logs do CI. Sem os dois secrets ou sem permissões de dados do Firestore, o endpoint falha fechado.
 
 ## Segredo de assinatura
 
@@ -77,15 +89,15 @@ Invoke-RestMethod https://SUA-URL-DO-WORKER/health
 
 A resposta esperada contém `ok: true`. O endpoint de saúde não verifica a configuração de bucket/segredo; o ensaio autenticado ainda é obrigatório.
 
-## Conectar o app Flutter Web
+## Conectar o app Flutter Web e a página pública de trial
 
-Na mesma janela do PowerShell, defina a variável com a URL base fornecida pelo Wrangler:
+A mesma URL base do Worker atende documentos privados e o formulário público. O deploy gera `worker-config.js` no diretório de build para `assinatura.html`, sem adicionar a URL ao repositório. Defina a origem HTTPS exata fornecida pelo Wrangler:
 
 ```powershell
 $env:PRIVATE_FILES_API_URL = "https://SUA-URL-DO-WORKER"
 ```
 
-Volte à raiz do repositório e rode `deploy.bat`. O script passa a URL como `--dart-define` para o build Web. Se a variável não estiver definida, o build segue, mas a função de envio permanece bloqueada; isso evita enviar dados para um endereço desconhecido.
+Volte à raiz do repositório e rode `deploy.bat`. O script passa a URL como `--dart-define` para Flutter e gera `worker-config.js` para `assinatura.html`. Se a variável não estiver definida ou não for uma origem HTTPS válida, o deploy será interrompido para não publicar um formulário de trial inoperante.
 
 Para executar build manualmente:
 
@@ -126,6 +138,6 @@ Revise o inventário com backup e autorização. **Não** faça exclusão em mas
 
 - As chaves de acesso do Firestore são avaliadas pelas regras existentes. As regras ativas não foram alteradas nem publicadas por este trabalho.
 - CORS não substitui autenticação/autorização; o Worker verifica ambas.
-- Os rate limits protegem os endpoints privados de arquivos, não os formulários públicos de trial/assinatura. Esses formulários ainda precisam de proteção anti-bot e limitação server-side no fluxo confiável. Monitore erros e defina alertas de custo.
+- Os pedidos públicos de trial passam pelo Worker com validação server-side e rate limit por IP/UID; as Firestore Rules recusam criação direta em `trial_requests`. Isso não substitui CAPTCHA/App Check nem monitoramento contra abuso distribuído.
 - O link de leitura é uma credencial temporária que pode ser compartilhada enquanto estiver válido; ele expira em cinco minutos.
 - Nenhum arquivo, segredo, bucket ou deploy de produção foi criado/alterado automaticamente por este repositório.

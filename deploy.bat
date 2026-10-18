@@ -2,13 +2,15 @@
 echo --- 0. CARIMBANDO VERSAO DO PWA ---
 powershell -ExecutionPolicy Bypass -File tool\bump_version.ps1
 echo --- 1. LIMPANDO E GERANDO BUILD ---
-call flutter clean
 if "%PRIVATE_FILES_API_URL%"=="" (
-  echo AVISO: PRIVATE_FILES_API_URL nao definido; upload privado permanece bloqueado.
-  call flutter build web --base-href "/sistema-interno/"
-) else (
-  call flutter build web --base-href "/sistema-interno/" --dart-define=PRIVATE_FILES_API_URL=%PRIVATE_FILES_API_URL%
+  echo ERRO: configure PRIVATE_FILES_API_URL com a URL HTTPS base do Worker Cloudflare.
+  echo Ele atende documentos privados e pedidos de trial com rate-limit. Deploy cancelado.
+  exit /b 1
 )
+call flutter clean
+call flutter build web --base-href "/sistema-interno/" --dart-define=PRIVATE_FILES_API_URL=%PRIVATE_FILES_API_URL%
+if errorlevel 1 exit /b 1
+call powershell -NoProfile -ExecutionPolicy Bypass -File tool\write_worker_config.ps1 -OutputPath "build\web\worker-config.js" -WorkerUrl "%PRIVATE_FILES_API_URL%"
 if errorlevel 1 exit /b 1
 
 echo --- 2. ORGANIZANDO PASTAS DE SEGURANCA ---
@@ -34,6 +36,7 @@ if exist sistema-interno\confirmar.html move sistema-interno\confirmar.html .
 if exist sistema-interno\anamnese.html move sistema-interno\anamnese.html .
 if exist sistema-interno\logo.png move sistema-interno\logo.png .
 if exist sistema-interno\assinatura.html move sistema-interno\assinatura.html .
+if exist sistema-interno\worker-config.js move sistema-interno\worker-config.js .
 if exist sistema-interno\master.html move sistema-interno\master.html .
 
 :: LANDING NA RAIZ: vira o index.html de nexosaude.web.app/
