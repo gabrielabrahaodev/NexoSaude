@@ -75,15 +75,21 @@ service cloud.firestore {
              get(/databases/$(database)/documents/clinics/$(clinicId)).data.ownerId == request.auth.uid;
     }
 
-    // 2c. Clínica ATIVA (trava de assinatura enforceable no servidor,
-    // reavaliação §3): bloqueada pelo Master OU trial vencido = sem acesso
-    // operacional (staff e owner; superadmin passa direto). Sem trialEndsAt
-    // = ativa (legadas + 2ª unidade criada no app; migração: backfill).
+    // 2c. Expiração fail-closed. Só as duas clínicas de teste conhecidas
+    // podem permanecer sem trialEndsAt; qualquer outra sem data ou com
+    // formato inválido perde acesso até a regularização.
+    function _legacyTriallessTestClinic(clinicId) {
+      return clinicId in [
+        'MxftREXD5vjKtE7SyJIH',
+        'VlFVjTlNX8yqijeHyczt'
+      ];
+    }
     function clinicActive(clinicId) {
       let c = get(/databases/$(database)/documents/clinics/$(clinicId));
       let trial = c.data.get('trialEndsAt', null);
       return c.data.get('blockedByAdmin', false) != true &&
-        (trial == null || trial > request.time);
+        ((trial is timestamp && trial > request.time) ||
+         (trial == null && _legacyTriallessTestClinic(clinicId)));
     }
 
     // 2d. Acesso operacional a UMA clínica: plataforma, ou (dono dela ou

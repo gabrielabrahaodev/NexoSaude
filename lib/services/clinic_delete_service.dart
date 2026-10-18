@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'clinic_trial_policy.dart';
 import 'document_service.dart';
 
 /// Uma etapa da exclusão de clínica em cascata.
@@ -149,15 +150,16 @@ List<ClinicDeleteStep> clinicDeletePlan(
 /// são fail-closed.
 String? clinicDeleteBlockReason(
   Map<String, dynamic> clinicData, {
+  String clinicId = '',
   DateTime? now,
 }) {
-  final trialValue = clinicData['trialEndsAt'];
-  final currentTime = now ?? DateTime.now();
-  final trialInvalid = trialValue != null && trialValue is! Timestamp;
-  final trialExpired = trialValue is Timestamp &&
-      !trialValue.toDate().isAfter(currentTime);
-  if (clinicData['blockedByAdmin'] == true || trialInvalid || trialExpired) {
-    return 'A clínica está bloqueada, expirada ou tem trial inválido. A cascata pelo navegador foi interrompida antes das exclusões. Use migrate/delete-clinic.js em DRY-RUN, revise o relatório e só então confirme a operação administrativa.';
+  final trialInvalidOrExpired = clinicTrialExpiredOrInvalid(
+    clinicId,
+    clinicData['trialEndsAt'],
+    now: now,
+  );
+  if (clinicData['blockedByAdmin'] == true || trialInvalidOrExpired) {
+    return 'A clínica está bloqueada, expirada ou sem uma data de trial válida. A cascata pelo navegador foi interrompida antes das exclusões. Use migrate/delete-clinic.js em DRY-RUN, revise o relatório e só então confirme a operação administrativa.';
   }
   return null;
 }
@@ -184,7 +186,10 @@ class ClinicDeleteService {
       if (clinicData == null) {
         throw StateError('Clínica não encontrada.');
       }
-      final deleteBlockReason = clinicDeleteBlockReason(clinicData);
+      final deleteBlockReason = clinicDeleteBlockReason(
+        clinicData,
+        clinicId: clinicId,
+      );
       if (deleteBlockReason != null) throw StateError(deleteBlockReason);
 
       // 1. Pacientes comprovados da clínica (base do resto do plano).

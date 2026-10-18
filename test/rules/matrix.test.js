@@ -379,6 +379,30 @@ describe('matriz reavaliação P0/P1', () => {
     await assertSucceeds(root.collection('patients').add({ clinicId: B }));
   });
 
+  it('P1-3b: clínica sem trial só opera se for uma das duas clínicas de teste', async () => {
+    const testClinicIds = [
+      'MxftREXD5vjKtE7SyJIH',
+      'VlFVjTlNX8yqijeHyczt',
+    ];
+    await env.withSecurityRulesDisabled(async (adminContext) => {
+      const admin = adminContext.firestore();
+      for (const clinicId of [...testClinicIds, 'clinicMissingTrial']) {
+        await admin.doc('clinics/' + clinicId).set({
+          name: clinicId,
+          ownerId: 'ownerA',
+          blockedByAdmin: false,
+        });
+      }
+    });
+    const owner = ctx('ownerA').firestore();
+    for (const clinicId of testClinicIds) {
+      await assertSucceeds(owner.collection('patients').add({ clinicId }));
+    }
+    await assertFails(
+      owner.collection('patients').add({ clinicId: 'clinicMissingTrial' }),
+    );
+  });
+
   it('P1-4: trial com uid próprio passa; de outro nega; anônimo nega', async () => {
     const good = {
       nome: 'Novo', whatsapp: '11999999999', email: 'n@n.com',

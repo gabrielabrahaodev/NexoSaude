@@ -166,11 +166,31 @@ void main() {
       );
     });
 
-    test('trial ausente continua permitido para legados e clínicas de teste', () {
+    test('bloqueia trial ausente para clínica não explicitamente de teste', () {
       expect(
-        clinicDeleteBlockReason({'blockedByAdmin': false}, now: now),
-        isNull,
+        clinicDeleteBlockReason(
+          {'blockedByAdmin': false},
+          clinicId: 'CLINICA_NAO_REGULARIZADA',
+          now: now,
+        ),
+        isNotNull,
       );
+    });
+
+    test('mantém somente as duas clínicas de teste conhecidas sem trial', () {
+      for (final clinicId in [
+        'MxftREXD5vjKtE7SyJIH',
+        'VlFVjTlNX8yqijeHyczt',
+      ]) {
+        expect(
+          clinicDeleteBlockReason(
+            {'blockedByAdmin': false},
+            clinicId: clinicId,
+            now: now,
+          ),
+          isNull,
+        );
+      }
     });
   });
 

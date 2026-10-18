@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:odonto_controle/screens/dashboard/main_web_dashboard.dart';
 import '../../services/session_manager.dart';
+import '../../services/clinic_trial_policy.dart';
 import '../../services/subscription.dart';
 import '../../services/theme_controller.dart';
 import 'package:odonto_controle/utils/display.dart';
@@ -134,19 +135,29 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
           .get();
       final data = doc.data();
       if (data == null) return null;
-      final trial =
-          (data['trialEndsAt'] as Timestamp?)?.toDate();
+      final trialValue = data['trialEndsAt'];
+      final trial = trialValue is Timestamp ? trialValue.toDate() : null;
       final manual = data['blockedByAdmin'] == true;
+      final expiryInvalidOrExpired = clinicTrialExpiredOrInvalid(
+        clinicId,
+        trialValue,
+      );
       if (!blockEffective(
-          trialOver: trialExpired(trial, DateTime.now()),
+          trialOver: expiryInvalidOrExpired,
           manual: manual)) {
         return null;
       }
-      if (manual && trialExpired(trial, DateTime.now())) {
+      if (trialValue != null && trial == null) {
+        return "Não foi possível confirmar a validade desta clínica. Contate o suporte.";
+      }
+      if (manual && expiryInvalidOrExpired) {
         return "Acesso suspenso. Fale com o suporte da plataforma.";
       }
       if (manual) {
         return "Acesso suspenso pelo suporte. Regularize sua assinatura.";
+      }
+      if (trialValue == null) {
+        return "A clínica está sem data de trial válida. Contate o suporte.";
       }
       return "Período de teste encerrado. Fale com o suporte para continuar.";
     } catch (_) {
