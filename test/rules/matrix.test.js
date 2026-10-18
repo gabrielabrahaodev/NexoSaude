@@ -412,24 +412,18 @@ describe('matriz reavaliação P0/P1', () => {
     );
   });
 
-  it('P1-4: trial com uid próprio passa; de outro nega; anônimo nega', async () => {
+  it('P1-4: clientes não gravam trial_requests diretamente; só o Worker confiável', async () => {
     const good = {
       nome: 'Novo', whatsapp: '11999999999', email: 'n@n.com',
       clinicName: 'Clinica C', type: 'dental', uid: 'ownerA',
       status: 'solicitado', createdAt: new Date(),
     };
-    await assertSucceeds(
+    await assertFails(
       ctx('ownerA').firestore().collection('trial_requests').add(good));
     await assertFails(
       ctx('staffA').firestore().collection('trial_requests').add(good));
     await assertFails(
       ctx(null).firestore().collection('trial_requests').add(good));
-    await assertFails(
-      ctx('ownerA').firestore().collection('trial_requests').add({
-        ...good, type: 'multi',
-      }));
-    // Campos expostos em HTML público só aceitam caracteres de telefone,
-    // evitando payload de atributo/JavaScript em dados que o Master renderiza.
     await assertFails(
       ctx('ownerA').firestore().collection('trial_requests').add({
         ...good, whatsapp: '11999999999" onclick="alert(1)',

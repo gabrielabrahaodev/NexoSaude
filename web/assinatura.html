@@ -44,6 +44,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script src="/worker-config.js"></script>
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyD-4NjgWl9qa9wkb1EN-nB9wgWmzK815No",
@@ -58,6 +59,42 @@
     const db = firebase.firestore();
     const content = document.getElementById('content');
     const BRL = (v) => 'R$ ' + Number(v || 0).toFixed(2);
+
+    function validWhatsApp(value) {
+        return /^[+0-9() .-]{8,19}$/.test(value)
+            && (value.match(/[0-9]/g) || []).length >= 8;
+    }
+
+    async function submitTrialRequest(payload) {
+        const workerUrl = String(window.NEXO_WORKER_URL || '').replace(/\/+$/, '');
+        if (!/^https:\/\/[^/]+$/i.test(workerUrl)) {
+            throw new Error('O serviço seguro de solicitações ainda não está configurado. Avise o suporte.');
+        }
+        const currentUser = auth.currentUser;
+        if (!currentUser) throw new Error('Sua sessão expirou. Entre novamente.');
+        const idToken = await currentUser.getIdToken();
+        let response;
+        try {
+            response = await fetch(workerUrl + '/v1/trial/request', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + idToken,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                cache: 'no-store',
+            });
+        } catch (_) {
+            throw new Error('Não foi possível conectar ao serviço de solicitações. Tente novamente.');
+        }
+        let result = {};
+        try { result = await response.json(); } catch (_) {}
+        if (!response.ok || result.ok !== true) {
+            throw new Error(result.error || 'Não foi possível registrar o pedido de teste.');
+        }
+        return result;
+    }
+
 
     let toastT = null;
     // Impede que onAuthStateChanged tente carregar o perfil enquanto
@@ -178,7 +215,7 @@
             return;
         }
         if (name.length < 2 || name.length >= 100 ||
-            whatsapp.length < 8 || whatsapp.length >= 20 ||
+            !validWhatsApp(whatsapp) ||
             email.length < 4 || email.length >= 100 ||
             clinicName.length < 2 || clinicName.length >= 100 ||
             !['dental', 'psychology'].includes(type)) {
@@ -188,25 +225,24 @@
 
         button.disabled = true;
         try {
-            const userRef = db.collection('users').doc(uid);
-            const requestRef = db.collection('trial_requests').doc();
-            const batch = db.batch();
-            batch.set(requestRef, {
-                nome, whatsapp, email, clinicName, type,
-                uid, status: 'solicitado', createdAt: new Date(),
-            });
-            batch.update(userRef, {
-                status: 'pending_approval',
-                updatedAt: new Date(),
-            });
-            await batch.commit();
+            await submitTrialRequest({ name, whatsapp, clinicName, type });
             content.innerHTML = '<div class="card"><div class="big">Nova solicitação enviada</div>'
                 + '<p class="muted">Seu pedido foi enviado para análise. A conta e o e-mail continuam os mesmos.</p>'
                 + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
         } catch (e) {
-            console.error('Falha ao reenviar solicitação:', e);
-            toast('Não foi possível reenviar o pedido. Tente novamente.');
-            button.disabled = false;
+            console.error('Falha ao reenviar solicitação.');
+            // Se a resposta se perdeu após o commit, o marcador é atualizado
+            // atomicamente junto ao pedido; não provoque uma segunda gravação.
+            const currentProfile = await db.collection('users').doc(uid).get().catch(() => null);
+            const currentData = currentProfile && currentProfile.exists ? currentProfile.data() : {};
+            if (currentData.status === 'pending_approval' && currentData.trialRequestId) {
+                content.innerHTML = '<div class="card"><div class="big">Solicitação enviada</div>'
+                    + '<p class="muted">Seu pedido está em análise. A conta e o e-mail continuam os mesmos.</p>'
+                    + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="firebase.auth().signOut()">Sair</button></div>';
+            } else {
+                toast(e.message || 'Não foi possível reenviar o pedido. Tente novamente.');
+                button.disabled = false;
+            }
         }
     }
 
@@ -225,7 +261,8 @@
 
     async function doSignup() {
         const v = (id) => document.getElementById(id).value.trim();
-        if (!v('s-nome') || !v('s-email') || v('s-senha').length < 6 || v('s-wa').length < 8 || !v('s-clinica')) {
+        if (!v('s-nome') || !v('s-email') || v('s-senha').length < 6 ||
+            !validWhatsApp(v('s-wa')) || !v('s-clinica')) {
             toast('Preencha tudo (senha mín. 6, WhatsApp com DDD).');
             return;
         }
@@ -242,27 +279,41 @@
                 allowedClinics: [], status: 'pending_approval',
                 whatsapp: v('s-wa'), createdAt: new Date(),
             });
-            await db.collection('trial_requests').add({
-                nome: v('s-nome'), whatsapp: v('s-wa'), email: v('s-email'),
+            await submitTrialRequest({
+                name: v('s-nome'),
+                whatsapp: v('s-wa'),
                 clinicName: v('s-clinica'),
                 type: document.getElementById('s-tipo').value,
-                uid: uid, status: 'solicitado', createdAt: new Date(),
             });
             signupComplete = true;
             content.innerHTML = '<div class="card"><div class="big">Solicitação enviada</div>'
                 + '<p class="muted">Recebemos seu pedido de teste. Aguarde nosso contato pelo WhatsApp; sua conta só terá acesso após aprovação.</p>'
                 + '<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="leaveSignupFlow()">Voltar ao login</button></div>';
         } catch (e) {
-            // Se qualquer gravação falhar, tente remover o perfil e a conta
-            // provisórios; o fluxo não deixa uma conta utilizável sem pedido.
+            // Rollback somente quando um read confirma que o Worker não registrou
+            // o pedido; em estado incerto a conta deve ser preservada.
+            let canSafelyRollback = false;
             try {
-                const u = auth.currentUser;
-                if (uid && u && u.uid === uid) {
-                    await db.collection('users').doc(uid).delete().catch(() => {});
-                    await u.delete().catch(() => {});
+                if (uid && auth.currentUser && auth.currentUser.uid === uid) {
+                    const profileSnap = await db.collection('users').doc(uid).get();
+                    canSafelyRollback = !profileSnap.exists ||
+                        !profileSnap.data().trialRequestId;
+                    if (canSafelyRollback) {
+                        if (profileSnap.exists) await db.collection('users').doc(uid).delete();
+                        await auth.currentUser.delete();
+                    }
                 }
-            } catch (_) {}
-            toast(e.code === 'auth/email-already-in-use' ? 'E-mail já cadastrado. Entre.' : 'Falha. Tente de novo.');
+            } catch (_) {
+                canSafelyRollback = false;
+            }
+            if (!canSafelyRollback && uid) {
+                await auth.signOut().catch(() => {});
+                toast('Resultado incerto: conta preservada. Entre novamente para conferir o status do pedido.');
+            } else {
+                toast(e.code === 'auth/email-already-in-use'
+                    ? 'E-mail já cadastrado. Entre.'
+                    : (e.message || 'Falha. Tente de novo.'));
+            }
             btn.disabled = false;
         } finally {
             signupInProgress = false;

@@ -44,3 +44,11 @@ test('Página de assinatura não usa IDs dinâmicos em handlers inline', () => {
   assert.doesNotMatch(assinatura, /onclick="copiarPix\(/);
   assert.match(assinatura, /replace\(\/&\/g, '&amp;'\)/);
 });
+
+test('Pedidos públicos de trial passam pelo Worker com ID token, nunca direto pelo Firestore', () => {
+  assert.match(assinatura, /src="\/worker-config\.js"/);
+  assert.match(assinatura, /\/v1\/trial\/request/);
+  assert.match(assinatura, /currentUser\.getIdToken\(\)/);
+  assert.doesNotMatch(assinatura, /collection\('trial_requests'\)\.add\(/);
+  assert.doesNotMatch(assinatura, /batch\.set\(requestRef/);
+});

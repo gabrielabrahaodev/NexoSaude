@@ -360,30 +360,11 @@ service cloud.firestore {
            (outside.size() == 1 && ownsClinic(outside.toList()[0])))));
     }
 
-    // A1b. PEDIDOS DE TRIAL (porteira do teste grátis). Create autenticado
-    // (conta recém-criada) COM uid vinculado (reavaliação §4: antes o `uid`
-    // era negado pela allowlist e o pedido se perdia); leitura/escrita só
-    // superadmin (vê no Master e aprova pelo `uid`).
+    // A1b. PEDIDOS DE TRIAL: só o Worker confiável cria, após validar o ID
+    // token Firebase, o estado da conta, os campos e rate-limit por IP/UID.
+    // Não permita create pelo cliente: ele poderia contornar o rate-limit.
+    // Master continua sendo o único a ler/decidir pedidos.
     match /trial_requests/{docId} {
-      allow create: if isAuthenticated() &&
-          request.resource.data.keys().hasOnly(
-            ['nome', 'whatsapp', 'email', 'clinicName', 'type', 'uid',
-             'status', 'createdAt']) &&
-          request.resource.data.status == 'solicitado' &&
-          request.resource.data.uid == request.auth.uid &&
-          request.resource.data.nome is string &&
-          request.resource.data.nome.size() > 1 &&
-          request.resource.data.nome.size() < 100 &&
-          request.resource.data.whatsapp is string &&
-          request.resource.data.whatsapp.size() >= 8 &&
-          request.resource.data.whatsapp.size() < 20 &&
-          request.resource.data.whatsapp.matches('^[+0-9() .-]{8,19}$') &&
-          request.resource.data.email.size() > 3 &&
-          request.resource.data.email.size() < 100 &&
-          request.resource.data.clinicName is string &&
-          request.resource.data.clinicName.size() > 1 &&
-          request.resource.data.clinicName.size() < 100 &&
-          request.resource.data.type in ['dental', 'psychology'];
       allow read, update, delete: if isSuperAdmin();
     }
 
