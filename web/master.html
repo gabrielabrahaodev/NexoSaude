@@ -471,11 +471,35 @@
             toast('Owner + clínica criados (trial 7 dias).');
             goTab('owners');
         } catch (e) {
+            let canSafelyRollbackAuth = false;
             if (!provisioned && createdAuthUser) {
-                try { await createdAuthUser.delete(); } catch (_) {}
+                // Um timeout do batch pode ocorrer depois de o Firestore ter
+                // confirmado a gravação. Não exclua o Auth até confirmar que
+                // perfil e clínica não foram provisionados.
+                try {
+                    const [ownerSnap, ownedClinics] = await Promise.all([
+                        db.collection('users').doc(createdAuthUser.uid).get(),
+                        db.collection('clinics')
+                            .where('ownerId', '==', createdAuthUser.uid)
+                            .limit(1).get(),
+                    ]);
+                    canSafelyRollbackAuth = !ownerSnap.exists && ownedClinics.empty;
+                } catch (_) {
+                    // Estado incerto: preservar a conta evita quebrar docs já confirmados.
+                    canSafelyRollbackAuth = false;
+                }
+                if (canSafelyRollbackAuth) {
+                    try { await createdAuthUser.delete(); } catch (_) {}
+                }
             }
             console.error('Falha ao provisionar owner:', e);
-            toast(e.code === 'auth/email-already-in-use' ? 'E-mail já em uso.' : 'Falha. Tente de novo.');
+            if (e.code === 'auth/email-already-in-use') {
+                toast('E-mail já em uso.');
+            } else if (createdAuthUser && !canSafelyRollbackAuth) {
+                toast('Resultado incerto: conta preservada para evitar dados órfãos. Confira Owners antes de tentar novamente.');
+            } else {
+                toast('Falha. Tente de novo.');
+            }
             btn.disabled = false;
         } finally {
             if (secondary) { try { await secondary.delete(); } catch (e) {} }
