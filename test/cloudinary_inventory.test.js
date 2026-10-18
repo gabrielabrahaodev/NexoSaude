@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { inventoryCloudinaryDocument } = require('../migrate/cloudinary-inventory-core.js');
-const { classifyRemoteDocument } = require('../migrate/remote-document-classification.js');
+const { classifyRemoteDocument, validateCloudinaryDocumentMetadata } = require('../migrate/remote-document-classification.js');
 
 test('inventaria Cloudinary sem expor URL nem publicId', () => {
   const record = inventoryCloudinaryDocument({
@@ -64,7 +64,7 @@ test('classifica R2 como remoto privado e nunca direciona para o destroy do Clou
 
 test('classifica Cloudinary conhecido para limpeza individual autenticada', () => {
   assert.deepEqual(classifyRemoteDocument({
-    url: 'https://res.cloudinary.com/example/image/upload/patient.pdf',
+    url: 'https://res.cloudinary.com/example/raw/upload/patient.pdf',
     publicId: 'patients/patientA/documentA',
     resourceType: 'raw',
   }), { storage: 'cloudinary', resourceType: 'raw' });
@@ -80,4 +80,57 @@ test('preserva registros com publicId sem provedor inequívoco para revisão man
 
 test('ignora metadados locais sem identificador de armazenamento remoto', () => {
   assert.equal(classifyRemoteDocument({ url: '', title: 'Receita local' }), null);
+});
+
+
+test('aceita limpeza Cloudinary somente para URL HTTPS da conta e tipo explícitos', () => {
+  assert.deepEqual(validateCloudinaryDocumentMetadata({
+    url: 'https://res.cloudinary.com/dbbh601ay/image/upload/v123/patient.jpg',
+    publicId: 'patients/patientA/documentA',
+    resourceType: 'image',
+  }, 'dbbh601ay'), {
+    url: 'https://res.cloudinary.com/dbbh601ay/image/upload/v123/patient.jpg',
+    publicId: 'patients/patientA/documentA',
+    resourceType: 'image',
+    cloudName: 'dbbh601ay',
+  });
+});
+
+test('recusa host que apenas contém o texto cloudinary.com', () => {
+  assert.throws(() => validateCloudinaryDocumentMetadata({
+    url: 'https://res.cloudinary.com.attacker.invalid/dbbh601ay/image/upload/patient.jpg',
+    publicId: 'patients/patientA/documentA',
+    resourceType: 'image',
+  }, 'dbbh601ay'), /host HTTPS Cloudinary válido/);
+  assert.throws(() => validateCloudinaryDocumentMetadata({
+    url: 'https://attacker.invalid/file?next=cloudinary.com',
+    publicId: 'patients/patientA/documentA',
+    resourceType: 'image',
+  }, 'dbbh601ay'), /host HTTPS Cloudinary válido/);
+});
+
+test('recusa conta, tipo de recurso e metadados ambíguos antes de limpeza', () => {
+  const valid = {
+    url: 'https://res.cloudinary.com/dbbh601ay/image/upload/patient.jpg',
+    publicId: 'patients/patientA/documentA',
+    resourceType: 'image',
+  };
+  assert.throws(
+    () => validateCloudinaryDocumentMetadata(valid, 'another-cloud'),
+    /conta Cloudinary esperada/,
+  );
+  assert.throws(
+    () => validateCloudinaryDocumentMetadata({ ...valid, resourceType: 'raw' }, 'dbbh601ay'),
+    /resourceType ou tipo de entrega/,
+  );
+  const { resourceType, ...withoutType } = valid;
+  assert.throws(
+    () => validateCloudinaryDocumentMetadata(withoutType, 'dbbh601ay'),
+    /resourceType ausente ou inválido/,
+  );
+  const { publicId, ...withoutPublicId } = valid;
+  assert.throws(
+    () => validateCloudinaryDocumentMetadata(withoutPublicId, 'dbbh601ay'),
+    /publicId/,
+  );
 });
