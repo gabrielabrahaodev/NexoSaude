@@ -345,11 +345,12 @@ export function validateTrialRequestPayload(payload, profile) {
   const type = payload.type;
   const email = typeof profile?.email === "string" ? profile.email.trim() : "";
   const hasControl = (value) => /[\u0000-\u001f\u007f]/.test(value);
+  const hasUnsafeMarkup = (value) => value.includes("<") || value.includes(">") || hasControl(value);
   const at = email.indexOf("@");
   const emailDomain = at >= 0 ? email.slice(at + 1) : "";
 
-  if (name.length < 2 || name.length >= 100 || hasControl(name) ||
-      clinicName.length < 2 || clinicName.length >= 100 || hasControl(clinicName)) {
+  if (name.length < 2 || name.length >= 100 || hasUnsafeMarkup(name) ||
+      clinicName.length < 2 || clinicName.length >= 100 || hasUnsafeMarkup(clinicName)) {
     throw new ApiError(400, "Nome e clínica devem ter entre 2 e 99 caracteres.");
   }
   const digits = [...whatsapp].filter((ch) => ch >= "0" && ch <= "9").length;
@@ -358,6 +359,7 @@ export function validateTrialRequestPayload(payload, profile) {
     throw new ApiError(400, "Informe um WhatsApp válido com DDD.");
   }
   if (email.length < 4 || email.length >= 100 || hasControl(email) ||
+      email.includes("<") || email.includes(">") ||
       at <= 0 || at !== email.lastIndexOf("@") || email.includes(" ") ||
       !emailDomain.includes(".") || emailDomain.startsWith(".") || emailDomain.endsWith(".")) {
     throw new ApiError(400, "A conta não possui um e-mail válido.");
