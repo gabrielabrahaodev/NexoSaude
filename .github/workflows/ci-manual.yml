@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 20
       - name: Test public HTML security regressions
-        run: node --test test/web_security.test.js
+        run: node --test test/web_security.test.js test/private_file_validation.test.js
       - name: Check inline JavaScript syntax in HTML pages
         run: |
           python3 - <<'PY'
@@ -64,6 +64,8 @@ jobs:
         run: |
           node --check migrate/delete-clinic.js
           node --check migrate/delete-cloudinary-document.js
+          node --check workers/private-documents/src/index.js
+          node --check workers/private-documents/src/validation.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
