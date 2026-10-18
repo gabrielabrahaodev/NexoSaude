@@ -4,6 +4,10 @@ const TOKEN_KEYS_URL =
   "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 const MAX_CONTENT_LENGTH = 11 * 1024 * 1024;
 const SIGNED_URL_TTL_SECONDS = 300;
+const LEGACY_TRIALLESS_TEST_CLINIC_IDS = new Set([
+  "MxftREXD5vjKtE7SyJIH",
+  "VlFVjTlNX8yqijeHyczt",
+]);
 const ALLOWED_CONTENT_TYPES = new Set([
   "application/pdf",
   "image/jpeg",
@@ -15,6 +19,24 @@ class ApiError extends Error {
   constructor(status, message) {
     super(message);
     this.status = status;
+  }
+}
+
+// Exportada para teste unitário. Se o binding não existir ou falhar, a API
+// falha fechada (503); um limite atingido resulta em 429.
+export async function enforceRateLimit(env, bindingName, key, message) {
+  const limiter = env?.[bindingName];
+  if (!limiter || typeof limiter.limit !== "function") {
+    throw new ApiError(503, "Proteção de tráfego indisponível; tente novamente mais tarde.");
+  }
+  let result;
+  try {
+    result = await limiter.limit({ key: String(key) });
+  } catch (_) {
+    throw new ApiError(503, "Proteção de tráfego indisponível; tente novamente mais tarde.");
+  }
+  if (!result || result.success !== true) {
+    throw new ApiError(429, message || "Limite de requisições excedido. Tente novamente em um minuto.");
   }
 }
 
@@ -204,9 +226,14 @@ async function authorizePatient(token, uid, clinicId, patientId, env) {
     throw new ApiError(403, "Sem acesso à clínica informada.");
   }
   if (!isSuperAdmin) {
-    if (clinic.blockedByAdmin === true ||
-        (clinic.trialEndsAt instanceof Date && clinic.trialEndsAt.getTime() <= Date.now())) {
-      throw new ApiError(403, "A clínica está bloqueada ou com o período expirado.");
+    const trialEndsAt = clinic.trialEndsAt;
+    const trialMissingAllowed =
+      trialEndsAt == null && LEGACY_TRIALLESS_TEST_CLINIC_IDS.has(clinicId);
+    const trialInvalidOrExpired = trialEndsAt == null
+      ? !trialMissingAllowed
+      : !(trialEndsAt instanceof Date) || trialEndsAt.getTime() <= Date.now();
+    if (clinic.blockedByAdmin === true || trialInvalidOrExpired) {
+      throw new ApiError(403, "A clínica está bloqueada ou sem uma data de trial válida/ativa.");
     }
   }
 
@@ -315,6 +342,8 @@ function constantTimeEqual(left, right) {
 
 async function handleUpload(request, url, env) {
   const { token, uid } = await authenticatedRequest(request, env);
+  await enforceRateLimit(env, "UPLOAD_RATE_LIMITER", uid + ":upload",
+    "Muitos envios em pouco tempo. Tente novamente em um minuto.");
   const clinicId = url.searchParams.get("clinicId") || "";
   const patientId = url.searchParams.get("patientId") || "";
   await authorizePatient(token, uid, clinicId, patientId, env);
@@ -422,6 +451,8 @@ async function handleUpload(request, url, env) {
 
 async function handleDownloadLink(request, url, env) {
   const { token, uid } = await authenticatedRequest(request, env);
+  await enforceRateLimit(env, "DOWNLOAD_LINK_RATE_LIMITER", uid + ":download",
+    "Muitos pedidos de link de arquivo. Tente novamente em um minuto.");
   const clinicId = url.searchParams.get("clinicId") || "";
   const patientId = url.searchParams.get("patientId") || "";
   const documentId = url.searchParams.get("documentId") || "";
@@ -443,6 +474,8 @@ async function handleDownloadLink(request, url, env) {
 
 async function handleDelete(request, env) {
   const { token, uid } = await authenticatedRequest(request, env);
+  await enforceRateLimit(env, "DELETE_RATE_LIMITER", uid + ":delete",
+    "Muitas exclusões em pouco tempo. Tente novamente em um minuto.");
   let body;
   try {
     body = await request.json();
@@ -479,6 +512,8 @@ async function handleContent(request, url, env, cors) {
   if (!constantTimeEqual(expected, signature)) {
     throw new ApiError(403, "Link de arquivo inválido ou expirado.");
   }
+  await enforceRateLimit(env, "CONTENT_RATE_LIMITER", key + ":" + expires,
+    "Muitos acessos ao mesmo link de arquivo. Tente novamente em um minuto.");
   const object = await env.FILES.get(key);
   if (!object ||
       object.customMetadata?.clinicId !== key.split("/")[0] ||
