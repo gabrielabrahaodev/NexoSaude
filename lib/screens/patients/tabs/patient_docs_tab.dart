@@ -134,9 +134,6 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
 
       if (uploaded == null) throw Exception("Falha no upload para nuvem.");
 
-      String ext = ".${name.split('.').last}";
-      if (!name.contains('.')) ext = ".pdf";
-
       if (mounted) toast(context, "Upload concluído!");
     } catch (e) {
       if (mounted) toast(context, "Erro: $e", error: true);
