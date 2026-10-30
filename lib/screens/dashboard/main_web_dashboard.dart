@@ -570,7 +570,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     Widget navigation({BuildContext? drawerContext}) => SafeArea(
       child: Column(
         children: [
-          Padding(padding: const EdgeInsets.all(20), child: brand()),
+          Padding(padding: const EdgeInsets.all(20), child: SizedBox(height: 64, child: brand())),
           clinic(),
           const Padding(
             padding: EdgeInsets.all(16),
@@ -597,12 +597,12 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      tileColor: e.$1 == _effectiveIndex ? ClinicalAgendaStyle.teal : null,
+                      tileColor: e.$1 == _effectiveIndex ? ClinicalAgendaStyle.teal.withValues(alpha: .12) : null,
                       iconColor: e.$1 == _effectiveIndex
-                          ? const Color(0xFF00382C)
+                          ? const Color(0xFF43E1BA)
                           : ClinicalAgendaStyle.muted,
                       textColor: e.$1 == _effectiveIndex
-                          ? const Color(0xFF00382C)
+                          ? const Color(0xFF43E1BA)
                           : ClinicalAgendaStyle.text,
                       leading: Icon(e.$4),
                       title: Text(e.$3),

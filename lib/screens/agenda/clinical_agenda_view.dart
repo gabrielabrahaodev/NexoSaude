@@ -20,7 +20,7 @@ abstract final class ClinicalAgendaStyle {
   static const blue = Color(0xFFADC6FF);
   static ThemeData get theme => ThemeData(
     useMaterial3: true,
-    fontFamily: 'Roboto',
+    fontFamily: 'PlusJakartaSans',
     brightness: Brightness.dark,
     scaffoldBackgroundColor: background,
     colorScheme: const ColorScheme.dark(
@@ -29,6 +29,7 @@ abstract final class ClinicalAgendaStyle {
       surface: surface,
     ),
     textTheme: ThemeData.dark().textTheme.apply(
+      fontFamily: 'PlusJakartaSans',
       bodyColor: text,
       displayColor: text,
     ),

@@ -778,115 +778,214 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     if (mounted) await _loadPackage();
   }
 
-  Widget _billing() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (_loadingPackage || _loadingCharges) const LinearProgressIndicator(),
-      if (_packageError != null)
-        Text(_packageError!, style: const TextStyle(color: Color(0xFFFFB4AB))),
-      if (_contract != null) ...[
-        CarePill(
-          _monthlyPackage ? 'PACOTE MENSAL' : 'SESSÃO AVULSA',
-          active: true,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          _monthlyPackage
-              ? 'Contrato recorrente • ${_contract!.dayOfWeek} às ${_contract!.time}'
-              : 'Atendimento avulso',
-        ),
-        if (_packageProgress != null && _monthlyPackage) ...[
-          const SizedBox(height: 12),
-          LinearProgressIndicator(value: _packageProgress!.fraction),
-          const SizedBox(height: 8),
-          Text(
-            '${_packageProgress!.finalized}/${_packageProgress!.planned} sessões finalizadas • ${_packageProgress!.remaining} previstas restantes',
-            style: const TextStyle(fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Cobrança mensal conforme presença. Faltas com atestado seguem as regras do pacote. Confira os valores em Pagamentos.',
-            style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: _manageContract,
-            icon: const Icon(Icons.settings_outlined),
-            label: const Text('Gerenciar contrato'),
-          ),
-        ],
-        const SizedBox(height: 14),
-      ],
-      if (_chargesError != null) ...[
-        Text(_chargesError!),
-        TextButton(
-          onPressed: _loadOpenCharges,
-          child: const Text('Tentar novamente'),
-        ),
-      ] else if (!_loadingCharges && _openCharges.isEmpty)
-        const Text(
-          'Nada em aberto para este paciente. Novos lançamentos são criados na aba Pagamentos.',
-        ),
-      if (!_loadingCharges &&
-          _openCharges.isNotEmpty &&
-          !_monthlyPackage &&
-          !_loadingPackage &&
-          _packageError == null) ...[
-        DropdownButtonFormField<String>(
-          key: ValueKey(_selectedChargeId),
-          initialValue: _selectedChargeId,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Lançamento existente'),
-          items: _openCharges
-              .map(
-                (c) => DropdownMenuItem(
-                  value: c.id,
-                  child: Text(
-                    '${c.title} — ${formatBRL(c.amount - c.paidAmount)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (v) => setState(() => _selectedChargeId = v),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
+  Widget _billing() => LayoutBuilder(
+    builder: (context, constraints) {
+      final charges = _chargeControls();
+      final summary = _contractSummary();
+      if (_psychology && _contract != null && constraints.maxWidth >= 560) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 190,
-              child: DropdownButtonFormField<String>(
-                initialValue: _method,
-                decoration: const InputDecoration(
-                  labelText: 'Meio de pagamento',
-                ),
-                items: _methods
-                    .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                    .toList(),
-                onChanged: (m) => setState(() => _method = m ?? 'Pix'),
+            Expanded(child: summary),
+            const SizedBox(width: 16),
+            Expanded(child: charges),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_contract != null ||
+              _loadingPackage ||
+              _packageError != null) ...[
+            summary,
+            const SizedBox(height: 16),
+          ],
+          charges,
+        ],
+      );
+    },
+  );
+
+  Widget _contractSummary() => Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: ClinicalAgendaStyle.background.withValues(alpha: .45),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_loadingPackage) const LinearProgressIndicator(),
+        if (_packageError != null)
+          Text(
+            _packageError!,
+            style: const TextStyle(color: Color(0xFFFFB4AB)),
+          ),
+        if (_contract != null) ...[
+          CarePill(
+            _monthlyPackage ? 'PACOTE VIGENTE' : 'SESSÃO AVULSA',
+            active: true,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _monthlyPackage ? 'Contrato recorrente' : 'Atendimento avulso',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${_contract!.dayOfWeek} às ${_contract!.time}',
+            style: const TextStyle(
+              color: ClinicalAgendaStyle.muted,
+              fontSize: 12,
+            ),
+          ),
+          if (_packageProgress != null && _monthlyPackage) ...[
+            const SizedBox(height: 20),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: _packageProgress!.fraction,
+                minHeight: 8,
+                color: ClinicalCareStyle.accent,
+                backgroundColor: ClinicalAgendaStyle.elevated,
               ),
             ),
-            FilledButton(
-              onPressed: _saving ? null : _receiveExisting,
-              child: const Text('Receber lançamento'),
+            const SizedBox(height: 10),
+            Text(
+              '${_packageProgress!.finalized}/${_packageProgress!.planned} sessões finalizadas',
+              style: const TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${_packageProgress!.remaining} previstas restantes',
+              style: const TextStyle(
+                color: ClinicalCareStyle.accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Cobrança mensal conforme presença. Faltas com atestado seguem as regras do pacote.',
+              style: TextStyle(
+                color: ClinicalAgendaStyle.muted,
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _manageContract,
+              icon: const Icon(Icons.settings_outlined, size: 16),
+              label: const Text('Gerenciar contrato'),
+            ),
+          ],
+        ],
+      ],
+    ),
+  );
+
+  Widget _chargeControls() => Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: ClinicalAgendaStyle.elevated.withValues(alpha: .28),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_loadingCharges) const LinearProgressIndicator(),
+        const Row(
+          children: [
+            Icon(
+              Icons.account_balance_wallet_outlined,
+              color: ClinicalCareStyle.accent,
+              size: 20,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Financeiro do paciente',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
-      ],
-      const SizedBox(height: 12),
-      OutlinedButton.icon(
-        onPressed: () => _openPatient(PatientSection.payments),
-        icon: const Icon(Icons.receipt_long_outlined),
-        label: Text(
-          _psychology
-              ? 'Extrato financeiro / Pagamentos'
-              : 'Lançar cobrança / Pagamentos',
+        const SizedBox(height: 14),
+        if (_chargesError != null) ...[
+          Text(_chargesError!),
+          TextButton(
+            onPressed: _loadOpenCharges,
+            child: const Text('Tentar novamente'),
+          ),
+        ] else if (!_loadingCharges && _openCharges.isEmpty)
+          const Text(
+            'Nada em aberto para este paciente. Novos lançamentos são criados na aba Pagamentos.',
+          ),
+        if (!_loadingCharges &&
+            _openCharges.isNotEmpty &&
+            !_monthlyPackage &&
+            !_loadingPackage &&
+            _packageError == null) ...[
+          DropdownButtonFormField<String>(
+            key: ValueKey(_selectedChargeId),
+            initialValue: _selectedChargeId,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Lançamento existente',
+            ),
+            items: _openCharges
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c.id,
+                    child: Text(
+                      '${c.title} — ${formatBRL(c.amount - c.paidAmount)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) => setState(() => _selectedChargeId = v),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(
+                width: 190,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _method,
+                  decoration: const InputDecoration(
+                    labelText: 'Meio de pagamento',
+                  ),
+                  items: _methods
+                      .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                      .toList(),
+                  onChanged: (m) => setState(() => _method = m ?? 'Pix'),
+                ),
+              ),
+              FilledButton(
+                onPressed: _saving ? null : _receiveExisting,
+                child: const Text('Receber lançamento'),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _openPatient(PatientSection.payments),
+          icon: const Icon(Icons.receipt_long_outlined),
+          label: Text(
+            _psychology
+                ? 'Extrato financeiro / Pagamentos'
+                : 'Lançar cobrança / Pagamentos',
+          ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 
   Widget _scheduling() {
@@ -904,114 +1003,121 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
       );
     }
     final next = _monthlyPackage ? _packageProgress?.next : null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_directoryError != null)
-          Text(
-            _directoryError!,
-            style: const TextStyle(color: Color(0xFFFFB4AB)),
-          ),
-        if (_monthlyPackage) ...[
-          Text(
-            next == null
-                ? 'Nenhuma sessão futura encontrada neste contrato.'
-                : 'Próxima sessão já agendada: ${DateFormat('dd/MM HH:mm').format(next.date)}',
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'As sessões do pacote são geradas pelo contrato; não será criada uma cópia ao finalizar.',
-            style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
-          ),
-          TextButton(
-            onPressed: () => _openPatient(PatientSection.registration),
-            child: const Text('Consultar ficha do paciente'),
-          ),
-        ] else ...[
-          DropdownButtonFormField<String>(
-            key: ValueKey(_nextDentistId),
-            initialValue: _nextDentists.any((d) => d.id == _nextDentistId)
-                ? _nextDentistId
-                : null,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Profissional responsável',
-            ),
-            items: _nextDentists
-                .map(
-                  (d) => DropdownMenuItem(
-                    value: d.id,
-                    child: Text(d.name, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(),
-            onChanged: (v) {
-              setState(() {
-                _nextDentistId = v;
-                _nextDate = null;
-              });
-              _loadSuggestion();
-            },
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final days in careReturnOffsets(_psychology))
-                OutlinedButton(
-                  onPressed: _saving || _nextDentistId == null
-                      ? null
-                      : () => _loadSuggestion(days),
-                  child: Text(
-                    _psychology
-                        ? (days == 7 ? 'Semanal' : 'Quinzenal')
-                        : 'Em $days dias',
-                  ),
-                ),
-              OutlinedButton(
-                onPressed: _saving ? null : _safePickNext,
-                child: const Text('Personalizado / Ver grade livre'),
-              ),
-            ],
-          ),
-          if (_loadingSuggestion)
-            const LinearProgressIndicator()
-          else if (_suggestedDate != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  Text(
-                    'Sugestão: ${DateFormat('dd/MM HH:mm').format(_suggestedDate!)} • ${_suggestedFree == true ? 'Livre' : 'Ocupado'}',
-                  ),
-                  TextButton(
-                    onPressed: _suggestedFree == true && !_saving
-                        ? () => setState(() => _nextDate = _suggestedDate)
-                        : null,
-                    child: const Text('Selecionar horário'),
-                  ),
-                ],
-              ),
-            ),
-          if (_nextDate != null)
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: ClinicalAgendaStyle.elevated.withValues(alpha: .28),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_directoryError != null)
             Text(
-              'Selecionado: ${DateFormat('dd/MM HH:mm').format(_nextDate!)}',
+              _directoryError!,
+              style: const TextStyle(color: Color(0xFFFFB4AB)),
             ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            onPressed: _saving ? null : _scheduleNext,
-            icon: const Icon(Icons.event_available),
-            label: Text(
-              _psychology
-                  ? 'Agendar sessão avulsa'
-                  : 'Agendar e chamar no WhatsApp',
+          if (_monthlyPackage) ...[
+            Text(
+              next == null
+                  ? 'Nenhuma sessão futura encontrada neste contrato.'
+                  : 'Próxima sessão já agendada: ${DateFormat('dd/MM HH:mm').format(next.date)}',
             ),
-          ),
+            const SizedBox(height: 8),
+            const Text(
+              'As sessões do pacote são geradas pelo contrato; não será criada uma cópia ao finalizar.',
+              style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
+            ),
+            TextButton(
+              onPressed: () => _openPatient(PatientSection.registration),
+              child: const Text('Consultar ficha do paciente'),
+            ),
+          ] else ...[
+            DropdownButtonFormField<String>(
+              key: ValueKey(_nextDentistId),
+              initialValue: _nextDentists.any((d) => d.id == _nextDentistId)
+                  ? _nextDentistId
+                  : null,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Profissional responsável',
+              ),
+              items: _nextDentists
+                  .map(
+                    (d) => DropdownMenuItem(
+                      value: d.id,
+                      child: Text(d.name, overflow: TextOverflow.ellipsis),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                setState(() {
+                  _nextDentistId = v;
+                  _nextDate = null;
+                });
+                _loadSuggestion();
+              },
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final days in careReturnOffsets(_psychology))
+                  OutlinedButton(
+                    onPressed: _saving || _nextDentistId == null
+                        ? null
+                        : () => _loadSuggestion(days),
+                    child: Text(
+                      _psychology
+                          ? (days == 7 ? 'Semanal' : 'Quinzenal')
+                          : 'Em $days dias',
+                    ),
+                  ),
+                OutlinedButton(
+                  onPressed: _saving ? null : _safePickNext,
+                  child: const Text('Personalizado / Ver grade livre'),
+                ),
+              ],
+            ),
+            if (_loadingSuggestion)
+              const LinearProgressIndicator()
+            else if (_suggestedDate != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Text(
+                      'Sugestão: ${DateFormat('dd/MM HH:mm').format(_suggestedDate!)} • ${_suggestedFree == true ? 'Livre' : 'Ocupado'}',
+                    ),
+                    TextButton(
+                      onPressed: _suggestedFree == true && !_saving
+                          ? () => setState(() => _nextDate = _suggestedDate)
+                          : null,
+                      child: const Text('Selecionar horário'),
+                    ),
+                  ],
+                ),
+              ),
+            if (_nextDate != null)
+              Text(
+                'Selecionado: ${DateFormat('dd/MM HH:mm').format(_nextDate!)}',
+              ),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: _saving ? null : _scheduleNext,
+              icon: const Icon(Icons.event_available),
+              label: Text(
+                _psychology
+                    ? 'Agendar sessão avulsa'
+                    : 'Agendar e chamar no WhatsApp',
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 

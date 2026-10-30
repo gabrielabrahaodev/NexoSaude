@@ -1,6 +1,6 @@
 # Atendimento por especialidade — PR #2
 
-A implementação segue a hierarquia, superfícies, cores e lista/ficha das duas referências enviadas em 30/10/2026: `code(1).html`/`DESIGN(1).md` para odontologia e `code(2).html`/`DESIGN(2).md` para psicologia. Usa Flutter e o `assets/logo.png` existente, sem dependências novas. Dados de exemplo, afirmações de criptografia ponta a ponta, CRP, diagnósticos e salas fictícias não são inseridos.
+A implementação segue a hierarquia, superfícies, cores e lista/ficha das duas referências enviadas em 30/10/2026: `code(1).html`/`DESIGN(1).md` para odontologia e `code(2).html`/`DESIGN(2).md` para psicologia. Usa Flutter, Plus Jakarta Sans incluída nos assets com licença OFL e o `assets/logo.png` existente, sem dependências novas. Dados de exemplo, afirmações de criptografia ponta a ponta, CRP, diagnósticos e salas fictícias não são inseridos.
 
 ## Executar
 
@@ -25,3 +25,9 @@ Atualizar a branch `feat/agenda-clinical-dark` e executar `flutter run -d chrome
 - Análise estática: zero erros; 224 avisos/informações no projeto.
 
 Testes usam dados controlados e não substituem a avaliação autenticada com contas de teste. Não houve publicação, merge, alteração de Rules de produção ou mudança de dependências. O faturamento mensal existente não foi remodelado.
+
+## Refinamento visual
+
+Comparar com `screen(2).png` (odontologia) e `screen(3).png` (psicologia): painel odontológico contínuo, seções numeradas, rodapé fixo, cartões independentes de psicologia, marcadores tonais compactos, ações verdes, fonte Plus Jakarta Sans e menu com seleção discreta. Confirmar leitura dos marcadores longos no mobile, acesso ao fechamento e ações de salvar/finalizar, sem perder os filtros ou a confirmação em massa. O rodapé fixo não deve cobrir os campos roláveis.
+
+Após este refinamento: 251 testes Flutter aprovados, quatro prévias renderizadas e inspecionadas (390/1200px, duas especialidades), análise sem erros (224 avisos/informações existentes) e build Web release concluído.

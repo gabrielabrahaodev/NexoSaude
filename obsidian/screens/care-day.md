@@ -30,3 +30,7 @@ Marcadores de intervenção e síntese da sessão, rascunho explícito, progress
 ## Verificação
 
 `care_workflow_test.dart`, `clinical_care_view_test.dart` e matriz do emulador cobrem estados, escopo, duração, callbacks, telas de 320–1440px e autorização. Ver roteiro autenticado em `docs/design/care/TESTE.md`.
+
+## Fidelidade visual às referências
+
+O tema de Atendimento usa Plus Jakarta Sans incluída no app (licença OFL), superfícies tonais, marcadores sem contorno e botões verdes. Odontologia usa um painel contínuo com seções numeradas e rodapé de ações fixo; Psicologia conserva cartões independentes para registro, contrato/cobrança e próxima sessão. O contrato e os controles financeiros se organizam em duas colunas quando há espaço, empilhando no mobile. O menu mantém o logo original e usa destaque tonal no item ativo. Fluxos de gravação, presença, permissão e cobrança permanecem os mesmos.
