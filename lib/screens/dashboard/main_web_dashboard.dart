@@ -14,7 +14,8 @@ import '../../ui/app_theme.dart';
 
 // IMPORTS DAS TELAS
 import 'kpi_dashboard_screen.dart';
-import '../agenda/agenda_manager_screen.dart'; 
+import '../agenda/agenda_manager_screen.dart';
+import '../agenda/clinical_agenda_view.dart';
 import '../financial/financial_report_screen.dart'; 
 import '../reports/reports_screen.dart'; 
 import '../patients/patient_list_screen.dart';
@@ -364,7 +365,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: clinicalAgendaEnabled && _effectiveIndex == 1 ? ClinicalAgendaStyle.elevated : AppColors.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
             boxShadow: [
@@ -426,6 +427,10 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    if (clinicalAgendaEnabled && _effectiveIndex == 1) {
+      return Theme(data: ClinicalAgendaStyle.theme,
+        child: Builder(builder: (context) => _buildClinicalAgendaShell(context)));
+    }
     // Layout responsivo mantido...
     final bgMenuColor = AppColors.surface;
     final bgContentColor = AppColors.background; 
@@ -479,6 +484,285 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildClinicalAgendaShell(BuildContext context) {
+    _ensurePendingStreams();
+    final mobile = MediaQuery.sizeOf(context).width < 768;
+    final entries = <(int, String, String, IconData)>[
+      (1, 'agenda', 'Agenda', Icons.calendar_today_outlined),
+      (2, 'pacientes', 'Pacientes', Icons.people_outline),
+      (0, 'dashboard', 'Dashboard', Icons.grid_view_outlined),
+      (12, 'atendimento', 'Atendimento', Icons.medical_services_outlined),
+      if (ClinicCapabilities.ofType(_currentClinicType).canShowTherapeuticFlow)
+        (11, 'fluxo', 'Fluxo Terapêutico', Icons.psychology_outlined),
+      if (ClinicCapabilities.ofType(_currentClinicType).canShowLab)
+        (3, 'laboratorio', 'Laboratório', Icons.science_outlined),
+      (5, 'relatorios', 'Relatórios', Icons.bar_chart_outlined),
+      (6, 'noticias', 'Notícias', Icons.newspaper_outlined),
+      (7, 'cobrancas', 'Cobranças', Icons.credit_card_outlined),
+      (8, 'clinicas', 'Clínicas', Icons.apartment_outlined),
+      (9, 'funcionarios', 'Funcionários', Icons.badge_outlined),
+      (10, 'gestao', 'Gestão', Icons.settings_outlined),
+      (13, 'master', 'Master', Icons.admin_panel_settings_outlined),
+      (14, 'exportar', 'Backup', Icons.download_outlined),
+    ].where((e) => _canShow(e.$2)).toList();
+    Widget brand() => const Row(
+      children: [
+        Icon(
+          Icons.health_and_safety_outlined,
+          color: ClinicalAgendaStyle.teal,
+          size: 30,
+        ),
+        SizedBox(width: 10),
+        Text(
+          'Nexo',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+        ),
+        Text(
+          'Saúde',
+          style: TextStyle(
+            color: ClinicalAgendaStyle.teal,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+    Widget identity() => ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      leading: const CircleAvatar(
+        backgroundColor: ClinicalAgendaStyle.blue,
+        child: Icon(Icons.person_outline, color: Color(0xFF002E6A)),
+      ),
+      title: Text(
+        _displayUserName(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        _displayUserSub(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
+      ),
+      trailing: IconButton(
+        tooltip: 'Sair',
+        onPressed: _logout,
+        icon: const Icon(Icons.logout, size: 20),
+      ),
+    );
+    Widget clinic() => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_canSwitchClinic) _buildClinicSelector(false),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.apartment,
+                color: ClinicalAgendaStyle.teal,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  SessionManager().currentClinicName ?? 'Unidade',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    Widget navigation({BuildContext? drawerContext}) => SafeArea(
+      child: Column(
+        children: [
+          Padding(padding: const EdgeInsets.all(20), child: brand()),
+          clinic(),
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'NAVEGAÇÃO CLÍNICA',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: ClinicalAgendaStyle.muted,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                for (final e in entries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      tileColor: e.$1 == 1 ? ClinicalAgendaStyle.teal : null,
+                      iconColor: e.$1 == 1
+                          ? const Color(0xFF00382C)
+                          : ClinicalAgendaStyle.muted,
+                      textColor: e.$1 == 1
+                          ? const Color(0xFF00382C)
+                          : ClinicalAgendaStyle.text,
+                      leading: Icon(e.$4),
+                      title: Text(e.$3),
+                      trailing: e.$1 == 1 || e.$1 == 7
+                          ? StreamBuilder<int>(
+                              stream: e.$1 == 1
+                                  ? _remarcarStream
+                                  : _avisoStream,
+                              builder: (context, snapshot) =>
+                                  (snapshot.data ?? 0) > 0
+                                  ? Badge(label: Text('${snapshot.data}'))
+                                  : const SizedBox.shrink(),
+                            )
+                          : null,
+                      onTap: () {
+                        if (drawerContext != null) Navigator.pop(drawerContext);
+                        _onMenuSelect(e.$1);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          identity(),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+    final quick = entries.where((e) => [1, 2, 12, 5].contains(e.$1)).toList();
+    return Scaffold(
+      backgroundColor: ClinicalAgendaStyle.background,
+      drawer: mobile
+          ? Drawer(
+              backgroundColor: ClinicalAgendaStyle.surface,
+              child: Builder(builder: (ctx) => navigation(drawerContext: ctx)),
+            )
+          : null,
+      appBar: mobile
+          ? AppBar(
+              backgroundColor: ClinicalAgendaStyle.surface,
+              title: brand(),
+              toolbarHeight: 64,
+              centerTitle: false,
+            )
+          : null,
+      bottomNavigationBar: mobile
+          ? SafeArea(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: ClinicalAgendaStyle.surface,
+                  border: Border(
+                    top: BorderSide(color: ClinicalAgendaStyle.elevated),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    for (final e in quick)
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _onMenuSelect(e.$1),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  e.$4,
+                                  color: e.$1 == 1
+                                      ? ClinicalAgendaStyle.teal
+                                      : ClinicalAgendaStyle.muted,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  e.$3,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: e.$1 == 1
+                                        ? ClinicalAgendaStyle.teal
+                                        : ClinicalAgendaStyle.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            )
+          : null,
+      body: mobile
+          ? Column(
+              children: [
+                clinic(),
+                Expanded(child: _screens[1]),
+              ],
+            )
+          : Row(
+              children: [
+                SizedBox(
+                  width: MediaQuery.sizeOf(context).width < 1100 ? 220 : 272,
+                  child: ColoredBox(
+                    color: ClinicalAgendaStyle.surface,
+                    child: navigation(),
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.home_outlined,
+                              size: 20,
+                              color: ClinicalAgendaStyle.muted,
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'Clínica / Agenda',
+                                style: TextStyle(
+                                  color: ClinicalAgendaStyle.muted,
+                                ),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                _displayUserName(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(child: _screens[1]),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 

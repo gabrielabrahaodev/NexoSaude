@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 
 import 'agenda_cell_factory.dart';
+import 'clinical_agenda_view.dart';
 import 'agenda_form_screen.dart';
 import '../patients/patient_details_screen.dart';
 
@@ -1150,6 +1151,134 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     // Janela mensal em cache (anterior/atual/proximo). Idempotente e
     // cobre troca de semana E troca de clinica (limpa e recomeca).
     _monthCache.ensureWindow(clinicId, _currentWeekStart);
+
+    if (clinicalAgendaEnabled) {
+      return Theme(
+        data: ClinicalAgendaStyle.theme,
+        child: Scaffold(
+          backgroundColor: ClinicalAgendaStyle.background,
+          floatingActionButton: FloatingActionButton.extended(
+            backgroundColor: ClinicalAgendaStyle.teal,
+            foregroundColor: const Color(0xFF002E26),
+            onPressed: _showManagementMenu,
+            icon: const Icon(Icons.edit_calendar_outlined),
+            label: const Text(
+              'Gestão',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          body: StreamBuilder<Map<String, List<AppointmentModel>>>(
+            stream: _monthCache.stream,
+            builder: (context, snapshot) {
+              final loading =
+                  _isLoadingDentists ||
+                  !_monthCache.cachedMonths.contains(
+                    MonthAgendaCache.keyOf(_currentWeekStart),
+                  ) ||
+                  !_monthCache.cachedMonths.contains(
+                    MonthAgendaCache.keyOf(
+                      weekEnd.subtract(const Duration(days: 1)),
+                    ),
+                  );
+              final appointments = _monthCache
+                  .forWeek(_currentWeekStart, weekEnd)
+                  .where((appt) {
+                    if (userRole == 'dentista' &&
+                        appt.dentistId != currentUserUid) {
+                      return false;
+                    }
+                    if (_shouldShowFilter &&
+                        _selectedDentistId != null &&
+                        appt.dentistId != null &&
+                        appt.dentistId != _selectedDentistId) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .toList();
+              return ClinicalAgendaView(
+                weekStart: _currentWeekStart,
+                appointments: appointments,
+                loading: loading,
+                error: snapshot.hasError
+                    ? 'Erro ao carregar agenda: ${snapshot.error}'
+                    : null,
+                professionalSelector: _shouldShowFilter
+                    ? DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedDentistId,
+                          items: _dentistItems,
+                          hint: const Text('Selecione o profissional'),
+                          onChanged: (value) =>
+                              setState(() => _selectedDentistId = value),
+                        ),
+                      )
+                    : ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.person_outline),
+                        ),
+                        title: Text(
+                          SessionManager().userName ?? 'Profissional',
+                        ),
+                        subtitle: const Text('Agenda de atendimentos'),
+                      ),
+                onChangeWeek: _changeWeek,
+                onToday: () {
+                  final now = DateTime.now();
+                  setState(
+                    () => _currentWeekStart = DateTime(
+                      now.year,
+                      now.month,
+                      now.day,
+                    ).subtract(Duration(days: now.weekday - 1)),
+                  );
+                },
+                onEmptySlot: (date, time) => AgendaCellFactory.openForm(
+                  context: context,
+                  date: date,
+                  time: time,
+                  selectedDentistId: _selectedDentistId,
+                  fullWeekdayName: _getFullWeekDayName,
+                ),
+                onAppointment: (appt) {
+                  if (appt.isCancelled) {
+                    showModalBottomSheet(context: context, builder: (sheetContext) => SafeArea(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        ListTile(leading: const Icon(Icons.info_outline), title: const Text('Detalhes do cancelamento'),
+                          onTap: () { Navigator.pop(sheetContext); _showCancellationDetails(appt); }),
+                        ListTile(leading: const Icon(Icons.add), title: const Text('Novo agendamento aqui'),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            AgendaCellFactory.openForm(context: context, date: appt.date, time: _hhmm(appt.date),
+                              selectedDentistId: _selectedDentistId, fullWeekdayName: _getFullWeekDayName);
+                          }),
+                      ]),
+                    ));
+                    return;
+                  }
+                  final end = appt.date.add(
+                    Duration(minutes: appt.durationMinutes),
+                  );
+                  final concurrent = appointments
+                      .where(
+                        (a) =>
+                            !a.isCancelled &&
+                            a.date.isBefore(end) &&
+                            a.date
+                                .add(Duration(minutes: a.durationMinutes))
+                                .isAfter(appt.date),
+                      )
+                      .length;
+                  _showAppointmentOptions(appt, concurrent);
+                },
+              );
+            },
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,

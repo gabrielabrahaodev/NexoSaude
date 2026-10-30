@@ -41,3 +41,11 @@ Ver/editar/cancelar/finalizar atendimento; célula vazia cria; long-press exclui
 - Cache mensal deslizante (`MonthAgendaCache`): janela anterior/atual/próxima; semana em cache = zero leitura. Ver [[care-day]].
 - Bloqueio/desbloqueio atualiza `portal_slots` via `adjustSlots` (1 escrita). Ver [[portal-mirror]].
 - Menu "Decidir remarcação" abre [[remarcar-dialog]].
+
+## Alternativa visual para avaliação (30/10/2026)
+
+- Branch `feat/agenda-clinical-dark`: `clinical_agenda_view.dart` recebe a lista do mesmo cache, já filtrada por profissional, e delega ações à agenda existente.
+- Tema escuro local à Agenda; desktop semanal/diário, mobile diário abaixo de 768px com faixa de sete dias e navegação inferior no shell. Não modifica a preferência global de tema.
+- `--dart-define=AGENDA_CLINICAL_DARK=false` restaura a apresentação anterior para comparação.
+- Contagem exclui cancelados/bloqueios; sem percentual fictício de ocupação. Os estados e intervalos dos dados continuam visíveis.
+- Teste manual e limites: `docs/design/agenda/TESTE.md`. Expandir o visual para o restante do sistema somente após avaliação do usuário.
