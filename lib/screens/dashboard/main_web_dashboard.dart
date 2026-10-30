@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:universal_html/html.dart' as html;
 import 'dart:convert';
 import '../../services/clinic_capabilities.dart';
+import '../../services/care_workflow.dart';
 import '../../services/menu_access.dart';
 import '../../services/pending_counts.dart';
 import '../../services/session_manager.dart';
@@ -271,7 +272,15 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     const ExportScreen(), // 14
   ];
 
-  void _onMenuSelect(int index) {
+  Future<bool> _flushCareDrafts() async {
+    final saved = await CareDraftRegistry.flush();
+    if (!mounted) return false;
+    if (!saved) toast(context, 'Aguarde o rascunho salvar ou tente novamente antes de sair da ficha.', error: true);
+    return saved;
+  }
+
+  void _onMenuSelect(int index) async {
+    if (!await _flushCareDrafts() || !mounted) return;
     // Em setup, só Clínicas (8) é navegável (KPI e atalhos respeitam).
     if (_needsClinicSetup && index != 8) return;
     setState(() => _selectedIndex = index);
@@ -284,6 +293,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   }
 
   Future<void> _logout() async {
+    if (!await _flushCareDrafts() || !mounted) return;
     SessionManager().clear();
     ThemeController().clearUser(); // volta ao tema do aparelho
     await FirebaseAuth.instance.signOut();
@@ -400,8 +410,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   ),
                 );
               }).toList(),
-              onChanged: (newClinicId) {
+              onChanged: (newClinicId) async {
                 if (newClinicId != null) {
+                  if (!await _flushCareDrafts() || !mounted) return;
                   final selectedDoc = clinics.firstWhere((d) => d.id == newClinicId);
                   final data = selectedDoc.data() as Map<String, dynamic>;
                   final type = data['type'] ?? 'dental'; 
@@ -420,6 +431,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                     }
                   });
                   
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text("Acessando: ${data['name']} (${type.toUpperCase()})"), 
@@ -438,9 +450,10 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (clinicalAgendaEnabled && _effectiveIndex == 1) {
+    if (clinicalAgendaEnabled) {
+      final contentTheme = Theme.of(context);
       return Theme(data: ClinicalAgendaStyle.theme,
-        child: Builder(builder: (context) => _buildClinicalAgendaShell(context)));
+        child: Builder(builder: (context) => _buildClinicalAgendaShell(context, contentTheme)));
     }
     // Layout responsivo mantido...
     final bgMenuColor = AppColors.surface;
@@ -498,8 +511,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     );
   }
 
-  Widget _buildClinicalAgendaShell(BuildContext context) {
+  Widget _buildClinicalAgendaShell(BuildContext context, ThemeData contentTheme) {
     _ensurePendingStreams();
+    final screen = Theme(data: contentTheme, child: _screens[_effectiveIndex]);
     final mobile = MediaQuery.sizeOf(context).width < 768;
     final entries = <(int, String, String, IconData)>[
       (1, 'agenda', 'Agenda', Icons.calendar_today_outlined),
@@ -583,11 +597,11 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      tileColor: e.$1 == 1 ? ClinicalAgendaStyle.teal : null,
-                      iconColor: e.$1 == 1
+                      tileColor: e.$1 == _effectiveIndex ? ClinicalAgendaStyle.teal : null,
+                      iconColor: e.$1 == _effectiveIndex
                           ? const Color(0xFF00382C)
                           : ClinicalAgendaStyle.muted,
-                      textColor: e.$1 == 1
+                      textColor: e.$1 == _effectiveIndex
                           ? const Color(0xFF00382C)
                           : ClinicalAgendaStyle.text,
                       leading: Icon(e.$4),
@@ -658,7 +672,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                               children: [
                                 Icon(
                                   e.$4,
-                                  color: e.$1 == 1
+                                  color: e.$1 == _effectiveIndex
                                       ? ClinicalAgendaStyle.teal
                                       : ClinicalAgendaStyle.muted,
                                 ),
@@ -669,7 +683,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: e.$1 == 1
+                                    color: e.$1 == _effectiveIndex
                                         ? ClinicalAgendaStyle.teal
                                         : ClinicalAgendaStyle.muted,
                                   ),
@@ -688,7 +702,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           ? Column(
               children: [
                 clinic(),
-                Expanded(child: _screens[1]),
+                Expanded(child: screen),
               ],
             )
           : Row(
@@ -716,9 +730,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                               color: ClinicalAgendaStyle.muted,
                             ),
                             const SizedBox(width: 12),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'Clínica / Agenda',
+                                'Clínica / ${MenuAccess.labels[MenuAccess.indexKey[_effectiveIndex]] ?? 'Visão Geral'}',
                                 style: TextStyle(
                                   color: ClinicalAgendaStyle.muted,
                                 ),
@@ -733,7 +747,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                           ],
                         ),
                       ),
-                      Expanded(child: _screens[1]),
+                      Expanded(child: screen),
                     ],
                   ),
                 ),

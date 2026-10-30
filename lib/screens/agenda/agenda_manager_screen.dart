@@ -659,7 +659,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
       return;
     }
 
-    bool isConfirmed = appt.status == 'Confirmado';
+    bool isConfirmed = const {'Confirmado', 'Em Atendimento', 'Pausado'}.contains(appt.status);
     bool isCancelled = appt.status == 'Cancelado';
     bool isFinished = appt.status == 'Finalizado';
     
@@ -1476,7 +1476,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           children: activeAppts.map((appt) {
             
             bool isBlocked = appt.status == 'Bloqueado'; 
-            bool isConfirmed = appt.status == 'Confirmado';
+            bool isConfirmed = const {'Confirmado', 'Em Atendimento', 'Pausado'}.contains(appt.status);
             bool isFinished = appt.status == 'Finalizado';
             bool isRemarcar = appt.status.toLowerCase() == 'remarcar' &&
                 appt.proposedDate != null;

@@ -14,8 +14,9 @@ description: Shell principal — sidebar responsiva, seletor de clínica, menu p
 
 ## O que é
 
-Layout + navegação (índices 0–13 em `_screens`, fixos). Mobile (<900px) usa drawer; desktop usa sidebar
-(rail 900–1099, cheia 1100+). Telas com `ValueKey(_currentClinicId)` para rebuild na troca.
+Layout + navegação (índices fixos em `_screens`). Na PR alternativa, `AGENDA_CLINICAL_DARK=true` aplica o shell escuro global, com o `assets/logo.png` original, seletor de unidade, item ativo e rodapé do usuário. Mobile usa navegação inferior e menu completo; desktop usa sidebar responsiva. Telas legadas recebem seu tema original dentro do shell; Agenda e Atendimento têm o tema clínico próprio. `false` permite comparar o shell antigo. Telas com `ValueKey(_currentClinicId)` para rebuild na troca.
+
+Antes de navegar, trocar unidade ou sair, o shell aguarda `CareDraftRegistry.flush()` e informa falha de persistência. O registro guarda callbacks, não texto clínico.
 
 ## Quando usar
 

@@ -1,6 +1,6 @@
 # Agenda alternativa — Clinical Precision Dark
 
-PR de avaliação sobre `nova-audit`, restrita à Agenda, integração de profissionais e sua navegação enquanto aberta. A expansão do conceito para outras telas depende da aprovação após os testes. Não publicar em produção para testar.
+PR de avaliação sobre `nova-audit`, com Agenda, menu global e Atendimento por especialidade. O menu conserva o logo original. Ver também `../care/TESTE.md`. Não publicar em produção para testar.
 
 ## Executar no Windows / PowerShell
 
@@ -31,7 +31,7 @@ flutter run -d chrome --dart-define=AGENDA_CLINICAL_DARK=false
 - Bloqueio: abre o desbloqueio existente; conferir bloqueios longos, consultas longas, encaixes, cancelados e domingo.
 - Botão Gestão: mantém as ações existentes de agenda e inicia no dia selecionado na visualização diária.
 - Falha de conexão/permissão: exibe erro. Carregamento: indicador, sem informar que o dia está vazio antes da resposta.
-- Trocar para outra tela: ela mantém o visual atual. Voltar à Agenda: o visual experimental reaparece.
+- Trocar de tela: o menu clínico permanece ativo; telas legadas preservam seu tema interno. Atendimento possui fichas distintas para odontologia e psicologia.
 
 ## Relação com as referências
 
@@ -55,9 +55,9 @@ flutter build web --release
 
 Validação local em Flutter 3.47.9 / Dart 3.13.7:
 
-- 214 testes Flutter aprovados (inclui 23 testes da agenda alternativa, diretório, seletor e formulários).
+- 251 testes Flutter aprovados (inclui 23 testes da agenda alternativa, diretório, seletor e formulários).
 - Testes específicos de layout repetidos após ajuste final; seleção de dia também atualiza o alvo da Gestão.
-- Análise estática: zero erros; 228 avisos/informações no projeto.
+- Análise estática: zero erros; 224 avisos/informações no projeto.
 - Build web release concluído.
 - Prévia renderizada inspecionada em 390 e 1200px; teste autenticado das clínicas e aprovação visual final ficam para a avaliação do usuário.
 

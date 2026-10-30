@@ -580,4 +580,52 @@ describe('matriz reavaliação P0/P1', () => {
     await assertSucceeds(
       ctx('staffA').firestore().doc('anamnesis/p1').update({ smoker: false }));
   });
+
+  it('Atendimento: rascunho é escopado à clínica e não admite escrita anônima', async () => {
+    const staff = ctx('staffA').firestore();
+    await assertSucceeds(staff.doc('appointments/careDraftA').set({
+      clinicId: A, patientId: 'p1', status: 'Confirmado', date: new Date(),
+    }));
+    await assertSucceeds(staff.doc('appointments/careDraftA').update({
+      'careDrafts.staffA': { text: 'Texto de rascunho', markers: ['Marcador'], updatedAt: new Date() },
+    }));
+    await assertFails(ctx('staffB').firestore().doc('appointments/careDraftA').update({
+      'careDrafts.staffB': { text: 'Outra clínica' },
+    }));
+    await assertFails(ctx(null).firestore().doc('appointments/careDraftA').update({
+      careDrafts: { anon: { text: 'Não autorizado' } }, status: 'Confirmado', proofToken: 'tok123',
+    }));
+  });
+
+  it('Atendimento: evolução e presença são gravadas em uma transação sem ler registro inexistente', async () => {
+    const db = ctx('staffA').firestore();
+    const appointment = db.doc('appointments/careFinishA');
+    const record = db.doc('clinical_records/care_careFinishA');
+    await assertSucceeds(appointment.set({ clinicId: A, patientId: 'p1', status: 'Em Atendimento' }));
+    await assertSucceeds(db.runTransaction(async (tx) => {
+      const current = await tx.get(appointment);
+      assert.equal(current.data().clinicId, A);
+      tx.set(record, { clinicId: A, patientId: 'p1', appointmentId: 'careFinishA',
+        description: 'Registro de teste', careType: 'psychology', date: new Date() }, { merge: true });
+      tx.update(appointment, { status: 'Finalizado', attendanceStatus: 'Attended',
+        hasMedicalCertificate: false, careEvolutionId: record.id });
+    }));
+    assert.equal((await appointment.get()).data().attendanceStatus, 'Attended');
+    assert.equal((await record.get()).data().description, 'Registro de teste');
+    await assertFails(ctx('staffB').firestore().doc(record.path).get());
+    await assertFails(ctx(null).firestore().doc(record.path).get());
+  });
+
+  it('Atendimento: registro fora da clínica aborta toda a finalização', async () => {
+    const db = ctx('staffA').firestore();
+    const appointment = db.doc('appointments/careAtomicA');
+    await appointment.set({ clinicId: A, patientId: 'p1', status: 'Confirmado' });
+    await assertFails(db.runTransaction(async (tx) => {
+      await tx.get(appointment);
+      tx.set(db.doc('clinical_records/care_wrongTenant'), { clinicId: B, patientId: 'p2', description: 'Inválido', date: new Date() });
+      tx.update(appointment, { status: 'Finalizado', attendanceStatus: 'Attended' });
+    }));
+    assert.equal((await appointment.get()).data().status, 'Confirmado');
+  });
+
 });

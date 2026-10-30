@@ -1,208 +1,504 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/appointment_model.dart';
 import '../../models/financial_model.dart';
+import '../../models/psychology_schedule_model.dart';
+import '../../models/user_model.dart';
+import '../../services/agenda_professionals.dart';
 import '../../services/appointment_service.dart';
 import '../../services/care_day.dart';
-import '../../services/clinical_record_service.dart';
+import '../../services/care_visit_service.dart';
+import '../../services/care_workflow.dart';
+import '../../services/clinic_capabilities.dart';
 import '../../services/financial_service.dart';
-import '../../services/portal_mirror.dart';
 import '../../services/session_manager.dart';
 import '../../services/user_service.dart';
-import '../../models/user_model.dart';
-import '../../ui/app_theme.dart';
+import '../../services/portal_mirror.dart';
 import '../../utils/display.dart';
 import '../../utils/external_link.dart';
+import '../../utils/patient_route.dart';
+import '../../widgets/patient_smart_context_card.dart';
+import '../agenda/clinical_agenda_view.dart';
+import '../psychology/psychology_schedule_form_screen.dart';
+import 'clinical_care_view.dart';
 
-/// Ficha de atendimento em 3 blocos (spec 3.1): evolução rápida,
-/// cobrança e próxima sessão. Glue fino: regras puras vivem em
-/// `care_day.dart` (testado); escritas usam os services existentes.
-///
-/// `CareVisitScreen` = rota push (compat). `CareVisitPanel` = mesmo
-/// conteúdo embutível (modal do Meu dia, sem nova tela).
 class CareVisitScreen extends StatelessWidget {
   final AppointmentModel appointment;
   const CareVisitScreen({super.key, required this.appointment});
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(appointment.patientName)),
-      body: CareVisitPanel(appointment: appointment),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: ClinicalAgendaStyle.background,
+    appBar: AppBar(title: Text(appointment.patientName)),
+    body: CareVisitPanel(
+      appointment: appointment,
+      onClose: () => Navigator.pop(context),
+    ),
+  );
 }
 
 class CareVisitPanel extends StatefulWidget {
   final AppointmentModel appointment;
-  const CareVisitPanel({super.key, required this.appointment});
-
+  final VoidCallback? onClose;
+  const CareVisitPanel({super.key, required this.appointment, this.onClose});
   @override
   State<CareVisitPanel> createState() => _CareVisitPanelState();
 }
 
 class _CareVisitPanelState extends State<CareVisitPanel> {
   final _detailsCtrl = TextEditingController();
-  String? _template;
+  final Set<String> _markers = {};
+  final _service = CareVisitService();
+  Timer? _draftTimer;
+  Completer<void>? _draftDone;
+  bool _loadingDraft = true,
+      _dirty = false,
+      _saving = false,
+      _draftSaving = false;
+  bool _evolutionSaved = false,
+      _loadingCharges = true,
+      _loadingSuggestion = false;
+  String _draftStatus = 'Carregando registro…';
+  String? _phone, _chargesError, _contextError, _directoryError;
+  String? _selectedChargeId, _nextDentistId, _professionalName;
   String _method = 'Pix';
-  bool _evolutionSaved = false;
-  bool _saving = false;
-  String? _phone;
-  DateTime? _nextDate;
-
-  // Cobrança: SOMENTE baixa de lançamento existente (criado em Pagamentos).
+  late String _status;
+  late final bool _psychology;
+  final List<String> _alerts = [];
   List<FinancialModel> _openCharges = [];
-  String? _selectedChargeId;
-  bool _loadingCharges = false;
-
-  // Próxima sessão: profissional (padrão = do agendamento atual).
   List<UserModel> _nextDentists = [];
-  String? _nextDentistId;
-
-  // Sugestão automática (+7 dias, validada na grade).
-  DateTime? _suggestedDate;
+  DateTime? _nextDate, _suggestedDate;
   bool? _suggestedFree;
-  bool _loadingSuggestion = false;
-
+  int _suggestionGeneration = 0;
+  PsychologyScheduleModel? _contract;
+  CarePackageProgress? _packageProgress;
+  bool _loadingPackage = false;
+  String? _packageError, _recordError;
   static const _methods = [
     'Dinheiro',
     'Pix',
     'Cartão de crédito',
     'Cartão de débito',
   ];
+  AppointmentModel get _a => widget.appointment;
+  bool get _done => _status == 'Finalizado';
+  bool get _monthlyPackage =>
+      _psychology && _contract?.scheduleType == PsychologyScheduleType.package;
+  String get _description => careEvolutionText(_markers, _detailsCtrl.text);
 
   @override
   void initState() {
     super.initState();
-    _nextDentistId = widget.appointment.dentistId;
-    // Cargas em paralelo: tempo da mais lenta, não soma das 3.
-    Future.wait([
-      _loadPhone(),
-      _loadOpenCharges(),
-      _loadNextDentists(),
-      _loadSuggestion(),
-    ]);
+    _psychology = ClinicCapabilities.current().isPsychology;
+    _status = _a.status;
+    _nextDentistId = _a.dentistId;
+    _detailsCtrl.addListener(_changed);
+    CareDraftRegistry.register(this, _flushBeforeNavigation);
+    _loadRecord();
+    _loadPatient();
+    _loadOpenCharges();
+    _loadProfessionals();
+    if (_psychology) _loadPackage();
+  }
+
+  @override
+  void didUpdateWidget(covariant CareVisitPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.appointment.status != oldWidget.appointment.status) {
+      _status = widget.appointment.status;
+    }
   }
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
+    CareDraftRegistry.unregister(this);
+    // Última edição também é enviada ao sair pelo menu; não usa armazenamento local.
+    if (_dirty && !_done && !_loadingDraft) {
+      unawaited(
+        _service
+            .saveDraft(_a, text: _detailsCtrl.text, markers: _markers.toList())
+            .catchError((Object error) {
+              debugPrint('Falha no rascunho de atendimento: $error');
+            }),
+      );
+    }
+    _detailsCtrl.removeListener(_changed);
     _detailsCtrl.dispose();
     super.dispose();
   }
 
-  /// Profissionais da clínica p/ a próxima sessão.
-  Future<void> _loadNextDentists() async {
-    try {
-      final clinicId = widget.appointment.clinicId;
-      final list = await UserService().getDentistsForClinic(clinicId);
-      if (!mounted) return;
+  Future<void> _loadRecord() async {
+    if (mounted) {
       setState(() {
-        _nextDentists = list;
-        // Padrão = dentista do agendamento atual (se ainda atender).
-        _nextDentistId = resolveNextDentist(
-            _nextDentistId ?? widget.appointment.dentistId, list);
+        _loadingDraft = true;
+        _recordError = null;
       });
-    } catch (_) {}
-  }
-
-  /// Em aberto do paciente (igual à aba Pagamentos): não-pagos e não-cancelados.
-  Future<void> _loadOpenCharges() async {
-    setState(() => _loadingCharges = true);
+    }
     try {
       final snap = await FirebaseFirestore.instance
-          .collection('financial')
-          .where('patientId', isEqualTo: widget.appointment.patientId)
-          .limit(50)
+          .collection('appointments')
+          .doc(_a.id)
           .get();
-      final list = <FinancialModel>[];
-      for (final d in snap.docs) {
-        final m = d.data();
-        final status = '${m['status'] ?? ''}'.toLowerCase();
-        if (status == 'cancelado') continue;
-        if (FinancialModel.isPaidOf(
-          status: '${m['status'] ?? ''}',
-          paidAmount: parseBRL(m['paidAmount']),
-          amount: parseBRL(m['amount']),
-        )) continue;
-        list.add(FinancialModel.fromMap(d.id, m));
+      validateCareScope(_a, snap.data(), SessionManager().currentClinicId);
+      final data = snap.data()!;
+      final drafts = data['careDrafts'];
+      final draft = drafts is Map ? drafts[SessionManager().userId] : null;
+      String? published;
+      final recordId = data['careEvolutionId'];
+      if (recordId is String && recordId.isNotEmpty) {
+        final record = await FirebaseFirestore.instance
+            .collection('clinical_records')
+            .doc(recordId)
+            .get();
+        final note = record.data();
+        if (note?['clinicId'] == _a.clinicId &&
+            note?['patientId'] == _a.patientId) {
+          published = note?['description']?.toString();
+        }
       }
-      list.sort((a, b) {
-        final da = a.dueDate ?? a.date;
-        final db = b.dueDate ?? b.date;
-        return da.compareTo(db);
+      if (!mounted) return;
+      _status = '${data['status'] ?? _a.status}';
+      if (draft is Map && !_done) {
+        _detailsCtrl.text = '${draft['text'] ?? ''}';
+        _markers.addAll(
+          (draft['markers'] is List ? draft['markers'] as List : []).map(
+            (v) => '$v',
+          ),
+        );
+      } else if (published != null) {
+        _detailsCtrl.text = published;
+        _evolutionSaved = true;
+      }
+      setState(() {
+        _loadingDraft = false;
+        _draftStatus = _done
+            ? 'Atendimento finalizado. Registro disponível no prontuário.'
+            : (draft is Map
+                  ? 'Rascunho recuperado do atendimento.'
+                  : 'Nenhuma alteração pendente.');
       });
-      if (mounted) setState(() => _openCharges = list);
-    } catch (_) {
-      // Sem em-aberto: segue só com nova cobrança.
-    } finally {
-      if (mounted) setState(() => _loadingCharges = false);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _loadingDraft = false;
+          _recordError =
+              'Não foi possível carregar o registro. Tente novamente.';
+        });
+      }
     }
   }
 
-  Future<void> _loadPhone() async {
+  void _changed() {
+    if (_loadingDraft || _done || _saving) return;
+    _draftTimer?.cancel();
+    setState(() {
+      _dirty = true;
+      _evolutionSaved = false;
+      _draftStatus = 'Alterações pendentes…';
+    });
+    _draftTimer = Timer(const Duration(milliseconds: 1000), _saveDraft);
+  }
+
+  Future<bool> _saveDraft() async {
+    if (_done || _loadingDraft) return false;
+    if (_draftSaving) return false;
+    final text = _detailsCtrl.text;
+    final markers = _markers.toList();
+    _draftSaving = true;
+    final done = Completer<void>();
+    _draftDone = done;
+    var changedDuringSave = false;
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('patients')
-          .doc(widget.appointment.patientId)
-          .get();
-      if (mounted) setState(() => _phone = '${doc.data()?['phone'] ?? ''}');
-    } catch (_) {
-      // Sem telefone: avisa só na hora de chamar no WhatsApp.
+      await _service.saveDraft(_a, text: text, markers: markers);
+      if (!mounted) return true;
+      final unchanged =
+          text == _detailsCtrl.text &&
+          careEvolutionText(markers, '') == careEvolutionText(_markers, '');
+      changedDuringSave = !unchanged;
+      setState(() {
+        _dirty = !unchanged;
+        _draftStatus = unchanged
+            ? 'Rascunho salvo no atendimento.'
+            : 'Alterações pendentes…';
+      });
+      return unchanged;
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _draftStatus =
+              'Não foi possível salvar o rascunho. Tente novamente.',
+        );
+      }
+      return false;
+    } finally {
+      _draftSaving = false;
+      done.complete();
+      if (identical(_draftDone, done)) _draftDone = null;
+      if (changedDuringSave && mounted && !_done) {
+        _draftTimer?.cancel();
+        _draftTimer = Timer(const Duration(milliseconds: 500), _saveDraft);
+      }
     }
   }
 
-  Future<void> _saveEvolution() async {
-    final text = ((_template ?? '') +
-            (_detailsCtrl.text.trim().isEmpty
-                ? ''
-                : '\n${_detailsCtrl.text.trim()}'))
-        .trim();
-    if (text.isEmpty) {
-      toast(context, "Escolha um modelo ou descreva a evolução.");
+  Future<bool> _flushBeforeNavigation() async {
+    if (_saving) return false;
+    if (_draftSaving) await _draftDone?.future;
+    if (!mounted) return false;
+    if (!_dirty || _done || _loadingDraft) return true;
+    _draftTimer?.cancel();
+    return _saveDraft();
+  }
+
+  Future<void> _close() async {
+    _draftTimer?.cancel();
+    if (!await _flushBeforeNavigation()) {
+      if (mounted) {
+        toast(
+          context,
+          'O rascunho ainda não foi salvo. Tente novamente.',
+          error: true,
+        );
+      }
       return;
     }
+    if (mounted) widget.onClose?.call();
+  }
+
+  Future<void> _saveEvolution({bool finalize = false}) async {
+    if (_saving || _done || _loadingDraft) return;
+    if (_description.isEmpty) {
+      toast(context, 'Descreva a evolução antes de salvar.');
+      return;
+    }
+    _draftTimer?.cancel();
     setState(() => _saving = true);
     try {
-      final a = widget.appointment;
-      await ClinicalRecordService().add({
-        'clinicId': a.clinicId,
-        'treatmentId': null,
-        'patientId': a.patientId,
-        'patientName': a.patientName,
-        'procedureName': a.procedure,
-        'description': text,
-        'dentistName': SessionManager().userName ?? 'Profissional',
-        'date': DateTime.now(),
-      });
-      await FirebaseFirestore.instance
-          .collection('appointments')
-          .doc(a.id)
-          .update({'status': 'Finalizado'});
-      if (mounted) {
-        setState(() => _evolutionSaved = true);
-        toast(context, "Evolução salva.", ok: true);
+      // Espera o rascunho em andamento para não escrevê-lo após a publicação.
+      if (_draftSaving) {
+        toast(context, 'Aguarde o rascunho terminar de salvar.');
+        return;
       }
-    } catch (e) {
-      if (mounted) toast(context, "Erro ao salvar: $e", error: true);
+      await _service.saveEvolution(
+        _a,
+        description: _description,
+        psychology: _psychology,
+        finalize: finalize,
+      );
+      if (!mounted) return;
+      setState(() {
+        _dirty = false;
+        _evolutionSaved = true;
+        if (finalize) _status = 'Finalizado';
+        _draftStatus = finalize
+            ? 'Atendimento finalizado e presença registrada.'
+            : 'Evolução salva no prontuário. Atendimento ainda aberto.';
+      });
+      if (_psychology) await _loadPackage();
+      if (mounted) {
+        toast(
+          context,
+          finalize ? 'Atendimento finalizado.' : 'Evolução salva.',
+          ok: true,
+        );
+      }
+    } catch (error) {
+      if (mounted) toast(context, 'Erro ao salvar: $error', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  Future<void> _startPause() async {
+    if (_saving || _done) return;
+    final status = careInProgress(_status) ? 'Pausado' : 'Em Atendimento';
+    setState(() => _saving = true);
+    try {
+      if (_dirty && !await _saveDraft()) {
+        throw StateError('O rascunho ainda não foi salvo.');
+      }
+      await _service.changeStatus(_a, status);
+      if (mounted) setState(() => _status = status);
+    } catch (error) {
+      if (mounted) toast(context, '$error', error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _loadPatient() async {
+    try {
+      final patient = await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(_a.patientId)
+          .get();
+      if (patient.data()?['clinicId'] != _a.clinicId) {
+        throw StateError('Paciente fora da clínica.');
+      }
+      if (mounted) setState(() => _phone = '${patient.data()?['phone'] ?? ''}');
+      final anamnesis = !_psychology
+          ? await FirebaseFirestore.instance
+                .collection('anamnesis')
+                .doc(_a.patientId)
+                .get()
+          : null;
+      if (!mounted) return;
+      setState(() {
+        _phone = '${patient.data()?['phone'] ?? ''}';
+        _alerts.addAll(clinicalAlerts(anamnesis?.data()));
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _contextError =
+              'Resumo clínico indisponível. Consulte o prontuário antes do atendimento.',
+        );
+      }
+    }
+  }
+
+  Future<void> _loadProfessionals() async {
+    try {
+      final users = await UserService()
+          .watchAgendaProfessionals(_a.clinicId)
+          .first;
+      final available = selectableAgendaProfessionals(
+        users,
+        role: SessionManager().userRole,
+        userId: SessionManager().userId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _nextDentists = available;
+        _professionalName = users
+            .where((u) => u.id == _a.dentistId)
+            .firstOrNull
+            ?.name;
+        _nextDentistId = selectedAgendaProfessional(_nextDentistId, available);
+      });
+      await _loadSuggestion();
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _directoryError =
+              'Profissionais indisponíveis. Reabra a ficha para tentar novamente.',
+        );
+      }
+    }
+  }
+
+  Future<void> _loadOpenCharges() async {
+    setState(() {
+      _loadingCharges = true;
+      _chargesError = null;
+    });
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('financial')
+          .where('clinicId', isEqualTo: _a.clinicId)
+          .where('patientId', isEqualTo: _a.patientId)
+          .get();
+      final charges =
+          snap.docs
+              .map((d) => FinancialModel.fromMap(d.id, d.data()))
+              .where(
+                (c) =>
+                    c.type == 'income' &&
+                    c.status.toLowerCase() != 'cancelado' &&
+                    !c.isPaid &&
+                    !FinancialModel.isReplaced(c.status),
+              )
+              .toList()
+            ..sort(
+              (a, b) => (a.dueDate ?? a.date).compareTo(b.dueDate ?? b.date),
+            );
+      if (mounted) {
+        setState(() {
+          _openCharges = charges;
+          _selectedChargeId = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _chargesError = 'Não foi possível conferir os lançamentos.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingCharges = false);
+    }
+  }
+
+  Future<void> _loadPackage() async {
+    final scheduleId = _a.scheduleId;
+    if (scheduleId == null) return;
+    if (mounted) {
+      setState(() {
+        _loadingPackage = true;
+        _packageError = null;
+      });
+    }
+    try {
+      final contract = await FirebaseFirestore.instance
+          .collection('psychology_schedules')
+          .doc(scheduleId)
+          .get();
+      if (contract.data()?['clinicId'] != _a.clinicId ||
+          contract.data()?['patientId'] != _a.patientId) {
+        throw StateError('Contrato incompatível.');
+      }
+      final sessions = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('clinicId', isEqualTo: _a.clinicId)
+          .where('scheduleId', isEqualTo: scheduleId)
+          .get();
+      if (!mounted) return;
+      setState(() {
+        _contract = PsychologyScheduleModel.fromMap(
+          scheduleId,
+          contract.data()!,
+        );
+        _packageProgress = CarePackageProgress.fromSessions(
+          sessions.docs
+              .map((d) => AppointmentModel.fromMap(d.id, d.data()))
+              .toList(),
+          _a.date,
+        );
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _packageError =
+              'Não foi possível conferir o contrato terapêutico.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingPackage = false);
+    }
+  }
+
+  void _openPatient(PatientSection section) async {
+    if (!await _flushBeforeNavigation() || !mounted) return;
+    Navigator.push(
+      context,
+      openPatient(_a.patientId, _a.patientName, section: section),
+    );
+  }
+
   Future<void> _receiveExisting() async {
-    final sel = _openCharges.where((c) => c.id == _selectedChargeId);
-    if (sel.isEmpty) {
-      toast(context, "Escolha um lançamento em aberto.");
+    if (_monthlyPackage || _loadingPackage || _packageError != null) return;
+    final charge = _openCharges
+        .where((c) => c.id == _selectedChargeId)
+        .firstOrNull;
+    if (charge == null) {
+      toast(context, 'Escolha um lançamento em aberto.');
       return;
     }
-    final charge = sel.first;
+    if (!await _flushBeforeNavigation() || !mounted) return;
     final remaining = charge.amount - charge.paidAmount;
-    if (remaining <= 0) {
-      toast(context, "Lançamento já quitado.", error: true);
-      return;
-    }
+    if (remaining <= 0) return;
     setState(() => _saving = true);
     try {
       await FinancialService().processPayment(
@@ -210,436 +506,568 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
         payValue: remaining,
         method: _method,
         installments: 1,
-        payerName: widget.appointment.patientName,
+        payerName: _a.patientName,
         payerCpf: '',
-        dentistId: widget.appointment.dentistId,
-        dentistName: SessionManager().userName,
+        dentistId: _a.dentistId,
+        dentistName: _professionalName,
       );
+      await _loadOpenCharges();
       if (mounted) {
-        setState(() {
-          _openCharges.removeWhere((c) => c.id == charge.id);
-          _selectedChargeId = null;
-        });
-        toast(context, "Recebido ${formatBRL(remaining)}.", ok: true);
+        toast(context, 'Recebido ${formatBRL(remaining)}.', ok: true);
       }
-    } catch (e) {
-      if (mounted) toast(context, "Erro ao receber: $e", error: true);
+    } catch (error) {
+      if (mounted) toast(context, 'Erro ao receber: $error', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  /// Sugestão automática: mesmo dia/hora da semana seguinte, validada
-  /// contra a grade do profissional. Vira "confirmar" em vez de "montar".
-  Future<void> _loadSuggestion() async {
-    if (mounted) setState(() => _loadingSuggestion = true);
+  Future<void> _loadSuggestion([int? offset]) async {
+    final generation = ++_suggestionGeneration;
+    final did = _nextDentistId;
+    if (did == null) return;
+    setState(() {
+      _loadingSuggestion = true;
+      _suggestedFree = null;
+    });
     try {
-      final a = widget.appointment;
-      final candidate = AppointmentService.repeatNextWeek(a.date);
-      final did = (_nextDentistId?.isNotEmpty == true
-              ? _nextDentistId
-              : a.dentistId) ??
-          '';
-      final hhmm =
-          "${candidate.hour.toString().padLeft(2, '0')}:${candidate.minute.toString().padLeft(2, '0')}";
-      final busy = await AppointmentService()
-          .getBusySlots(a.clinicId, candidate, dentistId: did);
-      if (!mounted) return;
+      final days = offset ?? careReturnOffsets(_psychology).first;
+      final candidate = DateTime(
+        _a.date.year,
+        _a.date.month,
+        _a.date.day + days,
+        _a.date.hour,
+        _a.date.minute,
+      );
+      final busy = await AppointmentService().getBusySlots(
+        _a.clinicId,
+        candidate,
+        dentistId: did,
+      );
+      final grade = await clinicGrade(_a.clinicId);
+      if (!mounted || generation != _suggestionGeneration) return;
       setState(() {
         _suggestedDate = candidate;
-        _suggestedFree = AppointmentService.isSlotFree(hhmm, busy);
+        _suggestedFree =
+            careIntervalIsFree(candidate, _a.durationMinutes, busy) &&
+            careIntervalFitsGrade(candidate, _a.durationMinutes, grade);
       });
     } catch (_) {
-      if (mounted) setState(() => _suggestedDate = null);
+      if (mounted && generation == _suggestionGeneration) {
+        setState(() => _suggestedDate = null);
+      }
     } finally {
-      if (mounted) setState(() => _loadingSuggestion = false);
+      if (mounted && generation == _suggestionGeneration) {
+        setState(() => _loadingSuggestion = false);
+      }
     }
   }
 
-  Future<void> _repeatNextWeek() async {
-    final a = widget.appointment;
-    final candidate = AppointmentService.repeatNextWeek(a.date);
-    final did = (_nextDentistId?.isNotEmpty == true
-            ? _nextDentistId
-            : a.dentistId) ??
-        '';
-    final hhmm =
-        "${candidate.hour.toString().padLeft(2, '0')}:${candidate.minute.toString().padLeft(2, '0')}";
-    final busy = await AppointmentService()
-        .getBusySlots(a.clinicId, candidate, dentistId: did);
-    if (!mounted) return;
-    if (!AppointmentService.isSlotFree(hhmm, busy)) {
-      toast(context, "Horário ocupado na próxima semana.",
-          error: true);
-      return;
+  Future<void> _safePickNext() async {
+    try {
+      await _pickNext();
+    } catch (error) {
+      if (mounted) {
+        toast(
+          context,
+          'Não foi possível consultar a grade: $error',
+          error: true,
+        );
+      }
     }
-    setState(() => _nextDate = candidate);
-    await _scheduleNext();
   }
 
   Future<void> _pickNext() async {
-    final date = await showDatePicker(
-      context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-    );
-    if (date == null || !mounted) return;
-    final a = widget.appointment;
-    final did = (_nextDentistId?.isNotEmpty == true
-            ? _nextDentistId
-            : a.dentistId) ??
-        '';
-    // Somente horários livres DESSE profissional.
-    final busy = await AppointmentService()
-        .getBusySlots(a.clinicId, date, dentistId: did);
-    final grade = await clinicGrade(a.clinicId);
-    final free = grade.where((t) => !busy.contains(t)).toList();
-    if (free.isEmpty) {
-      if (mounted) {
-        toast(context, "Dia sem horário livre para este profissional.");
-      }
+    if (_nextDentistId == null) {
+      toast(context, 'Selecione o profissional.');
       return;
     }
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+    final busy = await AppointmentService().getBusySlots(
+      _a.clinicId,
+      date,
+      dentistId: _nextDentistId,
+    );
+    final grade = await clinicGrade(_a.clinicId);
+    final free = grade.where((t) {
+      final parts = t.split(':');
+      final candidate = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      );
+      return candidate.isAfter(DateTime.now()) &&
+          careIntervalIsFree(candidate, _a.durationMinutes, busy) &&
+          careIntervalFitsGrade(candidate, _a.durationMinutes, grade);
+    }).toList();
     if (!mounted) return;
+    if (free.isEmpty) {
+      toast(context, 'Dia sem intervalo livre para este profissional.');
+      return;
+    }
     final picked = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Horários livres"),
+        title: const Text('Horários livres'),
         content: SizedBox(
           width: double.maxFinite,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final t in free)
-                ChoiceChip(
-                  label: Text(t),
-                  selected: false,
-                  onSelected: (_) => Navigator.pop(ctx, t),
-                ),
-            ],
+          child: SingleChildScrollView(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: free
+                  .map(
+                    (t) => ActionChip(
+                      label: Text(t),
+                      onPressed: () => Navigator.pop(ctx, t),
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar"),
+            child: const Text('Cancelar'),
           ),
         ],
       ),
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     final parts = picked.split(':');
-    setState(() => _nextDate = DateTime(date.year, date.month, date.day,
-        int.parse(parts[0]), int.parse(parts[1])));
+    setState(
+      () => _nextDate = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      ),
+    );
   }
 
   Future<void> _scheduleNext() async {
-    final tab = openBlankTab();
-    if (_nextDate == null) {
-      try {
-        tab?.close();
-      } catch (_) {}
-      toast(context, "Escolha a data da próxima sessão.");
+    if (_saving || _nextDate == null || _nextDentistId == null) {
+      toast(context, 'Escolha profissional, data e horário.');
       return;
     }
+    if (_psychology && (_loadingPackage || _packageError != null)) {
+      toast(context, 'Aguarde a conferência do contrato antes de agendar.');
+      return;
+    }
+    // Contratos recorrentes já possuem sessões futuras: não criar duplicata nem sessão sem vínculo.
+    if (_monthlyPackage) {
+      toast(context, 'Use as sessões já geradas ou gerencie o contrato.');
+      return;
+    }
+    if (!await _flushBeforeNavigation() || !mounted) return;
+    final tab = openBlankTab();
     setState(() => _saving = true);
     try {
-      final a = widget.appointment;
-      final did = (_nextDentistId?.isNotEmpty == true
-              ? _nextDentistId
-              : a.dentistId) ??
-          '';
-      // Revalida no vivo (alguém pode ter ocupado após a escolha).
-      final hhmm =
-          "${_nextDate!.hour.toString().padLeft(2, '0')}:${_nextDate!.minute.toString().padLeft(2, '0')}";
-      final busy = await AppointmentService()
-          .getBusySlots(a.clinicId, _nextDate!, dentistId: did);
-      if (!AppointmentService.isSlotFree(hhmm, busy)) {
-        if (mounted) {
-          toast(context,
-              "Horário ocupado para este profissional. Escolha outro.",
-              error: true);
-        }
-        return;
+      final busy = await AppointmentService().getBusySlots(
+        _a.clinicId,
+        _nextDate!,
+        dentistId: _nextDentistId,
+      );
+      final grade = await clinicGrade(_a.clinicId);
+      if (!careIntervalIsFree(_nextDate!, _a.durationMinutes, busy) ||
+          !careIntervalFitsGrade(_nextDate!, _a.durationMinutes, grade)) {
+        throw StateError(
+          'Intervalo ocupado ou fora do expediente. Escolha outro.',
+        );
       }
-      await AppointmentService().add(AppointmentModel(
-        id: '',
-        patientId: a.patientId,
-        patientName: a.patientName,
-        date: _nextDate!,
-        status: 'Aguardando Confirmação',
-        procedure: a.procedure,
-        clinicId: a.clinicId,
-        dentistId: did.isEmpty ? a.dentistId : did,
-        durationMinutes: a.durationMinutes,
-      ));
-      final msg = nextSessionText(
-          patientName: a.patientName, date: _nextDate!);
-      if ((_phone ?? '').isEmpty) {
+      if (_psychology) {
         try {
           tab?.close();
         } catch (_) {}
-        if (mounted) {
-          toast(context, "Agendado! Telefone não cadastrado p/ WhatsApp.");
-        }
+        if (!mounted) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PsychologyScheduleFormScreen(
+              preSelectedDate: _nextDate,
+              preSelectedTime: DateFormat('HH:mm').format(_nextDate!),
+              preSelectedDayOfWeek: ClinicalCareDayView
+                  .weekdays[_nextDate!.weekday - 1]
+                  .split('-')
+                  .first,
+              preSelectedProfessionalId: _nextDentistId,
+              initialData: {
+                'patientId': _a.patientId,
+                'patientName': _a.patientName,
+                'startDate': Timestamp.fromDate(_nextDate!),
+                'dayOfWeek': [
+                  'Segunda',
+                  'Terça',
+                  'Quarta',
+                  'Quinta',
+                  'Sexta',
+                  'Sábado',
+                  'Domingo',
+                ][_nextDate!.weekday - 1],
+                'time': DateFormat('HH:mm').format(_nextDate!),
+                'scheduleType': 'session',
+              },
+            ),
+          ),
+        );
       } else {
-        await openWhatsAppSafe(context, tab, phone: _phone!, message: msg);
+        await AppointmentService().add(
+          AppointmentModel(
+            id: '',
+            patientId: _a.patientId,
+            patientName: _a.patientName,
+            date: _nextDate!,
+            status: 'Aguardando Confirmação',
+            procedure: _a.procedure,
+            clinicId: _a.clinicId,
+            dentistId: _nextDentistId,
+            durationMinutes: _a.durationMinutes,
+          ),
+        );
+        if ((_phone ?? '').isEmpty) {
+          try {
+            tab?.close();
+          } catch (_) {}
+        } else if (mounted) {
+          await openWhatsAppSafe(
+            context,
+            tab,
+            phone: _phone!,
+            message: nextSessionText(
+              patientName: _a.patientName,
+              date: _nextDate!,
+            ),
+          );
+        }
+        if (mounted) toast(context, 'Próxima consulta agendada.', ok: true);
       }
       if (mounted) setState(() => _nextDate = null);
-    } catch (e) {
-      if (mounted) toast(context, "Erro ao agendar: $e", error: true);
+    } catch (error) {
+      try {
+        tab?.close();
+      } catch (_) {}
+      if (mounted) toast(context, 'Erro ao agendar: $error', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final a = widget.appointment;
-    final templates =
-        attendanceTemplates(SessionManager().clinicType);
-    return ListView(
-      padding: EdgeInsets.fromLTRB(
-          16, 4, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
-      children: [
+  void _manageContract() async {
+    if (_contract == null || !await _flushBeforeNavigation() || !mounted)
+      return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PsychologyScheduleFormScreen(
+          editScheduleId: _contract!.id,
+          initialData: _contract!.toMap(),
+          preSelectedProfessionalId: _contract!.dentistId,
+        ),
+      ),
+    );
+    if (mounted) await _loadPackage();
+  }
+
+  Widget _billing() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (_loadingPackage || _loadingCharges) const LinearProgressIndicator(),
+      if (_packageError != null)
+        Text(_packageError!, style: const TextStyle(color: Color(0xFFFFB4AB))),
+      if (_contract != null) ...[
+        CarePill(
+          _monthlyPackage ? 'PACOTE MENSAL' : 'SESSÃO AVULSA',
+          active: true,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          _monthlyPackage
+              ? 'Contrato recorrente • ${_contract!.dayOfWeek} às ${_contract!.time}'
+              : 'Atendimento avulso',
+        ),
+        if (_packageProgress != null && _monthlyPackage) ...[
+          const SizedBox(height: 12),
+          LinearProgressIndicator(value: _packageProgress!.fraction),
+          const SizedBox(height: 8),
           Text(
-            "${formatDateTimeShort(a.date)} • ${a.procedure} • ${a.status}",
-            style: AppTextStyles.subtitle,
+            '${_packageProgress!.finalized}/${_packageProgress!.planned} sessões finalizadas • ${_packageProgress!.remaining} previstas restantes',
+            style: const TextStyle(fontSize: 12),
           ),
-          const SizedBox(height: 16),
-          // 1. EVOLUÇÃO
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("1. Evolução", style: AppTextStyles.h2),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final t in templates)
-                        ChoiceChip(
-                          label: Text(t,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12)),
-                          selected: _template == t,
-                          onSelected: (_) =>
-                              setState(() => _template = t),
-                        ),
-                    ],
+          const SizedBox(height: 8),
+          const Text(
+            'Cobrança mensal conforme presença. Faltas com atestado seguem as regras do pacote. Confira os valores em Pagamentos.',
+            style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _manageContract,
+            icon: const Icon(Icons.settings_outlined),
+            label: const Text('Gerenciar contrato'),
+          ),
+        ],
+        const SizedBox(height: 14),
+      ],
+      if (_chargesError != null) ...[
+        Text(_chargesError!),
+        TextButton(
+          onPressed: _loadOpenCharges,
+          child: const Text('Tentar novamente'),
+        ),
+      ] else if (!_loadingCharges && _openCharges.isEmpty)
+        const Text(
+          'Nada em aberto para este paciente. Novos lançamentos são criados na aba Pagamentos.',
+        ),
+      if (!_loadingCharges &&
+          _openCharges.isNotEmpty &&
+          !_monthlyPackage &&
+          !_loadingPackage &&
+          _packageError == null) ...[
+        DropdownButtonFormField<String>(
+          key: ValueKey(_selectedChargeId),
+          initialValue: _selectedChargeId,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Lançamento existente'),
+          items: _openCharges
+              .map(
+                (c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Text(
+                    '${c.title} — ${formatBRL(c.amount - c.paidAmount)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _detailsCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                        labelText: "Detalhes (opcional)",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12))),
-                  ),
-                  const SizedBox(height: 12),
-                  _saving
-                      ? const Center(child: CircularProgressIndicator())
-                      : ElevatedButton.icon(
-                          onPressed:
-                              _evolutionSaved ? null : _saveEvolution,
-                          icon: Icon(_evolutionSaved
-                              ? Icons.check
-                              : Icons.save_outlined),
-                          label: Text(_evolutionSaved
-                              ? "Evolução salva"
-                              : "Salvar evolução"),
-                        ),
-                ],
+                ),
+              )
+              .toList(),
+          onChanged: (v) => setState(() => _selectedChargeId = v),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: 190,
+              child: DropdownButtonFormField<String>(
+                initialValue: _method,
+                decoration: const InputDecoration(
+                  labelText: 'Meio de pagamento',
+                ),
+                items: _methods
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                    .toList(),
+                onChanged: (m) => setState(() => _method = m ?? 'Pix'),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          // 2. COBRANÇA (somente baixa de existente — novo lançamento
-          // nasce na aba Pagamentos).
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("2. Cobrança", style: AppTextStyles.h2),
-                  const SizedBox(height: 8),
-                  if (_loadingCharges)
-                    const Center(
-                        child: SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2)))
-                  else if (_openCharges.isEmpty)
-                    const Text(
-                        "Nada em aberto. Crie o lançamento na aba Pagamentos."),
-                  if (_openCharges.isNotEmpty) ...[
-                      DropdownButtonFormField<String>(
-                        value: _selectedChargeId,
-                        decoration: InputDecoration(
-                            labelText: "Lançamento",
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12))),
-                        items: [
-                          for (final c in _openCharges)
-                            DropdownMenuItem(
-                              value: c.id,
-                              child: Text(
-                                "${c.title} — ${formatBRL(c.amount - c.paidAmount)}",
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                        onChanged: (v) => setState(
-                            () => _selectedChargeId = v),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _method,
-                              decoration: InputDecoration(
-                                  labelText: "Meio",
-                                  border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12))),
-                              items: [
-                                for (final m in _methods)
-                                  DropdownMenuItem(
-                                      value: m, child: Text(m)),
-                              ],
-                              onChanged: (v) => setState(
-                                  () => _method = v ?? 'Pix'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _saving
-                                  ? null
-                                  : _receiveExisting,
-                              child: const Text("Receber"),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                ],
-              ),
+            FilledButton(
+              onPressed: _saving ? null : _receiveExisting,
+              child: const Text('Receber lançamento'),
             ),
-          ),
-          const SizedBox(height: 12),
-          // 3. PRÓXIMA SESSÃO
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("3. Próxima sessão", style: AppTextStyles.h2),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _nextDentists.any((d) => d.id == _nextDentistId)
-                        ? _nextDentistId
-                        : null,
-                    decoration: InputDecoration(
-                        labelText: "Profissional",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12))),
-                    items: [
-                      for (final d in _nextDentists)
-                        DropdownMenuItem(
-                            value: d.id, child: Text(d.name)),
-                    ],
-                    onChanged: (v) {
-                      setState(() {
-                        _nextDentistId = v;
-                        _nextDate = null;
-                        _suggestedDate = null;
-                        _suggestedFree = null;
-                      });
-                      _loadSuggestion();
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  // Sugestão automática (+7 dias, livre/ocupado visível).
-                  if (_loadingSuggestion)
-                    const LinearProgressIndicator(minHeight: 2)
-                  else if (_suggestedDate != null)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Sugestão: ${DateFormat('dd/MM HH:mm').format(_suggestedDate!)} • ${(_suggestedFree ?? false) ? 'Livre' : 'Ocupado'}",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: (_suggestedFree ?? false)
-                                  ? Colors.green
-                                  : AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed:
-                              (_suggestedFree ?? false) && !_saving
-                                  ? () {
-                                      setState(() =>
-                                          _nextDate = _suggestedDate);
-                                      _scheduleNext();
-                                    }
-                                  : null,
-                          child: const Text("Confirmar"),
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(_nextDate == null
-                            ? "Nenhuma data escolhida"
-                            : DateFormat('dd/MM HH:mm')
-                                .format(_nextDate!)),
-                      ),
-                      TextButton(
-                          onPressed: _pickNext,
-                          child: const Text("Escolher data")),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed:
-                              _saving ? null : _repeatNextWeek,
-                          icon: const Icon(Icons.repeat, size: 18),
-                          label: const Text("Repetir próxima semana"),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _saving ? null : _scheduleNext,
-                          icon: const Icon(Icons.send_outlined),
-                          label: const Text("Agendar e chamar no WhatsApp"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          ],
+        ),
+      ],
+      const SizedBox(height: 12),
+      OutlinedButton.icon(
+        onPressed: () => _openPatient(PatientSection.payments),
+        icon: const Icon(Icons.receipt_long_outlined),
+        label: Text(
+          _psychology
+              ? 'Extrato financeiro / Pagamentos'
+              : 'Lançar cobrança / Pagamentos',
+        ),
+      ),
+    ],
+  );
+
+  Widget _scheduling() {
+    if (_loadingPackage) return const LinearProgressIndicator();
+    if (_packageError != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_packageError!),
+          TextButton(
+            onPressed: _loadPackage,
+            child: const Text('Tentar novamente'),
           ),
         ],
       );
+    }
+    final next = _monthlyPackage ? _packageProgress?.next : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_directoryError != null)
+          Text(
+            _directoryError!,
+            style: const TextStyle(color: Color(0xFFFFB4AB)),
+          ),
+        if (_monthlyPackage) ...[
+          Text(
+            next == null
+                ? 'Nenhuma sessão futura encontrada neste contrato.'
+                : 'Próxima sessão já agendada: ${DateFormat('dd/MM HH:mm').format(next.date)}',
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'As sessões do pacote são geradas pelo contrato; não será criada uma cópia ao finalizar.',
+            style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
+          ),
+          TextButton(
+            onPressed: () => _openPatient(PatientSection.registration),
+            child: const Text('Consultar ficha do paciente'),
+          ),
+        ] else ...[
+          DropdownButtonFormField<String>(
+            key: ValueKey(_nextDentistId),
+            initialValue: _nextDentists.any((d) => d.id == _nextDentistId)
+                ? _nextDentistId
+                : null,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Profissional responsável',
+            ),
+            items: _nextDentists
+                .map(
+                  (d) => DropdownMenuItem(
+                    value: d.id,
+                    child: Text(d.name, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) {
+              setState(() {
+                _nextDentistId = v;
+                _nextDate = null;
+              });
+              _loadSuggestion();
+            },
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final days in careReturnOffsets(_psychology))
+                OutlinedButton(
+                  onPressed: _saving || _nextDentistId == null
+                      ? null
+                      : () => _loadSuggestion(days),
+                  child: Text(
+                    _psychology
+                        ? (days == 7 ? 'Semanal' : 'Quinzenal')
+                        : 'Em $days dias',
+                  ),
+                ),
+              OutlinedButton(
+                onPressed: _saving ? null : _safePickNext,
+                child: const Text('Personalizado / Ver grade livre'),
+              ),
+            ],
+          ),
+          if (_loadingSuggestion)
+            const LinearProgressIndicator()
+          else if (_suggestedDate != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Text(
+                    'Sugestão: ${DateFormat('dd/MM HH:mm').format(_suggestedDate!)} • ${_suggestedFree == true ? 'Livre' : 'Ocupado'}',
+                  ),
+                  TextButton(
+                    onPressed: _suggestedFree == true && !_saving
+                        ? () => setState(() => _nextDate = _suggestedDate)
+                        : null,
+                    child: const Text('Selecionar horário'),
+                  ),
+                ],
+              ),
+            ),
+          if (_nextDate != null)
+            Text(
+              'Selecionado: ${DateFormat('dd/MM HH:mm').format(_nextDate!)}',
+            ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: _saving ? null : _scheduleNext,
+            icon: const Icon(Icons.event_available),
+            label: Text(
+              _psychology
+                  ? 'Agendar sessão avulsa'
+                  : 'Agendar e chamar no WhatsApp',
+            ),
+          ),
+        ],
+      ],
+    );
   }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: (!_dirty && !_saving && !_draftSaving) || widget.onClose == null,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) _close();
+    },
+    child: _recordError != null
+        ? CareSurface(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_recordError!),
+                TextButton(
+                  onPressed: _loadRecord,
+                  child: const Text('Tentar novamente'),
+                ),
+                if (widget.onClose != null)
+                  TextButton(
+                    onPressed: widget.onClose,
+                    child: const Text('Fechar ficha'),
+                  ),
+              ],
+            ),
+          )
+        : ClinicalCareVisitView(
+            appointment: _a,
+            psychology: _psychology,
+            detailsController: _detailsCtrl,
+            markers: _markers,
+            templates: attendanceTemplates(
+              _psychology ? 'psychology' : 'dental',
+            ),
+            onMarker: (text) {
+              if (_loadingDraft) return;
+              setState(() {
+                if (!_markers.add(text)) _markers.remove(text);
+              });
+              _changed();
+            },
+            onSaveDraft: _saveDraft,
+            onSaveEvolution: () => _saveEvolution(),
+            onFinalize: () => _saveEvolution(finalize: true),
+            onStartPause: _startPause,
+            onOpenRecord: () => _openPatient(PatientSection.record),
+            onClose: widget.onClose == null ? null : _close,
+            billing: _billing(),
+            scheduling: _scheduling(),
+            draftStatus: _draftStatus,
+            saving: _saving || _loadingDraft,
+            evolutionSaved: _evolutionSaved,
+            alerts: [..._alerts, if (_contextError != null) _contextError!],
+            professionalName: _professionalName,
+            status: _status,
+          ),
+  );
 }

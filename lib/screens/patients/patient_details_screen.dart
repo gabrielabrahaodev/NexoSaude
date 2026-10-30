@@ -27,6 +27,7 @@ class PatientDetailsScreen extends StatefulWidget {
   final String? phone;
   final String? birth;
   final String? cpf;
+  final int initialTab;
 
   const PatientDetailsScreen({
     super.key,
@@ -35,6 +36,7 @@ class PatientDetailsScreen extends StatefulWidget {
     this.phone,
     this.birth,
     this.cpf,
+    this.initialTab = 0,
   });
 
   @override
@@ -63,6 +65,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
     return DefaultTabController(
       length: tabCount,
+      initialIndex: widget.initialTab.clamp(0, tabCount - 1),
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
