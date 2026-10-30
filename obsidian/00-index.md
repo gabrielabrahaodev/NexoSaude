@@ -31,8 +31,8 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 ## Specs
 
-- [[spec-atendimento-portal]] — Modo Atendimento + Portal (decisão b).
-- [[spec-landing-master]] — Landing + master + assinatura (trial e cobrança por usuário).
+- [[2026-09-19-modo-atendimento-portal-design]] — Modo Atendimento + Portal (decisão b).
+- [[2026-09-19-landing-master-assinatura-design]] — Landing + master + assinatura (trial e cobrança por usuário).
 
 ## Mapas
 

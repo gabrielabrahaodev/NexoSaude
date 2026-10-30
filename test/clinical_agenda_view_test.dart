@@ -30,6 +30,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       String? selected;
+      DateTime? selectedDay;
       await tester.pumpWidget(
         MaterialApp(
           theme: ClinicalAgendaStyle.theme,
@@ -38,6 +39,7 @@ void main() {
               weekStart: monday,
               appointments: [appt('A', 11, 0), appt('B', 13, 30, duration: 60)],
               professionalSelector: const Text('Profissional da clínica'),
+              onSelectedDay: (day) => selectedDay = day,
               onChangeWeek: (_) {},
               onToday: () {},
               onEmptySlot: (_, time) => selected = time,
@@ -50,6 +52,7 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       expect(find.text('2 agendamentos no dia'), findsOneWidget);
+      expect(selectedDay, monday);
       await tester.tap(find.text('+ Disponível').first);
       expect(selected, '08:30');
       await tester.scrollUntilVisible(

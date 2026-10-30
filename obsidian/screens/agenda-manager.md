@@ -49,3 +49,13 @@ Ver/editar/cancelar/finalizar atendimento; célula vazia cria; long-press exclui
 - `--dart-define=AGENDA_CLINICAL_DARK=false` restaura a apresentação anterior para comparação.
 - Contagem exclui cancelados/bloqueios; sem percentual fictício de ocupação. Os estados e intervalos dos dados continuam visíveis.
 - Teste manual e limites: `docs/design/agenda/TESTE.md`. Expandir o visual para o restante do sistema somente após avaliação do usuário.
+
+
+## Paridade funcional da alternativa
+
+- Base da PR: `nova-audit`, preservando diretório mínimo, segurança e os fluxos existentes.
+- `UserService.watchAgendaProfessionals(clinicId)` lê apenas `clinics/{clinicId}/members`, em tempo real. `agenda_professionals.dart` filtra membros ativos owner/dentista/psicólogo e normaliza aliases; recepção não é profissional de atendimento.
+- `AgendaProfessionalSelector` usa membros reais, avatar por iniciais e contagem. Gestão alterna; dentistas/psicólogos ficam no próprio UID. Mudança de vínculo/status invalida seleção antiga. Erro e lista vazia são explícitos, com nova tentativa.
+- Ações da agenda clássica e da alternativa compartilham seleção/filtragem. Sem profissional ativo não se cria/bloqueia; a Gestão usa o dia selecionado na visão diária.
+- `AgendaCellFactory.formForSlot` passa data/hora e profissional aos dois formulários. Contratos/sessões de psicologia preservam `dentistId`; ocupação dental filtra o profissional selecionado.
+- Legados sem profissional seguem visíveis para a gestão; não atribuir automaticamente por nome ou pelo primeiro profissional.

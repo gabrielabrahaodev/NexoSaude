@@ -48,6 +48,7 @@ class ClinicalAgendaView extends StatefulWidget {
     required this.onEmptySlot,
     required this.onAppointment,
     this.loading = false,
+    this.onSelectedDay,
     this.error,
   });
   final DateTime weekStart;
@@ -58,6 +59,7 @@ class ClinicalAgendaView extends StatefulWidget {
   final void Function(DateTime, String) onEmptySlot;
   final ValueChanged<AppointmentModel> onAppointment;
   final bool loading;
+  final ValueChanged<DateTime>? onSelectedDay;
   final String? error;
   @override
   State<ClinicalAgendaView> createState() => _ClinicalAgendaViewState();
@@ -164,26 +166,49 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
         padding: EdgeInsets.fromLTRB(mobile ? 12 : 24, 12, mobile ? 12 : 24, 0),
         child: Column(
           children: [
-            if (!mobile)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+            if (!mobile) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: ClinicalAgendaStyle.surface,
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: Row(
                   children: [
                     const Icon(
-                      Icons.calendar_month_outlined,
+                      Icons.circle,
                       color: ClinicalAgendaStyle.teal,
+                      size: 7,
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Agenda',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
+                        constraints.maxWidth >= 850
+                            ? 'MODO DE EXIBIÇÃO    Desktop (${daily ? 'Visualização Diária' : 'Visualização Semanal Completa'})'
+                            : 'MODO DE EXIBIÇÃO',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: ClinicalAgendaStyle.muted,
+                          fontSize: 11,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     SegmentedButton<bool>(
+                      style: SegmentedButton.styleFrom(
+                        selectedBackgroundColor: ClinicalAgendaStyle.teal,
+                        selectedForegroundColor: const Color(0xFF00382C),
+                        side: BorderSide.none,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      showSelectedIcon: false,
                       segments: const [
                         ButtonSegment(value: true, label: Text('Dia')),
                         ButtonSegment(value: false, label: Text('Semana')),
@@ -195,22 +220,57 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+            ],
             _panel(
-              constraints.maxWidth >= 700
-                  ? Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!mobile) ...[
+                    Row(
                       children: [
-                        Expanded(child: widget.professionalSelector),
-                        const SizedBox(width: 24),
-                        SizedBox(width: 340, child: weekNavigation),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        widget.professionalSelector,
-                        const SizedBox(height: 8),
-                        weekNavigation,
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: ClinicalAgendaStyle.elevated.withValues(
+                              alpha: .3,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.calendar_month_outlined,
+                            color: ClinicalAgendaStyle.teal,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          daily ? 'Agenda Diária' : 'Agenda Semanal',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                  ],
+                  constraints.maxWidth >= 700
+                      ? Row(
+                          children: [
+                            Expanded(child: widget.professionalSelector),
+                            const SizedBox(width: 24),
+                            SizedBox(width: 320, child: weekNavigation),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            widget.professionalSelector,
+                            const SizedBox(height: 8),
+                            weekNavigation,
+                          ],
+                        ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             if (daily) ...[
@@ -224,7 +284,10 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                     selected: _day == i,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
-                      onTap: () => setState(() => _day = i),
+                      onTap: () {
+                        setState(() => _day = i);
+                        widget.onSelectedDay?.call(_dayDate(i));
+                      },
                       child: Container(
                         width: 48,
                         decoration: BoxDecoration(
@@ -346,7 +409,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                         ),
                       ),
                       Text(
-                        _blocked(a) ? (a.notes ?? '') : a.procedure,
+                        _blocked(a) ? (a.notes ?? a.procedure) : a.procedure,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 10, color: color),
@@ -368,7 +431,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        _blocked(a) ? (a.notes ?? 'Bloqueado') : a.patientName,
+                        _blocked(a) ? (a.notes ?? a.procedure) : a.patientName,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -521,6 +584,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                       onTap: () => setState(() {
                         _day = i;
                         _daily = true;
+                        widget.onSelectedDay?.call(_dayDate(i));
                       }),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -534,11 +598,25 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                                   : ClinicalAgendaStyle.muted,
                             ),
                           ),
-                          Text(
-                            '${_dayDate(i).day}',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
+                          Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _sameDay(_dayDate(i), DateTime.now())
+                                  ? ClinicalAgendaStyle.teal
+                                  : null,
+                            ),
+                            child: Text(
+                              '${_dayDate(i).day}',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: _sameDay(_dayDate(i), DateTime.now())
+                                    ? const Color(0xFF00382C)
+                                    : ClinicalAgendaStyle.text,
+                              ),
                             ),
                           ),
                         ],

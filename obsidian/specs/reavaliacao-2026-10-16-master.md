@@ -1,3 +1,5 @@
+> **Snapshot histórico de 16/10/2026.** Estas observações descrevem a situação daquele commit e foram parcialmente supersedidas pela branch `nova-audit`; consulte `auditoria-integral-2026-10-17.md` para o estado atual. Não use os achados abaixo como descrição do código atual sem revalidar.
+
 # Reavaliação integral do NexoSaúde — atualização de 16/10/2026
 
 ## Veredito executivo

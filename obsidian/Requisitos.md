@@ -176,7 +176,7 @@ Bloqueado (agendamento sintético)
 ## 4. Anamnese e Prontuário
 
 ### RN-22 - Anamnese
-- Persistida em `anamnesis/{patientId}` (write público via link — regra Firestore).
+- Persistida em `anamnesis/{patientId}`; sem leitura anônima, e escrita pública exige `patientId` + token dedicado atual (`proofToken`) e allowlist nas Rules.
 - Formulário: estado geral (tratamento, medicação, alergias), histórico patológico (Diabetes, Hipertensão, Cardíacos, Renais, Gástricos, Respiratórios, Hepatite, HIV, Anemia, Coagulação), hábitos (fumante, álcool, bruxismo, gestante) e observações.
 - Salvar = `set()` completo (sobrescreve doc).
 - Referência: `screens/patients/tabs/anamnesis_tab.dart:64-321`.
@@ -424,10 +424,10 @@ Solicitado (pending_send) → Enviado (sent, sentDate) → Devolução (pending_
 - Referência: `screens/public/public_evaluation_screen.dart:69-171`.
 
 ### RN-56 - Lead "QUENTE" (tela removida)
-- A heurística vivia no dashboard `Novos Leads` (removido do menu com `mock_data_service`). Captação via `/avaliacao` (RN-55) continua gravando em `clinics/{cid}/leads`.
+- A captação via `/avaliacao` grava em `public_clinics/{cid}/leads`.
 
 ### RN-57 - Anamnese/confirmação pública
-- `anamnesis/{patientId}`: `get` público (prefill do html) + escrita pública **restrita por allowlist de 14 campos** do formulário; staff auth tem acesso total. Update de status para `'Confirmado'` em `appointments` permitido sem auth (link WhatsApp; regra já mínima via `affectedKeys` — exigir login quebraria o fluxo, decisão mantida).
+- `anamnesis/{patientId}`: sem `get` anônimo; escrita pública exige token dedicado vigente + allowlist. `appointments` confirma/remarca sem auth apenas com token atual do paciente; staff ativo opera no escopo da clínica.
 - Referência: `firestore.rules`.
 
 ---

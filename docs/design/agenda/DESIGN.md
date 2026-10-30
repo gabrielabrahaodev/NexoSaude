@@ -122,7 +122,7 @@ spacing:
 ---
 
 ## Brand & Style
-The design system establishes a high-performance clinical environment optimized for handheld, one-handed mobile interactions. Departing from sterile medical whites, the experience translates existing dark-mode web dashboards into a focused native Android/Flutter layout. 
+The design system establishes a high-performance clinical environment optimized for handheld, one-handed mobile interactions. Departing from sterile medical whites, the experience translates existing dark-mode web dashboards into a focused native Android/Flutter layout.
 
 The aesthetic is Modern Clinical Minimalist with Tonal Depth: deep navy bases, sharp architectural structures, and bio-luminescent accents. Medical interactions often evoke anxiety; the deep slate backdrop reduces visual fatigue, while precise cyan-green and cobalt accents deliver immediate cognitive orientation for critical health data (appointment statuses, vitals, time slots, and clinical records). Every interactive touchpoint features deliberate haptic ergonomics with minimum tap boundaries of 48×48dp.
 
@@ -198,7 +198,7 @@ The mobile interface leverages consistent squircle-inspired corner geometry (Rou
 ### Consultation & Appointment Cards
 - Background `#161b22` with a left-accent indicator stripe:
   - 4dp vertical left border in `#00c49f` for "Confirmado", `#3b82f6` for "Em Andamento", and `#f59e0b` for "Aguardando".
-- Layout: Top row includes patient/doctor avatar (40dp rounded-lg), full name (`headline-sm`), and time badge (`label-md`). 
+- Layout: Top row includes patient/doctor avatar (40dp rounded-lg), full name (`headline-sm`), and time badge (`label-md`).
 - Bottom row: Specialty tag chip, dental/medical icon, and direct call-to-action ("Prontuário", "Check-in", or "Reagendar").
 
 ### Gestão Action Button

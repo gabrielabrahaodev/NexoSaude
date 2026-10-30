@@ -1,103 +1,168 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+
 import '../models/patient_document_model.dart';
 
-/// Resultado do upload: URL pública + identificadores para destroy remoto.
-typedef CloudUpload = ({String url, String? publicId, String resourceType});
+typedef CloudUpload = ({
+  String url,
+  String? publicId,
+  String resourceType,
+  String path,
+  int sizeBytes,
+});
 
-/// Validação pré-upload (espelha as travas do preset unsigned).
-/// Pura e testada. Retorna a mensagem de erro ou null se ok.
+const String _privateFilesApiUrl =
+    String.fromEnvironment('PRIVATE_FILES_API_URL');
+
+bool requiresRemoteStorageCleanup(Map<String, dynamic> metadata) {
+  final url = '${metadata['url'] ?? ''}'.trim().toLowerCase();
+  final publicId = '${metadata['publicId'] ?? ''}'.trim();
+  final resourceType = '${metadata['resourceType'] ?? ''}'.trim().toLowerCase();
+  return url.contains('cloudinary.com') ||
+      url.startsWith('r2://') ||
+      publicId.isNotEmpty ||
+      resourceType == 'r2';
+}
+
+/// Mantido como alias de compatibilidade para os chamadores legados.
+@Deprecated('Use requiresRemoteStorageCleanup')
+bool requiresRemoteCloudinaryCleanup(Map<String, dynamic> metadata) =>
+    requiresRemoteStorageCleanup(metadata);
+
 String? validateUpload({required String fileName, required int sizeBytes}) {
   const maxBytes = 10 * 1024 * 1024;
   const allowed = {'jpg', 'jpeg', 'png', 'webp', 'pdf'};
-  final ext = fileName.contains('.')
-      ? fileName.split('.').last.toLowerCase()
-      : '';
+  final base = fileName.split(RegExp(r'[/\\]')).last;
+  final ext = base.contains('.') ? base.split('.').last.toLowerCase() : '';
   if (!allowed.contains(ext)) {
-    return "Tipo não permitido (só JPG, PNG, WEBP ou PDF).";
+    return 'Tipo não permitido (só JPG, PNG, WEBP ou PDF).';
   }
-  if (sizeBytes <= 0) return "Arquivo vazio.";
-  if (sizeBytes > maxBytes) {
-    return "Arquivo acima de 10MB.";
-  }
+  if (sizeBytes <= 0) return 'Arquivo vazio.';
+  if (sizeBytes > maxBytes) return 'Arquivo acima de 10MB.';
   return null;
 }
 
 class DocumentService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // --- CONFIGURAÇÃO CLOUDINARY ---
-  // Preencha com os dados do seu painel Cloudinary
-  final String cloudName = "dbbh601ay"; 
-  final String uploadPreset = "dbbh601ay"; 
-  // -------------------------------
+  static bool get isPrivateStorageConfigured {
+    final uri = Uri.tryParse(_privateFilesApiUrl.trim());
+    return uri != null &&
+        uri.host.isNotEmpty &&
+        (uri.scheme == 'https' ||
+            (uri.scheme == 'http' &&
+                (uri.host == 'localhost' || uri.host == '127.0.0.1')));
+  }
 
-  // Upload Híbrido (Web e Mobile) para Cloudinary
-  // Retorna URL + public_id/resource_type (para destroy remoto depois)
+  Uri _apiUri(String path, [Map<String, String>? query]) {
+    if (!isPrivateStorageConfigured) {
+      throw StateError(
+        'O armazenamento privado ainda não foi configurado. '
+        'Publique o Worker e compile com PRIVATE_FILES_API_URL.',
+      );
+    }
+    final base = _privateFilesApiUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$base$path');
+    return query == null ? uri : uri.replace(queryParameters: query);
+  }
+
+  Future<String> _requireIdToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw StateError('Entre novamente para acessar arquivos.');
+    final token = await user.getIdToken();
+    if (token == null || token.isEmpty) {
+      throw StateError('Não foi possível validar sua sessão. Entre novamente.');
+    }
+    return token;
+  }
+
+  String _responseError(http.Response response) {
+    try {
+      final payload = jsonDecode(response.body);
+      if (payload is Map && payload['error'] is String) {
+        return payload['error'] as String;
+      }
+    } catch (_) {}
+    return 'Serviço de arquivos respondeu com HTTP ${response.statusCode}.';
+  }
+
   Future<CloudUpload?> uploadFile({
     File? file,
     Uint8List? bytes,
     required String fileName,
+    required String clinicId,
+    required String patientId,
+    required String category,
+    required String uploaderName,
   }) async {
-    final size = kIsWeb
-        ? (bytes?.length ?? 0)
-        : ((file != null && file.existsSync()) ? file.lengthSync() : 0);
-    final blocked = validateUpload(fileName: fileName, sizeBytes: size);
+    final content = bytes ?? (file != null ? await file.readAsBytes() : null);
+    if (content == null) throw StateError('Não foi possível ler o arquivo.');
+    final blocked = validateUpload(fileName: fileName, sizeBytes: content.length);
     if (blocked != null) throw Exception(blocked);
 
-    var uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/auto/upload");
-    var request = http.MultipartRequest("POST", uri);
-
-    // Configurações obrigatórias
-    request.fields['upload_preset'] = uploadPreset;
-    request.fields['resource_type'] = "auto"; // Aceita imagem e pdf
-
-    // Anexa o arquivo
-    if (kIsWeb) {
-      if (bytes == null) throw Exception("Bytes obrigatórios na Web");
-      request.files.add(http.MultipartFile.fromBytes(
-        'file', 
-        bytes, 
-        filename: fileName
-      ));
-    } else {
-      if (file == null) throw Exception("Arquivo obrigatório no Mobile");
-      request.files.add(await http.MultipartFile.fromPath(
-        'file', 
-        file.path
-      ));
+    final token = await _requireIdToken();
+    final request = http.MultipartRequest(
+      'POST',
+      _apiUri('/v1/files/upload', {
+        'clinicId': clinicId,
+        'patientId': patientId,
+      }),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['title'] = fileName;
+    request.fields['category'] = category;
+    request.fields['uploaderName'] = uploaderName;
+    request.files.add(
+      http.MultipartFile.fromBytes('file', content, filename: fileName),
+    );
+    final streamed = await request.send().timeout(const Duration(seconds: 90));
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 201) throw StateError(_responseError(response));
+    final payload = jsonDecode(response.body);
+    if (payload is! Map ||
+        payload['resourceType'] != 'r2' ||
+        payload['url'] is! String ||
+        payload['path'] is! String ||
+        payload['sizeBytes'] is! num) {
+      throw StateError('Resposta inválida do armazenamento privado.');
     }
-
-    try {
-      var response = await request.send();
-      
-      if (response.statusCode == 200) {
-        var responseData = await response.stream.toBytes();
-        var responseString = String.fromCharCodes(responseData);
-        var jsonMap = jsonDecode(responseString);
-
-        // Retorna a URL segura + identificadores para destroy remoto
-        return (
-          url: '${jsonMap['secure_url']}',
-          publicId: jsonMap['public_id']?.toString(),
-          resourceType:
-              jsonMap['resource_type']?.toString() ?? 'image',
-        );
-      } else {
-        debugPrint("Erro Cloudinary: ${response.statusCode}");
-        return null;
-      }
-    } catch (e) {
-      debugPrint("Erro no upload: $e");
-      return null;
-    }
+    return (
+      url: payload['url'] as String,
+      publicId: payload['publicId']?.toString(),
+      resourceType: 'r2',
+      path: payload['path'] as String,
+      sizeBytes: (payload['sizeBytes'] as num).toInt(),
+    );
   }
 
-  // Salva os dados no Firestore (Igual ao anterior)
+  Future<String> resolveDocumentUrl({
+    required String clinicId,
+    required String patientId,
+    required PatientDocumentModel document,
+  }) async {
+    if (document.resourceType != 'r2' && !document.url.startsWith('r2://')) {
+      return document.url;
+    }
+    final token = await _requireIdToken();
+    final uri = _apiUri('/v1/files/download', {
+      'clinicId': clinicId,
+      'patientId': patientId,
+      'documentId': document.id,
+    });
+    final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
+    if (response.statusCode != 200) throw StateError(_responseError(response));
+    final payload = jsonDecode(response.body);
+    if (payload is! Map || payload['url'] is! String) {
+      throw StateError('Resposta inválida ao abrir o arquivo.');
+    }
+    return payload['url'] as String;
+  }
+
   Future<void> saveMetadata({
     required String clinicId,
     required String patientId,
@@ -108,54 +173,76 @@ class DocumentService {
     required String uploaderName,
     String? publicId,
     String? resourceType,
+    String? path,
+    int sizeBytes = 0,
   }) async {
-    String fileType = ['.jpg', '.jpeg', '.png', '.webp'].contains(ext.toLowerCase()) ? 'image' : 'document';
+    final normalizedExt = ext.startsWith('.') ? ext.toLowerCase() : '.${ext.toLowerCase()}';
+    final fileType = ['.jpg', '.jpeg', '.png', '.webp'].contains(normalizedExt)
+        ? 'image'
+        : 'document';
 
     final doc = PatientDocumentModel(
       id: '',
       title: title,
       category: category,
       url: url,
-      path: '', // Não usamos path no Cloudinary da mesma forma
+      path: path ?? '',
       publicId: publicId,
       resourceType: resourceType,
       fileType: fileType,
-      extension: ext,
-      sizeBytes: 0, // Cloudinary não devolve size fácil no upload simples, mas não é crítico
+      extension: normalizedExt,
+      sizeBytes: sizeBytes,
       uploadedAt: DateTime.now(),
       uploadedBy: uploaderName,
     );
 
-    await _db.collection('patients').doc(patientId).collection('docs').add(doc.toMap());
+    await _db
+        .collection('patients')
+        .doc(patientId)
+        .collection('docs')
+        .add(doc.toMap());
   }
 
-  /// Destroy remoto DESABILITADO (plano Spark, sem Functions).
-  /// O binário permanece no Cloudinary como órfão (limpeza manual ocasional
-  /// pelo painel). A exclusão remove só os metadados do Firestore.
-  /// Retorna sempre false (= remoto não removido).
   Future<bool> deleteRemoteFile({
     required String clinicId,
     required String? publicId,
-    String resourceType = 'image',
+    required String resourceType,
+    required String patientId,
+    required String documentId,
   }) async {
-    return false;
+    if (resourceType != 'r2') return false;
+    final token = await _requireIdToken();
+    final response = await http.post(
+      _apiUri('/v1/files/delete'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'clinicId': clinicId,
+        'patientId': patientId,
+        'documentId': documentId,
+      }),
+    );
+    if (response.statusCode != 200) throw StateError(_responseError(response));
+    final payload = jsonDecode(response.body);
+    return payload is Map && payload['deleted'] == true;
   }
 
-  /// Limpeza remota em lote (ex.: cascata de paciente). No plano Spark o
-  /// destroy é desabilitado: só registra quantos órfãos ficaram na nuvem.
   Future<void> purgePatientFiles({
     required String clinicId,
     required List<Map<String, dynamic>> docs,
   }) async {
-    final withRemote =
-        docs.where((d) => '${d['publicId'] ?? ''}'.isNotEmpty).length;
+    final withRemote = docs.where(requiresRemoteStorageCleanup).length;
     if (withRemote > 0) {
-      debugPrint('Cloudinary: $withRemote arquivo(s) mantidos como órfãos '
-          '(destroy desabilitado no plano Spark).');
+      throw StateError(
+        'Exclusão cancelada: há $withRemote arquivo(s) em armazenamento remoto. '
+        'Remova primeiro cada arquivo pelo fluxo autenticado; a cascata não '
+        'apagará referências que deixariam binários órfãos.',
+      );
     }
   }
 
-  /// Deleta metadata + tenta o remoto (sem credenciais, só Firestore).
   Future<void> deleteDocument(
     String patientId,
     String docId, {
@@ -163,28 +250,61 @@ class DocumentService {
     String? publicId,
     String? resourceType,
   }) async {
-    if (clinicId != null) {
-      await deleteRemoteFile(
-        clinicId: clinicId,
-        publicId: publicId,
-        resourceType: resourceType ?? 'image',
-      );
-    }
-    await _db
+    final ref = _db
         .collection('patients')
         .doc(patientId)
         .collection('docs')
-        .doc(docId)
-        .delete();
+        .doc(docId);
+    final snapshot = await ref.get();
+    if (!snapshot.exists) return;
+    final data = snapshot.data() ?? <String, dynamic>{};
+    final storedUrl = '${data['url'] ?? ''}';
+    final storedPublicId = data['publicId']?.toString() ?? publicId;
+    final actualResourceType =
+        data['resourceType']?.toString() ?? resourceType ?? 'image';
+    final isRemote = requiresRemoteStorageCleanup({
+      'url': storedUrl,
+      'publicId': storedPublicId,
+      'path': data['path'],
+      'resourceType': actualResourceType,
+    });
+
+    if (isRemote) {
+      final removed = await deleteRemoteFile(
+        clinicId: clinicId ?? '',
+        publicId: storedPublicId,
+        resourceType: actualResourceType,
+        patientId: patientId,
+        documentId: docId,
+      );
+      if (!removed) {
+        throw StateError(
+          'O arquivo remoto não foi apagado. A metadata foi preservada. '
+          'Arquivos Cloudinary antigos precisam ser removidos pelo processo '
+          'administrativo; arquivos R2 usam o Worker autenticado.',
+        );
+      }
+    }
+    await ref.delete();
   }
 
-  Stream<List<PatientDocumentModel>> getDocs(String patientId, {String? categoryFilter}) {
-    Query query = _db.collection('patients').doc(patientId).collection('docs').orderBy('uploadedAt', descending: true);
-    
+  Stream<List<PatientDocumentModel>> getDocs(
+    String patientId, {
+    String? categoryFilter,
+  }) {
+    Query query = _db
+        .collection('patients')
+        .doc(patientId)
+        .collection('docs')
+        .orderBy('uploadedAt', descending: true);
     if (categoryFilter != null && categoryFilter != 'Todos') {
       query = query.where('category', isEqualTo: categoryFilter);
     }
-
-    return query.snapshots().map((s) => s.docs.map((d) => PatientDocumentModel.fromMap(d.id, d.data() as Map<String, dynamic>)).toList());
+    return query.snapshots().map((snapshot) => snapshot.docs
+        .map((document) => PatientDocumentModel.fromMap(
+              document.id,
+              document.data() as Map<String, dynamic>,
+            ))
+        .toList());
   }
 }
