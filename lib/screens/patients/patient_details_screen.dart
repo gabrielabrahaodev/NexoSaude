@@ -96,17 +96,18 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         ),
         body: Column(
           children: [
-            _HeaderSummaryRow(patientId: widget.patientId),
-            
-            PatientSmartContextCard(patientId: widget.patientId),
-
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            
             Expanded(
               child: TabBarView(
                 children: [
-                  PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
+                  Column(
+                    children: [
+                      PatientSmartContextCard(patientId: widget.patientId),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
+                      ),
+                    ],
+                  ),
                   AnamnesisTab(patientId: widget.patientId),
                   if (caps.canShowBudgets)
                     BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
@@ -115,7 +116,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                   if (caps.canShowOdontogram) _buildVisualTab(),
                   if (caps.canShowLab) PatientLabTab(patientId: widget.patientId),
                   PatientDocsTab(patientId: widget.patientId),
-                  PatientFinancialTab(patientId: widget.patientId),
+                  Column(
+                    children: [
+                      _HeaderSummaryRow(patientId: widget.patientId),
+                      const Divider(height: 1),
+                      Expanded(child: PatientFinancialTab(patientId: widget.patientId)),
+                    ],
+                  ),
                 ],
               ),
             ),

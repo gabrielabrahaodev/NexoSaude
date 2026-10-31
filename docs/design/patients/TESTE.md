@@ -9,12 +9,12 @@ Na branch `feat/agenda-clinical-dark`, executar `flutter pub get` e `flutter run
 ## Conferir com contas de teste
 
 1. Conferir menu/unidade e `logo.png` original. Nome, situação, contato, CPF mascarado, ID e consentimento devem refletir o cadastro real. O selo LGPD aparece somente quando há aceite registrado.
-2. Conferir os quatro indicadores. Valores dependem dos registros da clínica; dados ilustrativos e percentuais da imagem não são inseridos. Falha ou carregamento dos indicadores não deve ser apresentado como saldo confirmado.
+2. Na aba **Pagamentos**, conferir os quatro indicadores. Eles não aparecem nas outras abas. Valores dependem dos registros da clínica; dados ilustrativos e percentuais da imagem não são inseridos. Falha ou carregamento dos indicadores não deve ser apresentado como saldo confirmado.
 3. Clicar nas nove abas odontológicas ou seis de psicologia. Conferir edição do cadastro, anamnese, documentos, prontuário, laboratório e orçamentos existentes. Alternar unidade ou menu deve retirar a ficha anterior da área visível.
 4. Conferir o odontograma já salvo. Alterar uma face, salvar e reabrir. Testar raiz com pressão prolongada, endodontia, implante, coroa e suas restrições. Testar zoom +/−, ajuste à tela e arrastar. No celular o mapa começa em escala legível e permite arrastar até os demais dentes. Uma falha de leitura deve mostrar erro, não um mapa saudável editável.
 5. Tratamentos: conferir valores, parcelas, margem e diálogo financeiro. Receber parcela leva à seleção de cobranças reais em Pagamentos. Novo tratamento abre Orçamentos, mantendo o fluxo de aprovação existente. Encerrar exige confirmação e usa o serviço atual.
 6. Cobranças: testar filtro de valor/procedimento e ordenação. Livro caixa e cobranças devem aparecer apenas em Pagamentos. No desktop há tabela; no mobile, lista. Receber uma cobrança avulsa abre o diálogo existente; cobranças parceladas continuam no modal da família. Conferir pagamentos parciais, parcelas, cancelados, substituídos, estorno e correção. Novo recebimento seleciona um lançamento em aberto, sem criar cobrança arbitrária. Custos e repasses permanecem abaixo da tabela.
-7. Atualizar resumo clínico e conferir alertas reais. A atualização usa o resumo já existente no sistema, sem enviar dados para um serviço de IA externo.
+7. Na aba **Cadastro**, atualizar resumo clínico e conferir alertas reais. O card de contexto não aparece nas outras abas. A atualização usa o resumo já existente no sistema, sem enviar dados para um serviço de IA externo.
 
 ## Verificação automatizada
 
@@ -56,3 +56,6 @@ Validação desta revisão: 331 testes Flutter aprovados; análise com 0 erros e
 - Trocar menu e unidade: paciente anterior não permanece visível nem reaparece em outra clínica.
 - Conferir sol/lua abaixo de Sair, no rodapé esquerdo; no celular, abrir o menu lateral. Não deve existir o ícone no cabeçalho.
 - `patient_workspace_test.dart` verifica região direita, identidade do menu, uma única rota, retorno com busca preservada e descarte por clínica em 390/1200px; `clinical_user_footer_test.dart` verifica posição e ações em ambos os temas e larguras 220/288/320px.
+
+
+Ajuste de visibilidade dos resumos: percorrer todas as abas em odontologia e psicologia, nos dois temas. Cadastro deve exibir somente contexto; Pagamentos, somente os quatro indicadores. Verificar também o layout anterior com a flag visual desligada. Cabeçalho/abas permanecem visíveis e não há lacunas dos blocos ocultos. Esta alteração foi conferida estruturalmente; não houve nova execução da suíte Flutter nesta rodada.

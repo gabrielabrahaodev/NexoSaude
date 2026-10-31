@@ -63,3 +63,8 @@ O odontograma colore apenas as faces registradas, destaca o número FDI e enquad
 
 
 Pela lista do dashboard, a ficha usa `embedded: true` e callback `onBack`: retorna apenas o conteúdo do painel e não cria `MainWebDashboard`. `PatientWorkspace` mantém o shell existente e a lista; o botão Voltar retorna à mesma busca. O modo independente permanece para deep-links externos.
+
+
+## Visibilidade dos resumos por aba — 31/10/2026
+
+Resumo de contexto (`PatientSmartContextCard`) somente em Cadastro. Os quatro indicadores de assiduidade/a receber/recebido/custo operacional (`_metrics`) somente em Pagamentos. As demais abas não montam esses blocos nem reservam o espaço deles. Identificação e navegação permanecem compartilhadas. A regra também vale para o layout anterior (`AGENDA_CLINICAL_DARK=false`), com contexto na primeira aba e resumo na última, sem depender dos índices específicos de odontologia/psicologia. Dados, cálculos e ações são preservados.

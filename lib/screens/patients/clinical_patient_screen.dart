@@ -272,14 +272,18 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
                       padding: 6,
                     ),
                     const SizedBox(height: 16),
-                    _metrics(),
-                    const SizedBox(height: 16),
-                    PatientSmartContextCard(
-                      key: ValueKey('context-${patient.id}'),
-                      patientId: patient.id,
-                      clinical: true,
-                    ),
-                    const SizedBox(height: 16),
+                    if (selected == 'Pagamentos') ...[
+                      _metrics(),
+                      const SizedBox(height: 16),
+                    ],
+                    if (selected == 'Cadastro') ...[
+                      PatientSmartContextCard(
+                        key: ValueKey('context-${patient.id}'),
+                        patientId: patient.id,
+                        clinical: true,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     ...panels,
                   ],
                 ),
