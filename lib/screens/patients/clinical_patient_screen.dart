@@ -133,6 +133,11 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
               patientId: patient.id,
               embedded: true,
               onPayments: () => _select(entries.length - 1),
+              onOdontogram: caps.canShowOdontogram
+                  ? () => _select(
+                      entries.indexWhere((e) => e.name == 'Odontograma'),
+                    )
+                  : null,
             );
             final financial = PatientFinancialTab(
               patientId: patient.id,
@@ -140,17 +145,40 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
             );
             final panels = <Widget>[
               switch (selected) {
-                'Cadastro' => legacy(
-                  PatientDetailsTab(
-                    patientName: patient.name,
-                    patientId: patient.id,
-                  ),
+                'Cadastro' => PatientDetailsTab(
+                  patientName: patient.name,
+                  patientId: patient.id,
+                  embedded: true,
                 ),
                 'Anamnese' => legacy(AnamnesisTab(patientId: patient.id)),
                 'Orçamentos' => legacy(
                   BudgetsTab(patientName: patient.name, patientId: patient.id),
                 ),
-                'Tratamentos' => treatment,
+                'Tratamentos' => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PatientSectionHeading(
+                      title: 'Planos de Tratamento em Execução',
+                      subtitle:
+                          'Acompanhamento clínico, rentabilidade e liquidação financeira',
+                      action: caps.canShowBudgets
+                          ? FilledButton.icon(
+                              onPressed: () => _select(2),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: ClinicalAgendaStyle.blue,
+                                foregroundColor: const Color(0xFF002E6A),
+                              ),
+                              icon: const Icon(
+                                Icons.add_circle_outline,
+                                size: 16,
+                              ),
+                              label: const Text('Novo Tratamento'),
+                            )
+                          : null,
+                    ),
+                    treatment,
+                  ],
+                ),
                 'Prontuário' => legacy(
                   ClinicalRecordTab(
                     patientName: patient.name,
@@ -165,21 +193,6 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
                 'Documentação' => legacy(PatientDocsTab(patientId: patient.id)),
                 _ => financial,
               },
-              if (selected == 'Odontograma') ...[
-                PatientSectionHeading(
-                  title: 'Planos de tratamento em execução',
-                  subtitle:
-                      'Acompanhamento clínico, rentabilidade e liquidação financeira',
-                  action: OutlinedButton.icon(
-                    onPressed: () => _select(2),
-                    style: OutlinedButton.styleFrom(backgroundColor: ClinicalAgendaStyle.blue, foregroundColor: const Color(0xFF002E6A)),
-                    icon: const Icon(Icons.add_circle_outline, size: 17),
-                    label: const Text('Novo tratamento'),
-                  ),
-                ),
-                treatment,
-                financial,
-              ],
             ];
             return LayoutBuilder(
               builder: (context, c) => SingleChildScrollView(

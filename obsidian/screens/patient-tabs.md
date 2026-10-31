@@ -42,4 +42,4 @@ Qualquer evolução da ficha do paciente.
 
 Odontograma usa coroas geométricas escuras de cinco faces e mantém os mesmos IDs FDI e status persistidos. Toque em face abre as ações existentes; pressão prolongada abre as ações da raiz (endo/implante). Zoom, ajuste à tela e salvar são funcionais. Falha de leitura não vira um odontograma saudável editável: mostra erro e permite tentar novamente.
 
-Tratamentos e Pagamentos aceitam `embedded` para compor a rolagem da ficha; seu modo independente continua disponível. Os botões usam os serviços/diálogos anteriores. As cores adaptativas das demais abas acompanham a variante sem alterar a preferência global de tema.
+Tratamentos e Pagamentos aceitam `embedded` para compor a rolagem exclusivamente de suas próprias abas; nunca são incluídos em Odontograma. Seu modo independente continua disponível. Os botões usam os serviços/diálogos anteriores. As cores adaptativas das demais abas acompanham a variante sem alterar a preferência global de tema.

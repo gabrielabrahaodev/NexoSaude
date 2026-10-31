@@ -36,8 +36,16 @@ Adicionar/remover aba, mudar visibilidade por tipo.
 
 `clinical_patient_screen.dart` compõe a ficha com menu global/unidade, identificação real, CPF mascarado, selo LGPD somente com `lgpdPortalConsent.accepted == true`, abas por `ClinicCapabilities`, indicadores, contexto e conteúdo em uma rolagem vertical. Abertura pela lista inicia no Odontograma em clínicas dentais; deep-links continuam respeitando `initialTab` (inclusive Cadastro, Prontuário e Pagamentos), e psicologia inicia em Cadastro com seis abas.
 
-No Odontograma, a página também exibe tratamentos e cobranças abaixo do mapa. As abas Tratamentos/Pagamentos mantêm acesso direto ao mesmo conteúdo. Novo tratamento conduz ao fluxo existente de Orçamentos. Receber pagamento leva às cobranças reais para escolher o lançamento; nenhum valor do HTML é usado. A tabela preserva famílias de parcelamento e opções de estorno/cancelamento, sem oferecer recibo inexistente. Custos e repasses continuam acessíveis após as cobranças.
+Odontograma exibe somente o mapa dental. Planos em execução aparecem exclusivamente em Tratamentos; livro caixa e cobranças, exclusivamente em Pagamentos. Novo tratamento conduz ao fluxo existente de Orçamentos. Receber pagamento leva às cobranças reais para escolher o lançamento; nenhum valor do HTML é usado. A tabela preserva famílias de parcelamento e opções de estorno/cancelamento, sem oferecer recibo inexistente. Custos e repasses continuam acessíveis após as cobranças.
 
 A rota reutiliza o shell do dashboard com conteúdo de detalhe; troca de menu ou unidade encerra a exibição da ficha antiga. Leitura inicial de paciente e todos os indicadores usam escopo da clínica. Consultas/streams dos indicadores são preparados uma vez na montagem. Os valores da referência e percentuais de assiduidade não são inseridos como dados reais.
 
 Componentes puros em `clinical_patient_view.dart` permitem verificar identidade, ações financeiras, tratamento e odontograma sem Firebase. A flag `AGENDA_CLINICAL_DARK=false` mantém a ficha anterior para comparação.
+
+## Cadastro e Tratamentos conforme referências corrigidas
+
+Cadastro usa cinco cartões: Dados Pessoais e Documentação & Conformidade na coluna esquerda; Localização & Endereço, Contato de Emergência e Preferências de Atendimento na direita. No mobile empilha os cartões. Editar Dados habilita campos; Salvar Alterações grava um patch de cadastro, preserva endereço legado e metadados de mapas e não altera consentimento, token, clínica ou dados clínicos/financeiros. Novos campos são opcionais: nome social, profissão, e-mail, sexo, estado civil, emissor do RG, CNS, endereço estruturado, emergência e preferências.
+
+Buscar CEP consulta ViaCEP sob clique; falhas deixam preenchimento manual disponível. Respostas atrasadas após cancelamento, alteração do CEP ou troca da unidade são descartadas. O indicador de CPF válido é validação local dos dígitos; não representa consulta à Receita Federal. O termo em PDF só abre quando há uma URL HTTPS registrada em `lgpdConsentDocumentUrl`. O ícone de link na caixa LGPD abre os controles de consentimento do portal já existentes.
+
+Tratamentos usa o título, botão Novo Tratamento, margem à direita, valores em BRL com vírgula, progresso à direita e botões Receber Parcela / Ver Dentes Vinculados / Encerrar Tratamento da referência. Dentes vinculados são apenas referências explícitas existentes no plano/itens; sem referência, o diálogo informa ausência de vínculo e oferece abrir o odontograma. Não deduz vínculos pelo nome do procedimento.

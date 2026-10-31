@@ -1,3 +1,4 @@
+import '../../../models/treatment_teeth.dart';
 import '../../../services/clinic_capabilities.dart';
 import '../clinical_patient_view.dart';
 import '../../agenda/clinical_agenda_view.dart';
@@ -15,6 +16,7 @@ class TreatmentsTab extends StatefulWidget {
   final String patientId;
   final bool embedded;
   final VoidCallback? onPayments;
+  final VoidCallback? onOdontogram;
 
   const TreatmentsTab({
     super.key,
@@ -22,6 +24,7 @@ class TreatmentsTab extends StatefulWidget {
     required this.patientId,
     this.embedded = false,
     this.onPayments,
+    this.onOdontogram,
   });
 
   @override
@@ -191,10 +194,14 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                 String installmentStatus = totalInstallments > 0 ? "$paidInstallments/$totalInstallments Pagas" : "";
 
                 if (clinicalAgendaEnabled) return ClinicalTreatmentCard(
-                  start: knownStartDate == null ? 'data não informada' : formatDateShortYear(knownStartDate), active: status == 'active', items: items,
+                  start: knownStartDate == null ? 'data não informada' : formatDateFull(knownStartDate), active: status == 'active', items: items,
                   total: planTotal, paid: localPaid, margin: localPercent, installments: installmentStatus,
                   onFinancial: () => _showLocalFinancialSummary(context, localPaid, localLabCost, localCommCost, planTotal),
                   onPayments: widget.onPayments ?? () => DefaultTabController.maybeOf(context)?.animateTo(ClinicCapabilities.current().isPsychology ? 5 : 8),
+                  onLinkedTeeth: () {
+                    final teeth = treatmentLinkedTeeth(data);
+                    showDialog(context: context, builder: (ctx) => AlertDialog(title: const Text('Dentes vinculados'), content: teeth.isEmpty ? const Text('Nenhum dente vinculado a este tratamento.') : Wrap(spacing: 8, runSpacing: 8, children: teeth.map((id) => Chip(label: Text('Dente $id'))).toList()), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fechar')), if (widget.onOdontogram != null) TextButton(onPressed: () { Navigator.pop(ctx); widget.onOdontogram!(); }, child: const Text('Abrir odontograma'))]));
+                  },
                   onClose: () async {
                     final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(title: const Text('Encerrar tratamento?'), content: const Text('Concluir este plano de tratamento?'), actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')), TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Confirmar'))]));
                     if (confirm == true) await _treatService.closePlan(doc.id);

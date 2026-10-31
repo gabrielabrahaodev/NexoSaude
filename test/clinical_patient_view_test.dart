@@ -14,7 +14,11 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        var payments = 0, registration = 0, closed = 0, received = 0;
+        var payments = 0,
+            registration = 0,
+            closed = 0,
+            received = 0,
+            linked = 0;
         final f = FinancialModel(
           id: 'f',
           clinicId: 'c',
@@ -83,6 +87,7 @@ void main() {
                       onFinancial: () {},
                       onPayments: () => payments++,
                       onClose: () => closed++,
+                      onLinkedTeeth: () => linked++,
                     ),
                     ClinicalPatientLedger(
                       charges: [f],
@@ -105,6 +110,10 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('ENCERRAR TRATAMENTO'));
         expect(closed, 1);
+        await tester.ensureVisible(find.text('Ver Dentes Vinculados'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Ver Dentes Vinculados'));
+        expect(linked, 1);
         if (width >= 900) {
           await tester.ensureVisible(find.text('Receber'));
           await tester.pumpAndSettle();

@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import '../../models/financial_model.dart';
 import '../../models/tooth_model.dart';
@@ -372,156 +373,264 @@ class ClinicalTreatmentCard extends StatelessWidget {
     required this.onFinancial,
     required this.onPayments,
     required this.onClose,
+    this.onLinkedTeeth,
   });
   final String start, installments;
   final bool active;
   final List<Map<String, dynamic>> items;
   final double total, paid, margin;
   final VoidCallback onFinancial, onPayments, onClose;
+  final VoidCallback? onLinkedTeeth;
+  String _amount(num value) =>
+      NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
+  Widget pill(String text, {Color color = PatientVisualStyle.accent}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: color,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 16),
-    child: PatientVisualStyle.panel(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+  Widget build(BuildContext context) {
+    final mobile = MediaQuery.sizeOf(context).width < 600;
+    final buttonSize = Size(0, mobile ? 40 : 28);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: PatientVisualStyle.panel(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.circle,
+                        size: 9,
+                        color: PatientVisualStyle.accent,
+                      ),
+                      Text(
+                        'Iniciado em $start',
+                        style: TextStyle(
+                          color: PatientVisualStyle.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                      pill(
+                        active ? 'EM ANDAMENTO' : 'CONCLUÍDO',
+                        color: active
+                            ? PatientVisualStyle.accent
+                            : ClinicalAgendaStyle.muted,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: onFinancial,
+                  child: pill('↗  Margem: ${margin.toStringAsFixed(0)}%'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final item in items)
+              Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C2026),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Row(
                   children: [
-                    const Icon(
-                      Icons.circle,
-                      size: 9,
+                    Icon(
+                      item['status'] == 'realizado'
+                          ? Icons.check_circle_outline
+                          : Icons.radio_button_checked,
+                      size: 17,
                       color: PatientVisualStyle.accent,
                     ),
-                    Text(
-                      'Iniciado em $start',
-                      style: TextStyle(
-                        color: PatientVisualStyle.textSecondary,
-                        fontSize: 12,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${item['name'] ?? 'Procedimento'}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    CarePill(
-                      active ? 'EM ANDAMENTO' : 'CONCLUÍDO',
-                      active: active,
+                    const SizedBox(width: 10),
+                    Text(
+                      _amount(parseBRL(item['price'])),
+                      style: const TextStyle(
+                        fontFamily: 'PlusJakartaSans',
+                        fontFamilyFallback: ['PlusJakartaSans'],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: onFinancial,
-                child: CarePill(
-                  'Margem: ${margin.toStringAsFixed(0)}%',
-                  active: margin >= 30,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          for (final item in items)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: ClinicalAgendaStyle.elevated.withValues(alpha: .28),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    item['status'] == 'realizado'
-                        ? Icons.check_circle_outline
-                        : Icons.radio_button_checked,
-                    size: 18,
-                    color: PatientVisualStyle.accent,
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 6,
+              children: [
+                Text(
+                  'Progresso Financeiro:',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: PatientVisualStyle.textSecondary,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '${item['name'] ?? 'Procedimento'}',
+                ),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      _amount(paid),
                       style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontFamily: 'PlusJakartaSans',
+                        fontFamilyFallback: ['PlusJakartaSans'],
+                        fontSize: 10,
+                        color: PatientVisualStyle.warning,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    formatBRL(parseBRL(item['price'])),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                    Text(
+                      'de ${_amount(total)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: PatientVisualStyle.textSecondary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 6,
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progresso financeiro',
-                style: TextStyle(
-                  color: PatientVisualStyle.textSecondary,
-                  fontSize: 11,
+                    if (installments.isNotEmpty)
+                      pill(installments, color: PatientVisualStyle.warning),
+                  ],
                 ),
-              ),
-              Text(
-                '${formatBRL(paid)} de ${formatBRL(total)}',
-                style: const TextStyle(fontSize: 11),
-              ),
-              if (installments.isNotEmpty) CarePill(installments),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: LinearProgressIndicator(
-              value: total > 0 ? (paid / total).clamp(0, 1) : 0,
-              color: PatientVisualStyle.accent,
-              backgroundColor: ClinicalAgendaStyle.elevated,
-              minHeight: 6,
+              ],
             ),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: Wrap(
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: LinearProgressIndicator(
+                value: total > 0 ? (paid / total).clamp(0, 1) : 0,
+                minHeight: 6,
+                backgroundColor: const Color(0xFF31353C),
+                color: PatientVisualStyle.accent,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
               alignment: WrapAlignment.spaceBetween,
-              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 10,
               runSpacing: 8,
               children: [
-                FilledButton.icon(
-                  onPressed: onPayments,
-                  icon: const Icon(Icons.payments_outlined, size: 16),
-                  label: const Text('Receber parcela'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: onPayments,
+                      style: FilledButton.styleFrom(
+                        minimumSize: buttonSize,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        textStyle: const TextStyle(
+                          fontFamily: 'PlusJakartaSans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      icon: const Icon(Icons.payments_outlined, size: 14),
+                      label: const Text('Receber Parcela'),
+                    ),
+                    TextButton(
+                      onPressed: onLinkedTeeth,
+                      style: TextButton.styleFrom(
+                        minimumSize: buttonSize,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        foregroundColor: ClinicalAgendaStyle.text,
+                        backgroundColor: const Color(0xFF1C2026),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        textStyle: const TextStyle(
+                          fontFamily: 'PlusJakartaSans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      child: const Text('Ver Dentes Vinculados'),
+                    ),
+                  ],
                 ),
                 if (active)
                   OutlinedButton.icon(
                     onPressed: onClose,
                     style: OutlinedButton.styleFrom(
+                      minimumSize: buttonSize,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       foregroundColor: PatientVisualStyle.warning,
+                      backgroundColor: Colors.transparent,
                       side: const BorderSide(color: Color(0xFF705516)),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      textStyle: const TextStyle(
+                        fontFamily: 'PlusJakartaSans',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    icon: const Icon(Icons.check, size: 16),
+                    icon: const Icon(Icons.check, size: 15),
                     label: const Text('ENCERRAR TRATAMENTO'),
                   ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
+        padding: 14,
       ),
-    ),
-  );
+    );
+  }
 }
 
 class ClinicalPatientLedger extends StatelessWidget {
