@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../models/appointment_model.dart';
+import '../../ui/app_theme.dart';
 
 /// Branch de avaliação: desligue com --dart-define=AGENDA_CLINICAL_DARK=false.
 const clinicalAgendaEnabled = bool.fromEnvironment(
@@ -11,24 +12,53 @@ const clinicalAgendaEnabled = bool.fromEnvironment(
 );
 
 abstract final class ClinicalAgendaStyle {
-  static const background = Color(0xFF10141A);
-  static const surface = Color(0xFF181C22);
-  static const elevated = Color(0xFF262A31);
-  static const text = Color(0xFFDFE2EB);
-  static const muted = Color(0xFF9AA4B5);
-  static const teal = Color(0xFF02C49F);
-  static const blue = Color(0xFFADC6FF);
+  static bool get isDark => AppColors.isDark;
+  static Color tone(Color dark, Color light) => isDark ? dark : light;
+  static Color get background =>
+      tone(const Color(0xFF10141A), const Color(0xFFF3F6FA));
+  static Color get surface => tone(const Color(0xFF181C22), Colors.white);
+  static Color get elevated =>
+      tone(const Color(0xFF262A31), const Color(0xFFE8EDF4));
+  static Color get text =>
+      tone(const Color(0xFFDFE2EB), const Color(0xFF202936));
+  static Color get muted =>
+      tone(const Color(0xFF9AA4B5), const Color(0xFF536276));
+  static Color get teal =>
+      tone(const Color(0xFF02C49F), const Color(0xFF007E69));
+  static Color get blue =>
+      tone(const Color(0xFFADC6FF), const Color(0xFF294F9A));
+  static Color get accent =>
+      tone(const Color(0xFF3DDBB7), const Color(0xFF007E69));
+  static Color get warning =>
+      tone(const Color(0xFFFFC400), const Color(0xFF875800));
+  static Color get danger =>
+      tone(const Color(0xFFFFB4AB), const Color(0xFFB3261E));
+  static Color get onAccent => isDark ? const Color(0xFF00382C) : Colors.white;
+  static Color get onBlue => isDark ? const Color(0xFF002E6A) : Colors.white;
+  static Color get selected =>
+      tone(const Color(0xFF17443E), const Color(0xFFD9F2E9));
+
+  /// Register an inherited theme dependency so live switching keeps existing State.
+  static ThemeData forContext(BuildContext context) {
+    Theme.of(context);
+    return theme;
+  }
+
   static ThemeData get theme => ThemeData(
     useMaterial3: true,
     fontFamily: 'PlusJakartaSans',
-    brightness: Brightness.dark,
+    brightness: isDark ? Brightness.dark : Brightness.light,
     scaffoldBackgroundColor: background,
-    colorScheme: const ColorScheme.dark(
-      primary: blue,
-      secondary: teal,
-      surface: surface,
-    ),
-    textTheme: ThemeData.dark().textTheme.apply(
+    colorScheme: isDark
+        ? ColorScheme.dark(primary: blue, secondary: teal, surface: surface)
+        : ColorScheme.fromSeed(
+            seedColor: blue,
+            brightness: isDark ? Brightness.dark : Brightness.light,
+            primary: blue,
+            secondary: teal,
+            surface: surface,
+          ),
+    textTheme: (isDark ? ThemeData.dark() : ThemeData.light()).textTheme.apply(
       fontFamily: 'PlusJakartaSans',
       bodyColor: text,
       displayColor: text,
@@ -94,8 +124,10 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   int _minute(AppointmentModel a) => a.date.hour * 60 + a.date.minute;
   Color _color(AppointmentModel a) {
     if (_blocked(a) || a.isDone) return ClinicalAgendaStyle.muted;
-    if (a.isCancelled || a.isMissed) return const Color(0xFFFFB4AB);
-    if (a.status.toLowerCase() == 'remarcar') return const Color(0xFFFBBF24);
+    if (a.isCancelled || a.isMissed) return ClinicalAgendaStyle.danger;
+    if (a.status.toLowerCase() == 'remarcar') {
+      return ClinicalAgendaStyle.warning;
+    }
     return a.status == 'Confirmado'
         ? ClinicalAgendaStyle.teal
         : ClinicalAgendaStyle.blue;
@@ -133,7 +165,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
               children: [
                 Text(
                   currentWeek ? 'SEMANA ATUAL' : 'SEMANA',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ClinicalAgendaStyle.muted,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -179,7 +211,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.circle,
                       color: ClinicalAgendaStyle.teal,
                       size: 7,
@@ -192,7 +224,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                             : 'MODO DE EXIBIÇÃO',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: ClinicalAgendaStyle.muted,
                           fontSize: 11,
                         ),
@@ -202,7 +234,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                     SegmentedButton<bool>(
                       style: SegmentedButton.styleFrom(
                         selectedBackgroundColor: ClinicalAgendaStyle.teal,
-                        selectedForegroundColor: const Color(0xFF00382C),
+                        selectedForegroundColor: ClinicalAgendaStyle.onAccent,
                         side: BorderSide.none,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -238,7 +270,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.calendar_month_outlined,
                             color: ClinicalAgendaStyle.teal,
                           ),
@@ -315,11 +347,19 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                           children: [
                             Text(
                               _names[i],
-                              style: const TextStyle(fontSize: 11),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _day == i
+                                    ? Colors.white
+                                    : ClinicalAgendaStyle.text,
+                              ),
                             ),
                             Text(
                               '${_dayDate(i).day}',
-                              style: const TextStyle(
+                              style: TextStyle(
+                                color: _day == i
+                                    ? Colors.white
+                                    : ClinicalAgendaStyle.text,
                                 fontSize: 21,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -327,7 +367,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                             if (_events(
                               i,
                             ).any((a) => !_blocked(a) && !a.isCancelled))
-                              const Icon(
+                              Icon(
                                 Icons.circle,
                                 size: 6,
                                 color: ClinicalAgendaStyle.teal,
@@ -343,7 +383,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.event_available,
                       color: ClinicalAgendaStyle.teal,
                       size: 18,
@@ -354,9 +394,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                         widget.loading
                             ? 'Carregando agenda…'
                             : '${_events(_day).where((a) => !_blocked(a) && !a.isCancelled).length} agendamentos no dia',
-                        style: const TextStyle(
-                          color: ClinicalAgendaStyle.muted,
-                        ),
+                        style: TextStyle(color: ClinicalAgendaStyle.muted),
                       ),
                     ),
                   ],
@@ -385,7 +423,9 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       button: true,
       label: '${a.patientName}, ${_time(_minute(a))}, ${a.status}',
       child: Material(
-        color: compact ? ClinicalAgendaStyle.surface : const Color(0xFF17283E),
+        color: compact
+            ? ClinicalAgendaStyle.surface
+            : ClinicalAgendaStyle.elevated,
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -447,9 +487,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                         children: [
                           Text(
                             '${_time(_minute(a))} – ${_time(end)}',
-                            style: const TextStyle(
-                              color: ClinicalAgendaStyle.muted,
-                            ),
+                            style: TextStyle(color: ClinicalAgendaStyle.muted),
                           ),
                           Text(
                             a.status,
@@ -513,9 +551,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                           alignment: Alignment.centerLeft,
                           minimumSize: const Size.fromHeight(48),
                           foregroundColor: ClinicalAgendaStyle.muted,
-                          side: const BorderSide(
-                            color: ClinicalAgendaStyle.elevated,
-                          ),
+                          side: BorderSide(color: ClinicalAgendaStyle.elevated),
                         ),
                         onPressed: () =>
                             widget.onEmptySlot(_dayDate(_day), _time(minute)),
@@ -569,13 +605,13 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
         children: [
           Container(
             height: 64,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: ClinicalAgendaStyle.elevated,
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 56,
                   child: Icon(Icons.schedule, color: ClinicalAgendaStyle.muted),
                 ),
@@ -615,7 +651,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
                                 color: _sameDay(_dayDate(i), DateTime.now())
-                                    ? const Color(0xFF00382C)
+                                    ? ClinicalAgendaStyle.onAccent
                                     : ClinicalAgendaStyle.text,
                               ),
                             ),
@@ -645,7 +681,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                             color: ClinicalAgendaStyle.surface.withValues(
                               alpha: .6,
                             ),
-                            border: const Border(
+                            border: Border(
                               bottom: BorderSide(
                                 color: ClinicalAgendaStyle.elevated,
                               ),
@@ -661,7 +697,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                                   child: Text(
                                     _time(start + s * 30),
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: ClinicalAgendaStyle.muted,
                                       fontSize: 11,
                                     ),

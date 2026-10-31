@@ -96,7 +96,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
     final index = _index.clamp(0, entries.length - 1);
     final selected = entries[index].name;
     final content = Theme(
-      data: PatientVisualStyle.theme,
+      data: PatientVisualStyle.forContext(context),
       child: Scaffold(
         backgroundColor: PatientVisualStyle.background,
         body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -164,7 +164,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
                               onPressed: () => _select(2),
                               style: FilledButton.styleFrom(
                                 backgroundColor: ClinicalAgendaStyle.blue,
-                                foregroundColor: const Color(0xFF002E6A),
+                                foregroundColor: ClinicalAgendaStyle.onBlue,
                               ),
                               icon: const Icon(
                                 Icons.add_circle_outline,
@@ -236,7 +236,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
                                         ? ClinicalAgendaStyle.teal
                                         : Colors.transparent,
                                     foregroundColor: i == index
-                                        ? const Color(0xFF00382C)
+                                        ? ClinicalAgendaStyle.onAccent
                                         : ClinicalAgendaStyle.text,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
@@ -344,7 +344,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
                           : 'Consultando histórico',
                       icon: Icons.event_available,
                       color: level == 'red'
-                          ? const Color(0xFFFFB4AB)
+                          ? ClinicalAgendaStyle.danger
                           : level == 'yellow'
                           ? PatientVisualStyle.warning
                           : PatientVisualStyle.accent,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:odonto_controle/ui/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,21 +34,22 @@ void main() {
             StreamController<DocumentSnapshot<Map<String, dynamic>>>.broadcast(
               onListen: () => listens++,
             );
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: PatientVisualStyle.theme,
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: PatientDetailsTab(
-                  patientId: 'patient-a',
-                  patientName: 'Gabriel',
-                  embedded: true,
-                  patientStream: source.stream,
-                ),
+        AppColors.isDark = false;
+        addTearDown(() => AppColors.isDark = false);
+        Widget app() => MaterialApp(
+          theme: PatientVisualStyle.theme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PatientDetailsTab(
+                patientId: 'patient-a',
+                patientName: 'Gabriel',
+                embedded: true,
+                patientStream: source.stream,
               ),
             ),
           ),
         );
+        await tester.pumpWidget(app());
         source.add(
           _PatientSnapshot({
             'clinicId': 'clinic-a',
@@ -88,6 +90,24 @@ void main() {
           expect(state.widget.controller.text, typed);
           expect(state.widget.controller.selection.baseOffset, typed.length);
           expect(find.byType(CircularProgressIndicator), findsNothing);
+          expect(listens, 1);
+        }
+        // Switching theme must preserve the actual editor, focus, draft and stream.
+        for (final dark in [true, false]) {
+          AppColors.isDark = dark;
+          await tester.pumpWidget(app());
+          await tester.pumpAndSettle();
+          expect(
+            identical(tester.state<EditableTextState>(editable), state),
+            isTrue,
+          );
+          expect(state.widget.focusNode.hasFocus, isTrue);
+          expect(state.widget.controller.text, typed);
+          expect(state.widget.controller.selection.baseOffset, typed.length);
+          expect(
+            Theme.of(tester.element(field)).brightness,
+            dark ? Brightness.dark : Brightness.light,
+          );
           expect(listens, 1);
         }
         // A new snapshot while editing must not replace the user's draft.

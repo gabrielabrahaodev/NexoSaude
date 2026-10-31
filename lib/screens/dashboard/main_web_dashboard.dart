@@ -394,10 +394,10 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
               isExpanded: true,
               itemHeight: clinical ? 60 : kMinInteractiveDimension,
               selectedItemBuilder: clinical ? (context) => clinics.map((doc) => Row(children: [
-                const Icon(Icons.apartment, color: ClinicalAgendaStyle.teal, size: 22),
+                Icon(Icons.apartment, color: ClinicalAgendaStyle.teal, size: 22),
                 const SizedBox(width: 12),
                 Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('UNIDADE', style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 10, fontWeight: FontWeight.w600)),
+                  Text('UNIDADE', style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 10, fontWeight: FontWeight.w600)),
                   Text('${(doc.data() as Map<String, dynamic>)['name'] ?? 'Unidade'}', maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 ])),
@@ -458,7 +458,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   Widget build(BuildContext context) {
     if (clinicalAgendaEnabled) {
       final contentTheme = Theme.of(context);
-      return Theme(data: ClinicalAgendaStyle.theme,
+      return Theme(data: ClinicalAgendaStyle.forContext(context),
         child: Builder(builder: (context) => _buildClinicalAgendaShell(context, contentTheme)));
     }
     // Layout responsivo mantido...
@@ -543,9 +543,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     Widget brand() => ClinicalAgendaBrand(compact: mobile);
     Widget identity() => ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: const CircleAvatar(
+      leading: CircleAvatar(
         backgroundColor: ClinicalAgendaStyle.blue,
-        child: Icon(Icons.person_outline, color: Color(0xFF002E6A)),
+        child: Icon(Icons.person_outline, color: ClinicalAgendaStyle.onBlue),
       ),
       title: Text(
         _displayUserName(),
@@ -556,7 +556,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         _displayUserSub(),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
+        style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
       ),
       trailing: IconButton(
         tooltip: 'Sair',
@@ -568,9 +568,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: ClinicalAgendaStyle.elevated.withValues(alpha: .35), borderRadius: BorderRadius.circular(14)),
-      child: Row(children: [const Icon(Icons.apartment, color: ClinicalAgendaStyle.teal), const SizedBox(width: 12),
+      child: Row(children: [Icon(Icons.apartment, color: ClinicalAgendaStyle.teal), const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('UNIDADE', style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 10, fontWeight: FontWeight.w600)),
+          Text('UNIDADE', style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 10, fontWeight: FontWeight.w600)),
           Text(SessionManager().currentClinicName ?? 'Unidade', maxLines: 1, overflow: TextOverflow.ellipsis),
         ])),
       ]));
@@ -579,7 +579,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         children: [
           Padding(padding: const EdgeInsets.all(20), child: SizedBox(height: 64, child: brand())),
           clinic(),
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(16),
             child: Align(
               alignment: Alignment.centerLeft,
@@ -606,10 +606,10 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                       ),
                       tileColor: e.$1 == _effectiveIndex ? ClinicalAgendaStyle.teal.withValues(alpha: .12) : null,
                       iconColor: e.$1 == _effectiveIndex
-                          ? const Color(0xFF43E1BA)
+                          ? ClinicalAgendaStyle.accent
                           : ClinicalAgendaStyle.muted,
                       textColor: e.$1 == _effectiveIndex
-                          ? const Color(0xFF43E1BA)
+                          ? ClinicalAgendaStyle.accent
                           : ClinicalAgendaStyle.text,
                       leading: Icon(e.$4),
                       title: Text(e.$3),
@@ -640,6 +640,17 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         ],
       ),
     );
+    Widget themeToggle() => IconButton(
+      key: const ValueKey('clinical-theme-toggle'),
+      tooltip: ClinicalAgendaStyle.isDark ? 'Usar modo claro' : 'Usar modo escuro',
+      icon: Icon(ClinicalAgendaStyle.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+      onPressed: () async {
+        final saved = await ThemeController().setDark(!ClinicalAgendaStyle.isDark);
+        if (!saved && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tema aplicado neste aparelho. Não foi possível sincronizar sua preferência agora.')));
+        }
+      },
+    );
     final quick = entries.where((e) => [1, 2, 12, 5].contains(e.$1)).toList();
     return Scaffold(
       backgroundColor: ClinicalAgendaStyle.background,
@@ -655,12 +666,13 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
               title: brand(),
               toolbarHeight: 64,
               centerTitle: false,
+              actions: [themeToggle()],
             )
           : null,
       bottomNavigationBar: mobile
           ? SafeArea(
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: ClinicalAgendaStyle.surface,
                   border: Border(
                     top: BorderSide(color: ClinicalAgendaStyle.elevated),
@@ -731,7 +743,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.home_outlined,
                               size: 20,
                               color: ClinicalAgendaStyle.muted,
@@ -745,6 +757,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                                 ),
                               ),
                             ),
+                            themeToggle(),
                             Flexible(
                               child: Text(
                                 _displayUserName(),

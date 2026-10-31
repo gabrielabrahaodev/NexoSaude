@@ -8,20 +8,30 @@ import '../agenda/clinical_agenda_view.dart';
 import '../care/clinical_care_view.dart';
 
 abstract final class PatientVisualStyle {
-  static Color get background =>
-      clinicalAgendaEnabled ? const Color(0xFF10141A) : AppColors.background;
+  static Color get background => clinicalAgendaEnabled
+      ? ClinicalAgendaStyle.background
+      : AppColors.background;
   static Color get surface =>
-      clinicalAgendaEnabled ? const Color(0xFF181C22) : AppColors.surface;
+      clinicalAgendaEnabled ? ClinicalAgendaStyle.surface : AppColors.surface;
   static Color get textPrimary =>
-      clinicalAgendaEnabled ? const Color(0xFFDFE2EB) : AppColors.textPrimary;
-  static Color get textSecondary =>
-      clinicalAgendaEnabled ? const Color(0xFF8C909F) : AppColors.textSecondary;
-  static const accent = Color(0xFF3DDBB7), warning = Color(0xFFFFC400);
+      clinicalAgendaEnabled ? ClinicalAgendaStyle.text : AppColors.textPrimary;
+  static Color get textSecondary => clinicalAgendaEnabled
+      ? ClinicalAgendaStyle.muted
+      : AppColors.textSecondary;
+  static Color get accent => ClinicalAgendaStyle.accent;
+  static Color get warning => ClinicalAgendaStyle.warning;
+
+  /// Register an inherited theme dependency so live switching keeps existing State.
+  static ThemeData forContext(BuildContext context) {
+    Theme.of(context);
+    return theme;
+  }
+
   static ThemeData get theme => ClinicalCareStyle.theme.copyWith(
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: ClinicalAgendaStyle.teal,
-        foregroundColor: const Color(0xFF00382C),
+        foregroundColor: ClinicalAgendaStyle.onAccent,
         minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -94,7 +104,7 @@ class ClinicalPatientHeader extends StatelessWidget {
           ),
           child: Text(
             initials,
-            style: const TextStyle(
+            style: TextStyle(
               color: PatientVisualStyle.accent,
               fontSize: 19,
               fontWeight: FontWeight.w700,
@@ -139,7 +149,7 @@ class ClinicalPatientHeader extends StatelessWidget {
                 psychology
                     ? 'Psicologia & Psicoterapia'
                     : 'Odontologia & Clínica Geral',
-                style: const TextStyle(
+                style: TextStyle(
                   color: PatientVisualStyle.accent,
                   fontSize: 12,
                 ),
@@ -186,10 +196,8 @@ class ClinicalPatientHeader extends StatelessWidget {
     );
   }
 
-  static const _meta = TextStyle(
-    color: ClinicalAgendaStyle.muted,
-    fontSize: 12,
-  );
+  static TextStyle get _meta =>
+      TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12);
   static String _maskedCpf(String value) {
     final d = value.replaceAll(RegExp(r'\D'), '');
     return d.length == 11
@@ -383,22 +391,21 @@ class ClinicalTreatmentCard extends StatelessWidget {
   final VoidCallback? onLinkedTeeth;
   String _amount(num value) =>
       NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
-  Widget pill(String text, {Color color = PatientVisualStyle.accent}) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+  Widget pill(String text, {Color? color}) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: (color ?? PatientVisualStyle.accent).withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(5),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: color ?? PatientVisualStyle.accent,
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
   @override
   Widget build(BuildContext context) {
     final mobile = MediaQuery.sizeOf(context).width < 600;
@@ -418,7 +425,7 @@ class ClinicalTreatmentCard extends StatelessWidget {
                     runSpacing: 6,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.circle,
                         size: 9,
                         color: PatientVisualStyle.accent,
@@ -455,7 +462,7 @@ class ClinicalTreatmentCard extends StatelessWidget {
                   vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1C2026),
+                  color: ClinicalAgendaStyle.elevated,
                   borderRadius: BorderRadius.circular(7),
                 ),
                 child: Row(
@@ -511,7 +518,7 @@ class ClinicalTreatmentCard extends StatelessWidget {
                   children: [
                     Text(
                       _amount(paid),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'PlusJakartaSans',
                         fontFamilyFallback: ['PlusJakartaSans'],
                         fontSize: 10,
@@ -538,7 +545,7 @@ class ClinicalTreatmentCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: total > 0 ? (paid / total).clamp(0, 1) : 0,
                 minHeight: 6,
-                backgroundColor: const Color(0xFF31353C),
+                backgroundColor: ClinicalAgendaStyle.elevated,
                 color: PatientVisualStyle.accent,
               ),
             ),
@@ -583,7 +590,7 @@ class ClinicalTreatmentCard extends StatelessWidget {
                           vertical: 6,
                         ),
                         foregroundColor: ClinicalAgendaStyle.text,
-                        backgroundColor: const Color(0xFF1C2026),
+                        backgroundColor: ClinicalAgendaStyle.elevated,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6),
@@ -828,7 +835,67 @@ class ClinicalPatientLedger extends StatelessWidget {
   );
 }
 
-/// Geometric five-face crown with a separate, accessible root action.
+/// Persisted procedure colors shared by the face, tooth number and legend.
+abstract final class ClinicalToothStyle {
+  static Color? color(String? status) => switch (status) {
+    'issue' => ClinicalAgendaStyle.tone(
+      const Color(0xFFEF4444),
+      const Color(0xFFC42B2B),
+    ),
+    'restored' => ClinicalAgendaStyle.tone(
+      const Color(0xFF0284C7),
+      const Color(0xFF00659A),
+    ),
+    'planned' || 'crown_planned' => ClinicalAgendaStyle.tone(
+      const Color(0xFFF59E0B),
+      const Color(0xFF946000),
+    ),
+    'crown_done' => ClinicalAgendaStyle.tone(
+      const Color(0xFF0D9488),
+      const Color(0xFF006C63),
+    ),
+    'endo_planned' => ClinicalAgendaStyle.tone(
+      const Color(0xFFEC4899),
+      const Color(0xFFB52675),
+    ),
+    'endo_done' => ClinicalAgendaStyle.tone(
+      const Color(0xFFD16AA4),
+      const Color(0xFF831843),
+    ),
+    'implant_planned' => ClinicalAgendaStyle.tone(
+      const Color(0xFFA855F7),
+      const Color(0xFF7F2CC2),
+    ),
+    'implant_done' => ClinicalAgendaStyle.tone(
+      const Color(0xFFB67BDF),
+      const Color(0xFF581C87),
+    ),
+    'missing' => ClinicalAgendaStyle.muted,
+    _ => null,
+  };
+  static Color? numberColor(String? status) => ClinicalAgendaStyle.isDark
+      ? switch (status) {
+          'restored' => const Color(0xFFADC6FF),
+          'planned' || 'crown_planned' => const Color(0xFFFFC400),
+          'endo_planned' => const Color(0xFFFFB1DA),
+          _ => color(status),
+        }
+      : color(status);
+  static String? marker(ToothModel tooth) {
+    if (tooth.isMissing) return 'missing';
+    final root = tooth.facesStatus[ToothFace.root.name];
+    if (color(root) != null) return root;
+    final occlusal = tooth.facesStatus[ToothFace.occlusal.name];
+    if (color(occlusal) != null) return occlusal;
+    for (final face in ToothFace.values) {
+      final status = tooth.facesStatus[face.name];
+      if (color(status) != null) return status;
+    }
+    return null;
+  }
+}
+
+/// Five anatomical hit targets, with root procedures on long press.
 class ClinicalTooth extends StatelessWidget {
   const ClinicalTooth({
     super.key,
@@ -840,67 +907,107 @@ class ClinicalTooth extends StatelessWidget {
   final void Function(ToothModel, ToothFace) onFaceTap;
   final double size;
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Dente ${tooth.id}',
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (tooth.isUpper)
-          Text('${tooth.id}', style: const TextStyle(fontSize: 10)),
-        GestureDetector(
-          onTapUp: (d) {
-            final p = d.localPosition / size;
-            final face = p.dx > .27 && p.dx < .73 && p.dy > .27 && p.dy < .73
-                ? ToothFace.occlusal
-                : (p.dy < p.dx && p.dy < 1 - p.dx
-                      ? ToothFace.vestibular
-                      : (p.dy > p.dx && p.dy > 1 - p.dx
-                            ? ToothFace.lingual
-                            : (p.dx < .5
-                                  ? ToothFace.mesial
-                                  : ToothFace.distal)));
-            onFaceTap(tooth, face);
-          },
-          onLongPress: () => onFaceTap(tooth, ToothFace.root),
-          child: CustomPaint(
-            size: Size.square(size),
-            painter: _PatientToothPainter(tooth),
+  Widget build(BuildContext context) {
+    final marker = ClinicalToothStyle.marker(tooth);
+    final color = ClinicalToothStyle.color(marker);
+    final framed =
+        tooth.facesStatus[ToothFace.root.name] != null ||
+        marker == 'restored' ||
+        tooth.isMissing;
+    final number = Text(
+      '${tooth.id}',
+      key: ValueKey('tooth-number-${tooth.id}'),
+      style: TextStyle(
+        fontSize: 10,
+        color:
+            ClinicalToothStyle.numberColor(marker) ??
+            PatientVisualStyle.textPrimary,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    return Semantics(
+      label: 'Dente ${tooth.id}',
+      child: Container(
+        key: ValueKey('tooth-marker-${tooth.id}'),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: framed ? color ?? Colors.transparent : Colors.transparent,
           ),
+          color: framed ? color?.withValues(alpha: .04) : null,
         ),
-        if (!tooth.isUpper)
-          Text('${tooth.id}', style: const TextStyle(fontSize: 10)),
-      ],
-    ),
-  );
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (tooth.isUpper) ...[number, const SizedBox(height: 5)],
+            GestureDetector(
+              onTapUp: (d) {
+                final p = d.localPosition / size;
+                final face =
+                    p.dx > .27 && p.dx < .73 && p.dy > .27 && p.dy < .73
+                    ? ToothFace.occlusal
+                    : (p.dy < p.dx && p.dy < 1 - p.dx
+                          ? ToothFace.vestibular
+                          : (p.dy > p.dx && p.dy > 1 - p.dx
+                                ? ToothFace.lingual
+                                : (p.dx < .5
+                                      ? ToothFace.mesial
+                                      : ToothFace.distal)));
+                onFaceTap(tooth, face);
+              },
+              onLongPress: () => onFaceTap(tooth, ToothFace.root),
+              child: CustomPaint(
+                size: Size.square(size),
+                painter: _PatientToothPainter(
+                  tooth,
+                  ClinicalAgendaStyle.isDark,
+                ),
+              ),
+            ),
+            if (!tooth.isUpper) ...[const SizedBox(height: 5), number],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _PatientToothPainter extends CustomPainter {
-  const _PatientToothPainter(this.tooth);
+  const _PatientToothPainter(this.tooth, this.dark);
   final ToothModel tooth;
-  Color color(String? s) => switch (s) {
-    'issue' => const Color(0xFFEF4444),
-    'restored' => const Color(0xFF0284C7),
-    'planned' || 'crown_planned' => const Color(0xFFF59E0B),
-    'crown_done' => const Color(0xFF0D9488),
-    'endo_planned' => const Color(0xFFEC4899),
-    'endo_done' => const Color(0xFF831843),
-    'implant_planned' => const Color(0xFFA855F7),
-    'implant_done' => const Color(0xFF581C87),
-    'missing' => const Color(0xFF303640),
-    _ => const Color(0xFF181C22),
-  };
+  final bool dark;
+  Color color(String? status) =>
+      ClinicalToothStyle.color(status) ??
+      (dark ? const Color(0xFF181C22) : Colors.white);
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final a = w * .27, b = w * .73;
     final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..color = const Color(0xFF767D8A)
+      ..color = dark ? const Color(0xFF767D8A) : const Color(0xFF657388)
       ..strokeWidth = .8;
     void face(ToothFace f, List<Offset> points) {
       final p = Path()..addPolygon(points, true);
-      canvas.drawPath(p, Paint()..color = color(tooth.facesStatus[f.name]));
-      canvas.drawPath(p, stroke);
+      final status = tooth.facesStatus[f.name];
+      final rootColor = ClinicalToothStyle.color(
+        tooth.facesStatus[ToothFace.root.name],
+      );
+      final fill = status != null
+          ? color(status)
+          : rootColor != null
+          ? rootColor.withValues(alpha: f == ToothFace.occlusal ? .65 : .18)
+          : color(null);
+      canvas.drawPath(p, Paint()..color = fill);
+      canvas.drawPath(
+        p,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = .8
+          ..color =
+              ClinicalToothStyle.color(status) ?? rootColor ?? stroke.color,
+      );
     }
 
     face(ToothFace.vestibular, [
@@ -933,18 +1040,9 @@ class _PatientToothPainter extends CustomPainter {
       Offset(b, b),
       Offset(a, b),
     ]);
-    final root = tooth.facesStatus[ToothFace.root.name];
-    if (root != null || tooth.isMissing) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(-4, -4, w + 8, w + 8),
-          const Radius.circular(5),
-        ),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.3
-          ..color = color(root ?? 'missing'),
-      );
+    if (tooth.isMissing) {
+      canvas.drawLine(Offset.zero, Offset(w, w), stroke);
+      canvas.drawLine(Offset(w, 0), Offset(0, w), stroke);
     }
   }
 
@@ -984,7 +1082,7 @@ class ClinicalOdontogramView extends StatelessWidget {
               final title = Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.grid_on_outlined,
                     color: PatientVisualStyle.accent,
                     size: 22,
@@ -1061,7 +1159,7 @@ class ClinicalOdontogramView extends StatelessWidget {
           ),
         ),
         Container(
-          color: const Color(0xFF11151D),
+          color: ClinicalAgendaStyle.background,
           height: 300,
           child: LayoutBuilder(
             builder: (context, c) => InteractiveViewer(
@@ -1115,10 +1213,13 @@ class ClinicalOdontogramView extends StatelessWidget {
           margin: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFF2B251A),
+            color: ClinicalAgendaStyle.tone(
+              const Color(0xFF2B251A),
+              const Color(0xFFFFF2D0),
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Text(
+          child: Text(
             'Dica: Clique na face para atribuir um procedimento. Mantenha pressionado para ações de raiz. Use pinça para zoom.',
             textAlign: TextAlign.center,
             style: TextStyle(color: PatientVisualStyle.warning, fontSize: 11),
@@ -1142,17 +1243,35 @@ class ClinicalOdontogramView extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  for (final e in const <(Color, String)>[
-                    (Color(0xFFEC4899), 'Endo (Planej.)'),
-                    (Color(0xFF831843), 'Endo (Realiz.)'),
-                    (Color(0xFFA855F7), 'Implante (Planej.)'),
-                    (Color(0xFF581C87), 'Implante (Realiz.)'),
-                    (Color(0xFFF59E0B), 'Coroa (Planej.)'),
-                    (Color(0xFF0D9488), 'Coroa (Realiz.)'),
-                    (Color(0xFFEF4444), 'Cárie'),
-                    (Color(0xFF0284C7), 'Restaurado'),
-                    (Color(0xFFF59E0B), 'A realizar (Face)'),
-                    (Color(0xFF303640), 'Extraído'),
+                  for (final e in <(Color, String)>[
+                    (
+                      ClinicalToothStyle.color('endo_planned')!,
+                      'Endo (Planej.)',
+                    ),
+                    (ClinicalToothStyle.color('endo_done')!, 'Endo (Realiz.)'),
+                    (
+                      ClinicalToothStyle.color('implant_planned')!,
+                      'Implante (Planej.)',
+                    ),
+                    (
+                      ClinicalToothStyle.color('implant_done')!,
+                      'Implante (Realiz.)',
+                    ),
+                    (
+                      ClinicalToothStyle.color('crown_planned')!,
+                      'Coroa (Planej.)',
+                    ),
+                    (
+                      ClinicalToothStyle.color('crown_done')!,
+                      'Coroa (Realiz.)',
+                    ),
+                    (ClinicalToothStyle.color('issue')!, 'Cárie'),
+                    (ClinicalToothStyle.color('restored')!, 'Restaurado'),
+                    (
+                      ClinicalToothStyle.color('crown_planned')!,
+                      'A realizar (Face)',
+                    ),
+                    (ClinicalToothStyle.color('missing')!, 'Extraído'),
                   ])
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1180,7 +1299,7 @@ class ClinicalOdontogramView extends StatelessWidget {
   );
   static Widget _archLabel(String text) => Text(
     text,
-    style: const TextStyle(
+    style: TextStyle(
       color: ClinicalAgendaStyle.muted,
       fontSize: 10,
       letterSpacing: 1.2,
@@ -1214,10 +1333,10 @@ class ClinicalPatientContextBanner extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF263650),
+                color: ClinicalAgendaStyle.elevated,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.auto_awesome,
                 color: ClinicalAgendaStyle.blue,
                 size: 22,
@@ -1228,7 +1347,7 @@ class ClinicalPatientContextBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'RESUMO DE CONTEXTO CLÍNICO INTELIGENTE',
                     style: TextStyle(
                       color: ClinicalAgendaStyle.blue,
@@ -1248,7 +1367,7 @@ class ClinicalPatientContextBanner extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
                         alerts.join(' • '),
-                        style: const TextStyle(color: Color(0xFFFFB4AB)),
+                        style: TextStyle(color: ClinicalAgendaStyle.danger),
                       ),
                     ),
                   if (c.maxWidth < 700)
@@ -1261,6 +1380,6 @@ class ClinicalPatientContextBanner extends StatelessWidget {
         );
       },
     ),
-    color: const Color(0xFF20252B),
+    color: ClinicalAgendaStyle.elevated,
   );
 }

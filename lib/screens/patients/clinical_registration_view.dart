@@ -34,7 +34,11 @@ class ClinicalRegistrationView extends StatelessWidget {
   final Widget portal;
   final String consentSummary;
   final VoidCallback? onOpenConsent;
-  static const _muted = Color(0xFF9AA4B5), _input = Color(0xFF1C2026);
+  static Color get _muted => ClinicalAgendaStyle.muted;
+  static Color get _input => ClinicalAgendaStyle.tone(
+    const Color(0xFF1C2026),
+    ClinicalAgendaStyle.elevated,
+  );
   Widget field(
     String key,
     String label,
@@ -69,8 +73,8 @@ class ClinicalRegistrationView extends StatelessWidget {
                 '$label${required ? ' *' : ''}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFFC2C6D6),
+                style: TextStyle(
+                  color: ClinicalAgendaStyle.text,
                   fontSize: 9,
                   height: 1.1,
                   fontWeight: FontWeight.w600,
@@ -88,7 +92,7 @@ class ClinicalRegistrationView extends StatelessWidget {
         readOnly: !editing || saving,
         keyboardType: keyboard,
         inputFormatters: inputFormatters[key],
-        style: const TextStyle(fontSize: 10, color: Color(0xFFDFE2EB)),
+        style: TextStyle(fontSize: 10, color: ClinicalAgendaStyle.text),
         onChanged: (_) => onChanged(),
         validator: required
             ? (v) => v == null || v.trim().isEmpty ? 'Campo obrigatório' : null
@@ -98,7 +102,7 @@ class ClinicalRegistrationView extends StatelessWidget {
           suffixIcon: suffix,
           suffixIconConstraints: const BoxConstraints(maxHeight: 32),
           hintText: 'Não informado',
-          hintStyle: const TextStyle(fontSize: 11, color: _muted),
+          hintStyle: TextStyle(fontSize: 11, color: _muted),
           prefixIcon: icon == null ? null : Icon(icon, size: 13, color: _muted),
           prefixIconConstraints: const BoxConstraints(
             minWidth: 26,
@@ -125,12 +129,12 @@ class ClinicalRegistrationView extends StatelessWidget {
   Widget rgIdentifier() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SizedBox(
+      SizedBox(
         height: 12,
         child: Text(
           'RG / Órgão Emissor',
           style: TextStyle(
-            color: Color(0xFFC2C6D6),
+            color: ClinicalAgendaStyle.text,
             fontSize: 9,
             fontWeight: FontWeight.w600,
           ),
@@ -144,7 +148,7 @@ class ClinicalRegistrationView extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(left: 8, right: 5),
               child: Icon(Icons.fingerprint, size: 13, color: _muted),
             ),
@@ -201,8 +205,8 @@ class ClinicalRegistrationView extends StatelessWidget {
     children: [
       Text(
         label,
-        style: const TextStyle(
-          color: Color(0xFFC2C6D6),
+        style: TextStyle(
+          color: ClinicalAgendaStyle.text,
           fontSize: 9,
           fontWeight: FontWeight.w600,
         ),
@@ -278,14 +282,14 @@ class ClinicalRegistrationView extends StatelessWidget {
     IconData icon,
     List<Widget> children, {
     String? tag,
-    Color iconColor = PatientVisualStyle.accent,
+    Color? iconColor,
   }) => PatientVisualStyle.panel(
     Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Icon(icon, size: 15, color: iconColor),
+            Icon(icon, size: 15, color: iconColor ?? PatientVisualStyle.accent),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -298,7 +302,7 @@ class ClinicalRegistrationView extends StatelessWidget {
               ),
             ),
             if (tag != null)
-              Text(tag, style: const TextStyle(color: _muted, fontSize: 8)),
+              Text(tag, style: TextStyle(color: _muted, fontSize: 8)),
           ],
         ),
         const SizedBox(height: 12),
@@ -339,7 +343,7 @@ class ClinicalRegistrationView extends StatelessWidget {
               onTap: controllers['phone']!.text.trim().isEmpty
                   ? null
                   : onWhatsApp,
-              child: const Text(
+              child: Text(
                 'Chamar no\nWhatsApp',
                 style: TextStyle(color: PatientVisualStyle.accent, fontSize: 8),
               ),
@@ -381,7 +385,7 @@ class ClinicalRegistrationView extends StatelessWidget {
             Icons.badge_outlined,
             keyboard: TextInputType.number,
             action: PatientRegistrationDraft.validCpf(controllers['cpf']!.text)
-                ? const Text(
+                ? Text(
                     'Válido',
                     style: TextStyle(
                       fontSize: 8,
@@ -414,7 +418,7 @@ class ClinicalRegistrationView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
                   Icon(
                     Icons.verified_user_outlined,
@@ -436,7 +440,7 @@ class ClinicalRegistrationView extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 consentSummary,
-                style: const TextStyle(color: _muted, fontSize: 8),
+                style: TextStyle(color: _muted, fontSize: 8),
               ),
               Row(
                 children: [
@@ -543,7 +547,7 @@ class ClinicalRegistrationView extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Canal Preferencial para Lembretes',
               style: TextStyle(color: _muted, fontSize: 9),
             ),
@@ -584,7 +588,7 @@ class ClinicalRegistrationView extends StatelessWidget {
                               entry.$2,
                               size: 11,
                               color: channels.contains(entry.$1)
-                                  ? const Color(0xFF00382C)
+                                  ? ClinicalAgendaStyle.onAccent
                                   : _muted,
                             ),
                             const SizedBox(width: 3),
@@ -593,7 +597,7 @@ class ClinicalRegistrationView extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 9,
                                 color: channels.contains(entry.$1)
-                                    ? const Color(0xFF00382C)
+                                    ? ClinicalAgendaStyle.onAccent
                                     : _muted,
                               ),
                             ),
@@ -633,7 +637,7 @@ class ClinicalRegistrationView extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Informações pessoais, documentos fiscais/regulatórios e localização para prontuário e emissão de recibos.',
             style: TextStyle(color: _muted, fontSize: 9),
           ),

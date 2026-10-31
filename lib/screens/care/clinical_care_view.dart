@@ -7,12 +7,19 @@ import '../agenda/clinical_agenda_view.dart';
 
 /// Styling is scoped to Atendimento: legacy screens keep their own theme.
 abstract final class ClinicalCareStyle {
-  static const accent = Color(0xFF3DDBB7);
+  static Color get accent => ClinicalAgendaStyle.accent;
+
+  /// Register an inherited theme dependency so live switching keeps existing State.
+  static ThemeData forContext(BuildContext context) {
+    Theme.of(context);
+    return theme;
+  }
+
   static ThemeData get theme => ClinicalAgendaStyle.theme.copyWith(
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: accent,
-        foregroundColor: const Color(0xFF00382C),
+        foregroundColor: ClinicalAgendaStyle.onAccent,
         minimumSize: const Size(0, 44),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -39,10 +46,10 @@ abstract final class ClinicalCareStyle {
     ),
     chipTheme: ChipThemeData(
       backgroundColor: ClinicalAgendaStyle.elevated,
-      selectedColor: const Color(0xFF17443E),
+      selectedColor: ClinicalAgendaStyle.selected,
       side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      labelStyle: const TextStyle(
+      labelStyle: TextStyle(
         fontFamily: 'PlusJakartaSans',
         color: ClinicalAgendaStyle.text,
         fontSize: 12,
@@ -98,7 +105,7 @@ class CarePill extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: active ? const Color(0xFF43E1BA) : ClinicalAgendaStyle.muted,
+        color: active ? ClinicalAgendaStyle.accent : ClinicalAgendaStyle.muted,
       ),
     ),
   );
@@ -159,7 +166,7 @@ class ClinicalCareDayView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Theme(
-    data: ClinicalCareStyle.theme,
+    data: ClinicalCareStyle.forContext(context),
     child: LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
@@ -201,7 +208,7 @@ class ClinicalCareDayView extends StatelessWidget {
                             padding: 16,
                             child: Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.add_task,
                                   color: ClinicalCareStyle.accent,
                                 ),
@@ -220,7 +227,7 @@ class ClinicalCareDayView extends StatelessWidget {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      const Text(
+                                      Text(
                                         'Consultar horários livres',
                                         style: TextStyle(
                                           color: ClinicalAgendaStyle.muted,
@@ -250,7 +257,7 @@ class ClinicalCareDayView extends StatelessWidget {
                             ? ClinicalCareStyle.accent
                             : (a.status == 'Confirmado'
                                   ? ClinicalAgendaStyle.blue
-                                  : const Color(0xFF424754));
+                                  : ClinicalAgendaStyle.muted);
                         return Material(
                           color: active
                               ? ClinicalAgendaStyle.elevated
@@ -320,7 +327,7 @@ class ClinicalCareDayView extends StatelessWidget {
                                               a.procedure,
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 color:
                                                     ClinicalAgendaStyle.muted,
                                                 fontSize: 12,
@@ -338,7 +345,7 @@ class ClinicalCareDayView extends StatelessWidget {
                                         ),
                                         decoration: BoxDecoration(
                                           color: running
-                                              ? const Color(0xFF17443E)
+                                              ? ClinicalAgendaStyle.selected
                                               : ClinicalAgendaStyle.background,
                                           borderRadius: BorderRadius.circular(
                                             7,
@@ -362,7 +369,7 @@ class ClinicalCareDayView extends StatelessWidget {
                                       padding: const EdgeInsets.only(top: 8),
                                       child: Text(
                                         professionals[a.dentistId]!,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: ClinicalAgendaStyle.muted,
                                           fontSize: 11,
                                         ),
@@ -483,8 +490,8 @@ class ClinicalCareDayView extends StatelessWidget {
             children: [
               Text(
                 '${psychology ? 'PSICOLOGIA E PSICOTERAPIA' : 'FLUXO CLÍNICO ATIVO'} • $clinicName',
-                style: const TextStyle(
-                  color: Color(0xFF43E1BA),
+                style: TextStyle(
+                  color: ClinicalAgendaStyle.accent,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: .6,
@@ -528,8 +535,8 @@ class ClinicalCareDayView extends StatelessWidget {
               if (directoryError != null)
                 Text(
                   directoryError!,
-                  style: const TextStyle(
-                    color: Color(0xFFFFB4AB),
+                  style: TextStyle(
+                    color: ClinicalAgendaStyle.danger,
                     fontSize: 12,
                   ),
                 ),
@@ -629,7 +636,7 @@ class ClinicalCareVisitView extends StatelessWidget {
           height: number == null ? 36 : 28,
           decoration: BoxDecoration(
             color: number == null
-                ? const Color(0xFF17443E)
+                ? ClinicalAgendaStyle.selected
                 : ClinicalAgendaStyle.elevated,
             borderRadius: BorderRadius.circular(8),
           ),
@@ -638,7 +645,7 @@ class ClinicalCareVisitView extends StatelessWidget {
               ? Icon(icon, color: ClinicalCareStyle.accent, size: 21)
               : Text(
                   number,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ClinicalAgendaStyle.blue,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -661,7 +668,7 @@ class ClinicalCareVisitView extends StatelessWidget {
               if (subtitle != null)
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ClinicalAgendaStyle.muted,
                     fontSize: 12,
                   ),
@@ -718,11 +725,11 @@ class ClinicalCareVisitView extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF17443E),
+                  color: ClinicalAgendaStyle.selected,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: psychology
-                    ? const Icon(
+                    ? Icon(
                         Icons.psychology_outlined,
                         size: 30,
                         color: ClinicalCareStyle.accent,
@@ -757,7 +764,7 @@ class ClinicalCareVisitView extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       '${a.date.day}/${a.date.month} $time • ${a.procedure}${professionalName == null ? '' : ' • $professionalName'}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: ClinicalAgendaStyle.muted,
                         fontSize: 12,
                         height: 1.5,
@@ -797,8 +804,8 @@ class ClinicalCareVisitView extends StatelessWidget {
           for (final alert in alerts)
             Text(
               alert,
-              style: const TextStyle(
-                color: Color(0xFFFFB4AB),
+              style: TextStyle(
+                color: ClinicalAgendaStyle.danger,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -815,7 +822,7 @@ class ClinicalCareVisitView extends StatelessWidget {
       decoration: BoxDecoration(
         color: psychology
             ? ClinicalAgendaStyle.background
-            : const Color(0xFF1C2026),
+            : ClinicalAgendaStyle.elevated,
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(16),
@@ -824,18 +831,14 @@ class ClinicalCareVisitView extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.edit_note,
-                size: 17,
-                color: ClinicalAgendaStyle.muted,
-              ),
+              Icon(Icons.edit_note, size: 17, color: ClinicalAgendaStyle.muted),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   psychology
                       ? 'Síntese da sessão e conduta psicoterapêutica'
                       : 'Registro clínico formal',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ClinicalAgendaStyle.muted,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -846,7 +849,7 @@ class ClinicalCareVisitView extends StatelessWidget {
                 valueListenable: detailsController,
                 builder: (_, value, child) => Text(
                   '${value.text.length} caracteres',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ClinicalAgendaStyle.muted,
                     fontSize: 10,
                   ),
@@ -916,7 +919,7 @@ class ClinicalCareVisitView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (psychology)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text(
                 'MARCADORES E INTERVENÇÕES PSICOLÓGICAS RÁPIDAS',
@@ -937,7 +940,7 @@ class ClinicalCareVisitView extends StatelessWidget {
                   label: Text(template, style: const TextStyle(fontSize: 11)),
                   avatar: markers.contains(template)
                       ? null
-                      : const Icon(
+                      : Icon(
                           Icons.add,
                           size: 15,
                           color: ClinicalCareStyle.accent,
@@ -962,7 +965,7 @@ class ClinicalCareVisitView extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.cloud_done_outlined,
                 color: ClinicalCareStyle.accent,
                 size: 18,
@@ -971,7 +974,7 @@ class ClinicalCareVisitView extends StatelessWidget {
               Expanded(
                 child: Text(
                   draftStatus,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ClinicalAgendaStyle.muted,
                     fontSize: 11,
                   ),
@@ -1059,7 +1062,7 @@ class ClinicalCareVisitView extends StatelessWidget {
       ],
     );
     return Theme(
-      data: ClinicalCareStyle.theme,
+      data: ClinicalCareStyle.forContext(context),
       child: psychology
           ? content
           : ClipRRect(

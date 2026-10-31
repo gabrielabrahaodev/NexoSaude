@@ -31,8 +31,19 @@ A flag `--dart-define=AGENDA_CLINICAL_DARK=false` mantém a ficha anterior para 
 - Consentimento e controles do portal continuam separados da gravação do cadastro. O PDF depende de documento registrado.
 - Testes adicionais em `patient_registration_test.dart` e `clinical_registration_view_test.dart` cobrem preservação de mapas, patch limitado ao cadastro, CPF, vínculos dentários explícitos e formulário em 320/390/600/1000/1440px.
 
-Validação da correção: 269 testes Flutter aprovados; análise estática sem erros; build Web release concluído. Prévia de Cadastro em 600px e de Tratamentos em 900px renderizada e conferida com as imagens enviadas, além dos testes de formulário em larguras de 320 a 1440px.
+Validação da correção: 323 testes Flutter aprovados; análise estática sem erros; build Web release concluído. Prévia de Cadastro em 600px e de Tratamentos em 900px renderizada e conferida com as imagens enviadas, além dos testes de formulário em larguras de 320 a 1440px.
 
 ## Abertura e foco
 
 Abrir pela lista deve selecionar Cadastro. Links diretos continuam selecionando a aba solicitada. Em Editar Dados, digitar frases completas sem clicar novamente no campo; conferir cursor no ponto inserido e ausência de carregamento entre letras. Receber atualização do documento durante a edição não deve apagar o texto local. Cancelar edição deve recuperar a última versão recebida. Cobertura em `patient_registration_focus_test.dart` e `patient_route_test.dart`.
+
+
+## Cores do odontograma e escolha de tema
+
+- No cabeçalho (desktop e celular), usar sol/lua para alternar claro/escuro. Confirmar a mesma preferência em Gestão → Configurações → Aparência e após novo login.
+- Conferir Agenda, Atendimento dental/psicologia, Cadastro, Tratamentos, Odontograma e Pagamentos em ambos os modos. Texto, campos, botões e menu devem continuar legíveis.
+- Abrir Cadastro, editar e alternar tema: preservar conteúdo e aba.
+- Odontograma: registrar restauração na oclusal, procedimento planejado e endodontia na raiz; conferir face, número e moldura correspondentes. Faces saudáveis vizinhas não recebem o preenchimento da restauração. Salvar e reabrir para confirmar os status; limpar uma face para remover sua marca.
+- Em 320/390px, conferir menu e alternância; zoom do mapa permanece disponível. Testes de componentes executam nos dois temas, e `clinical_theme_tooth_test.dart` verifica contraste, molduras e pixels do desenho.
+
+Validação desta revisão: 323 testes Flutter aprovados; análise com 0 erros e os mesmos 233 avisos/informações da base; build Web release concluído. Odontograma renderizado e inspecionado nos dois temas.

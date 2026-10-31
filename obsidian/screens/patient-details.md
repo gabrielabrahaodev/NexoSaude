@@ -53,3 +53,10 @@ Tratamentos usa o título, botão Novo Tratamento, margem à direita, valores em
 ## Foco e leitura contínua do cadastro
 
 `PatientDetailsTab` mantém a assinatura do documento preparada em `initState`, reutilizando o stream durante os rebuilds de digitação. Só troca a assinatura quando muda o paciente ou a fonte de dados. Atualizações recebidas enquanto edita não substituem o rascunho; cancelar recarrega o último snapshot. Teste de regressão digita letra a letra em 390/1200px e confere foco, posição do cursor e uma única assinatura, além de receber uma atualização remota durante a edição.
+
+
+## Temas claro e escuro — PR #2
+
+A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua no cabeçalho está disponível no desktop e mobile; usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.
+
+O odontograma colore apenas as faces registradas, destaca o número FDI e enquadra restaurações e procedimentos de raiz conforme a referência. A raiz usa preenchimento tonal e o dente extraído recebe um X. A legenda compartilha a mesma paleta dos dentes; tons no modo claro priorizam contraste. Não há procedimentos ou dentes de exemplo adicionados aos dados reais.

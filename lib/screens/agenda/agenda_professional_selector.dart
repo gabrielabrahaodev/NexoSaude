@@ -29,7 +29,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
     if (error != null) {
       return Row(
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFFFB4AB)),
+          Icon(Icons.error_outline, color: ClinicalAgendaStyle.danger),
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
@@ -94,7 +94,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
         children: [
           CircleAvatar(
             backgroundColor: ClinicalAgendaStyle.blue,
-            foregroundColor: const Color(0xFF002E6A),
+            foregroundColor: ClinicalAgendaStyle.onBlue,
             child: Text(initials.isEmpty ? '?' : initials),
           ),
           const SizedBox(width: 12),
@@ -130,7 +130,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
                               '${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: ClinicalAgendaStyle.muted,
                                 fontSize: 11,
                               ),

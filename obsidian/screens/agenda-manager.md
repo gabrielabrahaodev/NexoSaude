@@ -59,3 +59,8 @@ Ver/editar/cancelar/finalizar atendimento; célula vazia cria; long-press exclui
 - Ações da agenda clássica e da alternativa compartilham seleção/filtragem. Sem profissional ativo não se cria/bloqueia; a Gestão usa o dia selecionado na visão diária.
 - `AgendaCellFactory.formForSlot` passa data/hora e profissional aos dois formulários. Contratos/sessões de psicologia preservam `dentistId`; ocupação dental filtra o profissional selecionado.
 - Legados sem profissional seguem visíveis para a gestão; não atribuir automaticamente por nome ou pelo primeiro profissional.
+
+
+## Temas claro e escuro — PR #2
+
+A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua no cabeçalho está disponível no desktop e mobile; usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.

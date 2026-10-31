@@ -156,7 +156,7 @@ class _CareDayScreenState extends State<CareDayScreen> {
       context: context,
       isScrollControlled: true,
       builder: (ctx) => Theme(
-        data: ClinicalAgendaStyle.theme,
+        data: ClinicalAgendaStyle.forContext(ctx),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -279,7 +279,7 @@ class _CareDayScreenState extends State<CareDayScreen> {
       context: context,
       isScrollControlled: true,
       builder: (ctx) => Theme(
-        data: ClinicalAgendaStyle.theme,
+        data: ClinicalAgendaStyle.forContext(ctx),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -411,7 +411,7 @@ class _CareDayScreenState extends State<CareDayScreen> {
 
   @override
   Widget build(BuildContext context) => Theme(
-    data: ClinicalAgendaStyle.theme,
+    data: ClinicalAgendaStyle.forContext(context),
     child: Scaffold(
       backgroundColor: ClinicalAgendaStyle.background,
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(

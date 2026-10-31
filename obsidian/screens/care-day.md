@@ -34,3 +34,8 @@ Marcadores de intervenção e síntese da sessão, rascunho explícito, progress
 ## Fidelidade visual às referências
 
 O tema de Atendimento usa Plus Jakarta Sans incluída no app (licença OFL), superfícies tonais, marcadores sem contorno e botões verdes. Odontologia usa um painel contínuo com seções numeradas e rodapé de ações fixo; Psicologia conserva cartões independentes para registro, contrato/cobrança e próxima sessão. O contrato e os controles financeiros se organizam em duas colunas quando há espaço, empilhando no mobile. O menu mantém o logo original e usa destaque tonal no item ativo. Fluxos de gravação, presença, permissão e cobrança permanecem os mesmos.
+
+
+## Temas claro e escuro — PR #2
+
+A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua no cabeçalho está disponível no desktop e mobile; usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.

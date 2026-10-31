@@ -1194,7 +1194,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
     if (clinicalAgendaEnabled) {
       return Theme(
-        data: ClinicalAgendaStyle.theme,
+        data: ClinicalAgendaStyle.forContext(context),
         child: Scaffold(
           backgroundColor: ClinicalAgendaStyle.background,
           floatingActionButton: FloatingActionButton.extended(

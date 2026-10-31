@@ -820,7 +820,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
         if (_packageError != null)
           Text(
             _packageError!,
-            style: const TextStyle(color: Color(0xFFFFB4AB)),
+            style: TextStyle(color: ClinicalAgendaStyle.danger),
           ),
         if (_contract != null) ...[
           CarePill(
@@ -835,7 +835,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
           const SizedBox(height: 6),
           Text(
             '${_contract!.dayOfWeek} às ${_contract!.time}',
-            style: const TextStyle(
+            style: TextStyle(
               color: ClinicalAgendaStyle.muted,
               fontSize: 12,
             ),
@@ -859,14 +859,14 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
             const SizedBox(height: 4),
             Text(
               '${_packageProgress!.remaining} previstas restantes',
-              style: const TextStyle(
+              style: TextStyle(
                 color: ClinicalCareStyle.accent,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Cobrança mensal conforme presença. Faltas com atestado seguem as regras do pacote.',
               style: TextStyle(
                 color: ClinicalAgendaStyle.muted,
@@ -896,7 +896,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_loadingCharges) const LinearProgressIndicator(),
-        const Row(
+        Row(
           children: [
             Icon(
               Icons.account_balance_wallet_outlined,
@@ -1015,7 +1015,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
           if (_directoryError != null)
             Text(
               _directoryError!,
-              style: const TextStyle(color: Color(0xFFFFB4AB)),
+              style: TextStyle(color: ClinicalAgendaStyle.danger),
             ),
           if (_monthlyPackage) ...[
             Text(
@@ -1024,7 +1024,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
                   : 'Próxima sessão já agendada: ${DateFormat('dd/MM HH:mm').format(next.date)}',
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'As sessões do pacote são geradas pelo contrato; não será criada uma cópia ao finalizar.',
               style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
             ),
