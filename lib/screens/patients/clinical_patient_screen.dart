@@ -27,9 +27,13 @@ class ClinicalPatientScreen extends StatefulWidget {
     required this.patientId,
     required this.fallbackName,
     this.initialTab = 0,
+    this.embedded = false,
+    this.onBack,
   });
   final String patientId, fallbackName;
   final int? initialTab;
+  final bool embedded;
+  final VoidCallback? onBack;
   @override
   State<ClinicalPatientScreen> createState() => _ClinicalPatientScreenState();
 }
@@ -216,7 +220,8 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
                       birth: patient.birthDate,
                       cpf: patient.cpf,
                       phone: patient.phone,
-                      onBack: () => Navigator.maybePop(context),
+                      onBack:
+                          widget.onBack ?? () => Navigator.maybePop(context),
                       onPayments: () => _select(entries.length - 1),
                       onRegistration: () => _select(0),
                     ),
@@ -276,6 +281,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
         ),
       ),
     );
+    if (widget.embedded) return content;
     return MainWebDashboard(
       detail: content,
       detailClinicId: _clinicId,

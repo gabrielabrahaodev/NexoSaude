@@ -7,7 +7,8 @@ import '../../services/session_manager.dart';
 import '../../services/patient_service.dart'; // NOVO IMPORT 
 
 class PatientListScreen extends StatefulWidget {
-  const PatientListScreen({super.key});
+  const PatientListScreen({super.key, this.onOpenPatient});
+  final void Function(String patientId, String patientName)? onOpenPatient;
 
   @override
   State<PatientListScreen> createState() => _PatientListScreenState();
@@ -240,6 +241,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
+          if (widget.onOpenPatient != null) {
+            widget.onOpenPatient!(docId, name);
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(

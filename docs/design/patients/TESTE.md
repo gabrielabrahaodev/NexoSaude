@@ -31,7 +31,7 @@ A flag `--dart-define=AGENDA_CLINICAL_DARK=false` mantém a ficha anterior para 
 - Consentimento e controles do portal continuam separados da gravação do cadastro. O PDF depende de documento registrado.
 - Testes adicionais em `patient_registration_test.dart` e `clinical_registration_view_test.dart` cobrem preservação de mapas, patch limitado ao cadastro, CPF, vínculos dentários explícitos e formulário em 320/390/600/1000/1440px.
 
-Validação da correção: 323 testes Flutter aprovados; análise estática sem erros; build Web release concluído. Prévia de Cadastro em 600px e de Tratamentos em 900px renderizada e conferida com as imagens enviadas, além dos testes de formulário em larguras de 320 a 1440px.
+Validação da correção: 331 testes Flutter aprovados; análise estática sem erros; build Web release concluído. Prévia de Cadastro em 600px e de Tratamentos em 900px renderizada e conferida com as imagens enviadas, além dos testes de formulário em larguras de 320 a 1440px.
 
 ## Abertura e foco
 
@@ -40,10 +40,19 @@ Abrir pela lista deve selecionar Cadastro. Links diretos continuam selecionando 
 
 ## Cores do odontograma e escolha de tema
 
-- No cabeçalho (desktop e celular), usar sol/lua para alternar claro/escuro. Confirmar a mesma preferência em Gestão → Configurações → Aparência e após novo login.
+- No rodapé esquerdo, abaixo de Sair (desktop e menu lateral no celular), usar sol/lua para alternar claro/escuro. Confirmar a mesma preferência em Gestão → Configurações → Aparência e após novo login.
 - Conferir Agenda, Atendimento dental/psicologia, Cadastro, Tratamentos, Odontograma e Pagamentos em ambos os modos. Texto, campos, botões e menu devem continuar legíveis.
 - Abrir Cadastro, editar e alternar tema: preservar conteúdo e aba.
 - Odontograma: registrar restauração na oclusal, procedimento planejado e endodontia na raiz; conferir face, número e moldura correspondentes. Faces saudáveis vizinhas não recebem o preenchimento da restauração. Salvar e reabrir para confirmar os status; limpar uma face para remover sua marca.
 - Em 320/390px, conferir menu e alternância; zoom do mapa permanece disponível. Testes de componentes executam nos dois temas, e `clinical_theme_tooth_test.dart` verifica contraste, molduras e pixels do desenho.
 
-Validação desta revisão: 323 testes Flutter aprovados; análise com 0 erros e os mesmos 233 avisos/informações da base; build Web release concluído. Odontograma renderizado e inspecionado nos dois temas.
+Validação desta revisão: 331 testes Flutter aprovados; análise com 0 erros e os mesmos 233 avisos/informações da base; build Web release concluído. Odontograma renderizado e inspecionado nos dois temas.
+
+
+## Abertura na região direita e rodapé
+
+- Digitar uma busca na lista, selecionar um paciente e conferir: sidebar, unidade e usuário permanecem no lugar; ficha inicia em Cadastro, sem animação de nova rota.
+- Voltar pela seta da ficha ou Back: mesma lista e busca anterior.
+- Trocar menu e unidade: paciente anterior não permanece visível nem reaparece em outra clínica.
+- Conferir sol/lua abaixo de Sair, no rodapé esquerdo; no celular, abrir o menu lateral. Não deve existir o ícone no cabeçalho.
+- `patient_workspace_test.dart` verifica região direita, identidade do menu, uma única rota, retorno com busca preservada e descarte por clínica em 390/1200px; `clinical_user_footer_test.dart` verifica posição e ações em ambos os temas e larguras 220/288/320px.

@@ -57,6 +57,9 @@ Tratamentos usa o título, botão Novo Tratamento, margem à direita, valores em
 
 ## Temas claro e escuro — PR #2
 
-A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua no cabeçalho está disponível no desktop e mobile; usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.
+A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua fica abaixo de Sair no rodapé do menu lateral (desktop e drawer mobile); usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.
 
 O odontograma colore apenas as faces registradas, destaca o número FDI e enquadra restaurações e procedimentos de raiz conforme a referência. A raiz usa preenchimento tonal e o dente extraído recebe um X. A legenda compartilha a mesma paleta dos dentes; tons no modo claro priorizam contraste. Não há procedimentos ou dentes de exemplo adicionados aos dados reais.
+
+
+Pela lista do dashboard, a ficha usa `embedded: true` e callback `onBack`: retorna apenas o conteúdo do painel e não cria `MainWebDashboard`. `PatientWorkspace` mantém o shell existente e a lista; o botão Voltar retorna à mesma busca. O modo independente permanece para deep-links externos.

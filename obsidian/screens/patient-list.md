@@ -35,3 +35,8 @@ Buscar paciente, abrir detalhes, excluir (tap no menu ou long-press).
 - [[create-patient]] — cadastro via FAB
 - [[patients]] — risco, cascata e busca
 - [[kpi-dashboard]] — "Ver em Pacientes"
+
+
+## Abertura no dashboard — PR #2
+
+No layout clínico, o shell fornece `onOpenPatient` por `PatientWorkspace`: clicar no paciente troca somente o conteúdo da direita. Não cria rota nem dashboard adicional. A lista fica montada, preservando busca e estado ao voltar. Troca de clínica remonta o workspace pela chave e remove o paciente anterior. O uso isolado da lista e a flag legada mantêm a rota anterior como fallback.

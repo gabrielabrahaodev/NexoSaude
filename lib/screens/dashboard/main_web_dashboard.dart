@@ -21,6 +21,9 @@ import '../agenda/clinical_agenda_brand.dart';
 import '../financial/financial_report_screen.dart'; 
 import '../reports/reports_screen.dart'; 
 import '../patients/patient_list_screen.dart';
+import '../patients/patient_workspace.dart';
+import '../patients/clinical_patient_screen.dart';
+import 'clinical_user_footer.dart';
 import '../news/ortho_news_screen.dart'; 
 import '../clinics/clinic_management_screen.dart'; 
 import '../employees/employee_manager_screen.dart';
@@ -252,7 +255,15 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
       onNavigate: _onMenuSelect,
     ),
     AgendaManagerScreen(key: ValueKey(_currentClinicId)),      // 1
-    PatientListScreen(key: ValueKey(_currentClinicId)),        // 2
+    clinicalAgendaEnabled
+        ? PatientWorkspace(
+            key: ValueKey(_currentClinicId),
+            listBuilder: (_, open) => PatientListScreen(onOpenPatient: open),
+            detailBuilder: (_, id, name, close) => ClinicalPatientScreen(
+              patientId: id, fallbackName: name, embedded: true, onBack: close,
+            ),
+          )
+        : PatientListScreen(key: ValueKey(_currentClinicId)),   // 2
     ClinicLabScreen(key: ValueKey(_currentClinicId)),          // 3
     FinancialReportScreen(key: ValueKey(_currentClinicId)),    // 4
     ReportsScreen(key: ValueKey(_currentClinicId)),            // 5
@@ -541,28 +552,15 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
       (14, 'exportar', 'Backup', Icons.download_outlined),
     ].where((e) => _canShow(e.$2)).toList();
     Widget brand() => ClinicalAgendaBrand(compact: mobile);
-    Widget identity() => ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: CircleAvatar(
-        backgroundColor: ClinicalAgendaStyle.blue,
-        child: Icon(Icons.person_outline, color: ClinicalAgendaStyle.onBlue),
-      ),
-      title: Text(
-        _displayUserName(),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        _displayUserSub(),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 12),
-      ),
-      trailing: IconButton(
-        tooltip: 'Sair',
-        onPressed: _logout,
-        icon: const Icon(Icons.logout, size: 20),
-      ),
+    Widget identity() => ClinicalUserFooter(
+      name: _displayUserName(), subtitle: _displayUserSub(),
+      dark: ClinicalAgendaStyle.isDark, onLogout: _logout,
+      onTheme: () async {
+        final saved = await ThemeController().setDark(!ClinicalAgendaStyle.isDark);
+        if (!saved && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tema aplicado neste aparelho. Não foi possível sincronizar sua preferência agora.')));
+        }
+      },
     );
     Widget clinic() => _canSwitchClinic ? _buildClinicSelector(false, clinical: true) : Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -640,17 +638,6 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         ],
       ),
     );
-    Widget themeToggle() => IconButton(
-      key: const ValueKey('clinical-theme-toggle'),
-      tooltip: ClinicalAgendaStyle.isDark ? 'Usar modo claro' : 'Usar modo escuro',
-      icon: Icon(ClinicalAgendaStyle.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-      onPressed: () async {
-        final saved = await ThemeController().setDark(!ClinicalAgendaStyle.isDark);
-        if (!saved && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tema aplicado neste aparelho. Não foi possível sincronizar sua preferência agora.')));
-        }
-      },
-    );
     final quick = entries.where((e) => [1, 2, 12, 5].contains(e.$1)).toList();
     return Scaffold(
       backgroundColor: ClinicalAgendaStyle.background,
@@ -666,7 +653,6 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
               title: brand(),
               toolbarHeight: 64,
               centerTitle: false,
-              actions: [themeToggle()],
             )
           : null,
       bottomNavigationBar: mobile
@@ -757,7 +743,6 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                                 ),
                               ),
                             ),
-                            themeToggle(),
                             Flexible(
                               child: Text(
                                 _displayUserName(),
