@@ -4,7 +4,7 @@ Referências recebidas em 30/10/2026: `screen.png`, `code(3).html` e `DESIGN.md`
 
 ## Abrir
 
-Na branch `feat/agenda-clinical-dark`, executar `flutter pub get` e `flutter run -d chrome`. Abrir **Pacientes** e selecionar um cadastro. Em odontologia, a abertura padrão mostra **Odontograma** somente com o mapa dental. Links de Agenda/Atendimento continuam abrindo a aba solicitada. Psicologia mantém suas seis abas.
+Na branch `feat/agenda-clinical-dark`, executar `flutter pub get` e `flutter run -d chrome`. Abrir **Pacientes** e selecionar um cadastro. A abertura padrão mostra **Cadastro** em odontologia e psicologia. Odontograma contém somente o mapa dental. Links de Agenda/Atendimento continuam abrindo a aba solicitada. Psicologia mantém suas seis abas.
 
 ## Conferir com contas de teste
 
@@ -31,4 +31,8 @@ A flag `--dart-define=AGENDA_CLINICAL_DARK=false` mantém a ficha anterior para 
 - Consentimento e controles do portal continuam separados da gravação do cadastro. O PDF depende de documento registrado.
 - Testes adicionais em `patient_registration_test.dart` e `clinical_registration_view_test.dart` cobrem preservação de mapas, patch limitado ao cadastro, CPF, vínculos dentários explícitos e formulário em 320/390/600/1000/1440px.
 
-Validação da correção: 266 testes Flutter aprovados; análise estática sem erros; build Web release concluído. Prévia de Cadastro em 600px e de Tratamentos em 900px renderizada e conferida com as imagens enviadas, além dos testes de formulário em larguras de 320 a 1440px.
+Validação da correção: 269 testes Flutter aprovados; análise estática sem erros; build Web release concluído. Prévia de Cadastro em 600px e de Tratamentos em 900px renderizada e conferida com as imagens enviadas, além dos testes de formulário em larguras de 320 a 1440px.
+
+## Abertura e foco
+
+Abrir pela lista deve selecionar Cadastro. Links diretos continuam selecionando a aba solicitada. Em Editar Dados, digitar frases completas sem clicar novamente no campo; conferir cursor no ponto inserido e ausência de carregamento entre letras. Receber atualização do documento durante a edição não deve apagar o texto local. Cancelar edição deve recuperar a última versão recebida. Cobertura em `patient_registration_focus_test.dart` e `patient_route_test.dart`.

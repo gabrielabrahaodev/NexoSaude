@@ -20,8 +20,10 @@ import '../../../utils/display.dart';
 class PatientDetailsTab extends StatefulWidget {
   final String patientName;
   final String patientId; 
-  const PatientDetailsTab({super.key, required this.patientName, required this.patientId, this.embedded = false});
+  const PatientDetailsTab({super.key, required this.patientName, required this.patientId, this.embedded = false, this.patientStream});
   final bool embedded;
+  /// Optional source for deterministic widget tests. Production watches the patient document.
+  final Stream<DocumentSnapshot<Map<String, dynamic>>>? patientStream;
 
   @override
   State<PatientDetailsTab> createState() => _PatientDetailsTabState();
@@ -43,14 +45,32 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
   PatientRegistrationDraft? _registrationDraft;
   bool _savingRegistration = false, _lookingUpCep = false;
   int _cepRequestId = 0;
+  late Stream<DocumentSnapshot<Map<String, dynamic>>> _patientStream;
   @override
   void initState() {
     super.initState();
+    _patientStream = _watchPatient();
     _registrationControllers = {
       'name': _nameCtrl, 'phone': _phoneCtrl, 'cpf': _cpfCtrl, 'rg': _rgCtrl, 'birthDate': _birthCtrl,
       for (final key in ['socialName','profession','email','biologicalSex','maritalStatus','rgIssuer','cns','cep','street','number','complement','neighborhood','city','state','cityState','emergencyName','emergencyRelationship','emergencyPhone','referralSource']) key: TextEditingController(),
     };
   }
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _watchPatient() => widget.patientStream ?? (widget.patientId.isEmpty
+      ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
+      : FirebaseFirestore.instance.collection('patients').doc(widget.patientId).snapshots());
+
+  @override
+  void didUpdateWidget(covariant PatientDetailsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.patientId != widget.patientId || oldWidget.patientStream != widget.patientStream) {
+      _patientStream = _watchPatient();
+      _registrationDraft = null;
+      _isEditing = false;
+      _cepRequestId++;
+      _lookingUpCep = false;
+    }
+  }
+
   @override
   void dispose() { for (final c in {..._registrationControllers.values, _addressCtrl}) { c.dispose(); } super.dispose(); }
   Future<void> _lookupCep() async {
@@ -237,10 +257,7 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
     }
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('patients')
-          .doc(widget.patientId)
-          .snapshots(),
+      stream: _patientStream,
       builder: (context, snapshot) {
         // 1. TRATAMENTO DE ERRO (Correção Principal)
         if (snapshot.hasError) {

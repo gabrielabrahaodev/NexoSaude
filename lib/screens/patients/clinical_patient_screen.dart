@@ -26,7 +26,7 @@ class ClinicalPatientScreen extends StatefulWidget {
     super.key,
     required this.patientId,
     required this.fallbackName,
-    this.initialTab,
+    this.initialTab = 0,
   });
   final String patientId, fallbackName;
   final int? initialTab;
@@ -63,9 +63,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
         )
         .snapshots();
     _risk = PatientService().getPatientRiskProfile(widget.patientId);
-    _index =
-        widget.initialTab ??
-        (ClinicCapabilities.current().canShowOdontogram ? 5 : 0);
+    _index = widget.initialTab ?? 0;
   }
 
   @override

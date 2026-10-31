@@ -38,7 +38,7 @@ class PatientDetailsScreen extends StatefulWidget {
     this.phone,
     this.birth,
     this.cpf,
-    this.initialTab,
+    this.initialTab = 0,
   });
 
   @override

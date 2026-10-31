@@ -34,7 +34,7 @@ Adicionar/remover aba, mudar visibilidade por tipo.
 
 ## Variante Clinical Dark — PR #2
 
-`clinical_patient_screen.dart` compõe a ficha com menu global/unidade, identificação real, CPF mascarado, selo LGPD somente com `lgpdPortalConsent.accepted == true`, abas por `ClinicCapabilities`, indicadores, contexto e conteúdo em uma rolagem vertical. Abertura pela lista inicia no Odontograma em clínicas dentais; deep-links continuam respeitando `initialTab` (inclusive Cadastro, Prontuário e Pagamentos), e psicologia inicia em Cadastro com seis abas.
+`clinical_patient_screen.dart` compõe a ficha com menu global/unidade, identificação real, CPF mascarado, selo LGPD somente com `lgpdPortalConsent.accepted == true`, abas por `ClinicCapabilities`, indicadores, contexto e conteúdo em uma rolagem vertical. Abertura pela lista inicia em Cadastro para todas as especialidades; deep-links continuam respeitando `initialTab` (inclusive Prontuário e Pagamentos), e psicologia mantém seis abas.
 
 Odontograma exibe somente o mapa dental. Planos em execução aparecem exclusivamente em Tratamentos; livro caixa e cobranças, exclusivamente em Pagamentos. Novo tratamento conduz ao fluxo existente de Orçamentos. Receber pagamento leva às cobranças reais para escolher o lançamento; nenhum valor do HTML é usado. A tabela preserva famílias de parcelamento e opções de estorno/cancelamento, sem oferecer recibo inexistente. Custos e repasses continuam acessíveis após as cobranças.
 
@@ -49,3 +49,7 @@ Cadastro usa cinco cartões: Dados Pessoais e Documentação & Conformidade na c
 Buscar CEP consulta ViaCEP sob clique; falhas deixam preenchimento manual disponível. Respostas atrasadas após cancelamento, alteração do CEP ou troca da unidade são descartadas. O indicador de CPF válido é validação local dos dígitos; não representa consulta à Receita Federal. O termo em PDF só abre quando há uma URL HTTPS registrada em `lgpdConsentDocumentUrl`. O ícone de link na caixa LGPD abre os controles de consentimento do portal já existentes.
 
 Tratamentos usa o título, botão Novo Tratamento, margem à direita, valores em BRL com vírgula, progresso à direita e botões Receber Parcela / Ver Dentes Vinculados / Encerrar Tratamento da referência. Dentes vinculados são apenas referências explícitas existentes no plano/itens; sem referência, o diálogo informa ausência de vínculo e oferece abrir o odontograma. Não deduz vínculos pelo nome do procedimento.
+
+## Foco e leitura contínua do cadastro
+
+`PatientDetailsTab` mantém a assinatura do documento preparada em `initState`, reutilizando o stream durante os rebuilds de digitação. Só troca a assinatura quando muda o paciente ou a fonte de dados. Atualizações recebidas enquanto edita não substituem o rascunho; cancelar recarrega o último snapshot. Teste de regressão digita letra a letra em 390/1200px e confere foco, posição do cursor e uma única assinatura, além de receber uma atualização remota durante a edição.
