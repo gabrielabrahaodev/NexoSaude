@@ -30,9 +30,12 @@ class _PatientWorkspaceState extends State<PatientWorkspace> {
       child: IndexedStack(
         index: patient == null ? 0 : 1,
         children: [
-          widget.listBuilder(
-            context,
-            (id, name) => setState(() => _selected = (id: id, name: name)),
+          ExcludeFocus(
+            excluding: patient != null,
+            child: widget.listBuilder(
+              context,
+              (id, name) => setState(() => _selected = (id: id, name: name)),
+            ),
           ),
           if (patient != null)
             KeyedSubtree(
