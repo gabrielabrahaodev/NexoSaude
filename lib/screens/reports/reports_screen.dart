@@ -14,6 +14,9 @@ import '../../utils/report_export.dart';
 import '../agenda/clinical_agenda_view.dart' show clinicalAgendaEnabled;
 import 'clinical_reports_view.dart';
 import 'report_entry_dialog.dart';
+import 'receita_saude_dialog.dart';
+import '../../services/receita_saude_service.dart';
+import '../../utils/receita_saude_export.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -408,6 +411,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           onMonth: _changeMonth,
           onRefresh: () => setState(_initStreams),
           onExport: () => downloadReportCsv(_currentMonth, data),
+          onReceitaSaude: _openReceitaSaude,
           onExpense: () => _newEntry(false),
           onIncome: () => _newEntry(true),
           onAnticipate: () => _showAnticipationModal(context),
@@ -423,6 +427,30 @@ class _ReportsScreenState extends State<ReportsScreen> {
       },
     ),
   );
+
+  Future<void> _openReceitaSaude() async {
+    final clinic = _clinicId;
+    if (clinic == null) return;
+    final month = DateTime(_currentMonth.year, _currentMonth.month);
+    final clinicName = SessionManager().currentClinicName ?? 'Unidade selecionada';
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ReceitaSaudeDialog(
+        month: month,
+        clinicName: clinicName,
+        defaultOccupation: SessionManager().clinicType == 'psychology' ? '255' : '226',
+        load: () => ReceitaSaudeService().load(month, clinic),
+        onExport: (data) async {
+          if (SessionManager().currentClinicId != clinic) {
+            throw StateError('Unidade alterada');
+          }
+          await downloadReceitaSaude(month, clinicName, data,
+              stillValid: () => SessionManager().currentClinicId == clinic);
+        },
+      ),
+    );
+  }
 
   Future<void> _newEntry(bool income) async {
     final clinic = _clinicId;

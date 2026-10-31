@@ -41,7 +41,12 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        int exports = 0, expenses = 0, incomes = 0, months = 0, pays = 0;
+        int exports = 0,
+            expenses = 0,
+            incomes = 0,
+            months = 0,
+            pays = 0,
+            receita = 0;
         await tester.pumpWidget(
           MaterialApp(
             theme: buildAppTheme(dark: dark),
@@ -54,6 +59,7 @@ void main() {
                 onMonth: (v) => months += v,
                 onRefresh: () {},
                 onExport: () => exports++,
+                onReceitaSaude: () => receita++,
                 onExpense: () => expenses++,
                 onIncome: () => incomes++,
                 onAnticipate: () {},
@@ -67,6 +73,8 @@ void main() {
         );
         expect(tester.takeException(), isNull);
         await tester.tap(find.text('Exportar DRE'));
+        await tester.tap(find.byKey(const ValueKey('report-receita-saude')));
+        expect(receita, 1);
         await tester.tap(find.text('Nova Despesa'));
         await tester.tap(find.text('Novo Lançamento'));
         await tester.tap(find.byTooltip('Próximo mês'));

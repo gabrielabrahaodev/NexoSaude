@@ -26,12 +26,13 @@ class ClinicalReportsView extends StatefulWidget {
     this.error,
     this.receivablesError,
     this.onManageExpenses,
+    this.onReceitaSaude,
   });
   final DateTime month;
   final String clinicName;
   final OracleReportSnapshot snapshot;
   final List<ReportDocument> receivables;
-  final VoidCallback? onManageExpenses;
+  final VoidCallback? onManageExpenses, onReceitaSaude;
   final ValueChanged<int> onMonth;
   final VoidCallback onRefresh,
       onExport,
@@ -233,10 +234,26 @@ class _ClinicalReportsViewState extends State<ClinicalReportsView> {
                     ? CrossAxisAlignment.start
                     : CrossAxisAlignment.end,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: ready ? widget.onExport : null,
-                    icon: const Icon(Icons.download_outlined, size: 16),
-                    label: const Text('Exportar DRE'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: ready ? widget.onExport : null,
+                        icon: const Icon(Icons.download_outlined, size: 16),
+                        label: const Text('Exportar DRE'),
+                      ),
+                      if (widget.onReceitaSaude != null)
+                        OutlinedButton.icon(
+                          key: const ValueKey('report-receita-saude'),
+                          onPressed: widget.onReceitaSaude,
+                          icon: const Icon(
+                            Icons.assignment_turned_in_outlined,
+                            size: 16,
+                          ),
+                          label: const Text('Receita Saúde'),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   FilledButton.icon(
