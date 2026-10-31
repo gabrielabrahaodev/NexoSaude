@@ -15,6 +15,7 @@ class TreatmentsTab extends StatefulWidget {
   final String patientName;
   final String patientId;
   final bool embedded;
+  final String? initialPlanId;
   final VoidCallback? onPayments;
   final VoidCallback? onOdontogram;
 
@@ -23,6 +24,7 @@ class TreatmentsTab extends StatefulWidget {
     required this.patientName,
     required this.patientId,
     this.embedded = false,
+    this.initialPlanId,
     this.onPayments,
     this.onOdontogram,
   });
@@ -121,6 +123,9 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
           );
         }
 
+        final planDocs = List<QueryDocumentSnapshot>.from(snapshot.data!.docs);
+        final focusIndex = planDocs.indexWhere((d) => d.id == widget.initialPlanId);
+        if (focusIndex > 0) planDocs.insert(0, planDocs.removeAt(focusIndex));
         return StreamBuilder<Map<String, dynamic>>(
           stream: _oracle.getPatientFinancialHealth(widget.patientId),
           builder: (context, finSnap) {
@@ -133,9 +138,9 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
               shrinkWrap: widget.embedded,
               physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
               padding: EdgeInsets.all(widget.embedded ? 0 : 16),
-              itemCount: snapshot.data!.docs.length,
+              itemCount: planDocs.length,
               itemBuilder: (context, index) {
-                final doc = snapshot.data!.docs[index];
+                final doc = planDocs[index];
                 final data = doc.data() as Map<String, dynamic>;
                 final String planId = doc.id;
                 

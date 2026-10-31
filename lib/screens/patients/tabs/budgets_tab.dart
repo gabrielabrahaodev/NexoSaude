@@ -1,301 +1,123 @@
-import '../clinical_patient_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../ui/app_theme.dart';
 import '../../../services/budget_service.dart';
 import '../../../services/budget_delete_service.dart';
-import '../../../services/procedure_service.dart'; 
-import '../../../services/session_manager.dart'; 
+import '../../../services/procedure_service.dart';
+import '../../../services/session_manager.dart';
+import '../../../services/treatment_service.dart';
 import '../../../models/budget_model.dart';
-import '../../../models/procedure_model.dart';
-// Adicione o import no topo:
-import '../wizards/budget_approval_wizard.dart';
 import '../../../utils/display.dart';
+import '../../../utils/budget_print.dart';
+import '../../../utils/external_link.dart';
+import '../clinical_budgets_view.dart';
+import '../budget_create_dialog.dart';
+import '../wizards/budget_approval_wizard.dart';
 
 class BudgetsTab extends StatefulWidget {
-  final String patientName;
-  final String patientId; 
-  const BudgetsTab({super.key, required this.patientName, required this.patientId});
-
+  const BudgetsTab({
+    super.key,
+    required this.patientName,
+    required this.patientId,
+    this.embedded = false,
+    this.onTreatment,
+  });
+  final String patientName, patientId;
+  final bool embedded;
+  final ValueChanged<String>? onTreatment;
   @override
   State<BudgetsTab> createState() => _BudgetsTabState();
 }
 
 class _BudgetsTabState extends State<BudgetsTab> {
-  final BudgetService _budgetService = BudgetService();
-  final ProcedureService _procedureService = ProcedureService(); 
+  final _budgetService = BudgetService();
+  late Stream<List<BudgetModel>> _budgets;
+  late Stream<QuerySnapshot> _plans;
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
 
-  // --- MODAL DE CRIAÇÃO DE ORÇAMENTO ---
-  void _showCreateBudgetDialog(BuildContext context) {
-    List<Map<String, dynamic>> budgetRows = [];
-    
-    ProcedureModel? tempCategory;
-    final TextEditingController tempDescriptionCtrl = TextEditingController();
-    final TextEditingController tempPriceCtrl = TextEditingController();
+  @override
+  void didUpdateWidget(covariant BudgetsTab old) {
+    super.didUpdateWidget(old);
+    if (old.patientId != widget.patientId) _init();
+  }
 
-    double getTotal() {
-      double sum = 0;
-      for (var row in budgetRows) {
-        String text = (row['priceController'] as TextEditingController).text;
-        sum += double.tryParse(text.replaceAll(',', '.')) ?? 0.0;
-      }
-      return sum;
-    }
+  void _init() {
+    _budgets = _budgetService.getByPatient(widget.patientId);
+    _plans = TreatmentService().getPlansStream(widget.patientId);
+  }
 
-    showDialog(
+  Future<void> _showCreateBudgetDialog(BuildContext context) async {
+    final clinic = SessionManager().currentClinicId;
+    final patientId = widget.patientId;
+    final patientName = widget.patientName;
+    if (clinic == null) return;
+    final ref = FirebaseFirestore.instance.collection('budgets').doc();
+    final procedures = ProcedureService().getAllStream();
+    await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateModal) {
-            return StreamBuilder<List<ProcedureModel>>(
-              stream: _procedureService.getAllStream(),
-              builder: (context, snapshot) {
-                final procedureList = snapshot.data ?? [];
-
-                // --- CORREÇÃO DE SEGURANÇA ---
-                // Se já temos um selecionado, verificamos se ele ainda existe na lista nova
-                if (tempCategory != null) {
-                  try {
-                    // Tenta encontrar o objeto atualizado na lista nova usando o ID
-                    tempCategory = procedureList.firstWhere((item) => item.id == tempCategory!.id);
-                  } catch (e) {
-                    // Se não achar (foi deletado ou lista mudou), limpa a seleção para não quebrar
-                    tempCategory = null;
-                    tempDescriptionCtrl.clear();
-                    tempPriceCtrl.clear();
-                  }
-                }
-                // -----------------------------
-                
-                return AlertDialog(
-                  title: const Text("Novo Orçamento"),
-                  content: SizedBox(
-                    width: double.maxFinite,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.isDark
-                                ? PatientVisualStyle.background
-                                : Colors.blue[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.withValues(alpha: 0.2))
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("1. Selecione a Categoria/Procedimento", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                              
-                              snapshot.connectionState == ConnectionState.waiting 
-                                ? const LinearProgressIndicator()
-                                : DropdownButtonHideUnderline(
-                                    child: DropdownButton<ProcedureModel>(
-                                      isExpanded: true,
-                                      hint: const Text("Selecione..."),
-                                      value: tempCategory,
-                                      items: procedureList.map((item) {
-                                        return DropdownMenuItem<ProcedureModel>(
-                                          value: item,
-                                          child: Text("${item.name} (R\$ ${item.price.toStringAsFixed(0)})", overflow: TextOverflow.ellipsis),
-                                        );
-                                      }).toList(),
-                                      onChanged: (val) {
-                                        if (val != null) {
-                                          setStateModal(() {
-                                            tempCategory = val;
-                                            tempDescriptionCtrl.text = val.name; 
-                                            tempPriceCtrl.text = val.price.toStringAsFixed(2);
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ),
-                              
-                              if (tempCategory != null) ...[
-                                const SizedBox(height: 10),
-                                const Text("2. Personalize (Opcional)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                                const SizedBox(height: 5),
-                                TextField(
-                                  controller: tempDescriptionCtrl,
-                                  decoration: InputDecoration(labelText: "Descrição", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller: tempPriceCtrl,
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        decoration: InputDecoration(labelText: "Valor (R\$)", hintText: "0,00", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    ElevatedButton.icon(
-                                      onPressed: () {
-                                        if (tempDescriptionCtrl.text.isEmpty || tempPriceCtrl.text.isEmpty) return;
-                                        setStateModal(() {
-                                          budgetRows.add({
-                                            'model': tempCategory, 
-                                            'description': tempDescriptionCtrl.text, 
-                                            'priceController': TextEditingController(text: tempPriceCtrl.text) 
-                                          });
-                                          tempCategory = null;
-                                          tempDescriptionCtrl.clear();
-                                          tempPriceCtrl.clear();
-                                        });
-                                      },
-                                      icon: const Icon(Icons.add, size: 18),
-                                      label: const Text("Incluir"),
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16)),
-                                    )
-                                  ],
-                                ),
-                              ]
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        const Divider(),
-                        const Text("Itens do Orçamento:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 5),
-                        Expanded(
-                          child: budgetRows.isEmpty 
-                            ? const Center(child: Text("Nenhum item incluído.", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)))
-                            : Container(
-                                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(4)),
-                                child: ListView.separated(
-                                  shrinkWrap: true,
-                                  itemCount: budgetRows.length,
-                                  separatorBuilder: (c, i) => const Divider(height: 1),
-                                  itemBuilder: (context, index) {
-                                    final row = budgetRows[index];
-                                    final String desc = row['description'];
-                                    final TextEditingController ctrl = row['priceController'];
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      child: Row(
-                                        children: [
-                                          Expanded(child: Text(desc, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                                          const SizedBox(width: 10),
-                                          SizedBox(
-                                            width: 90,
-                                            child: TextField(
-                                              controller: ctrl,
-                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                                              textAlign: TextAlign.right,
-                                              decoration: InputDecoration(prefixText: "R\$ ", prefixStyle: TextStyle(fontSize: 11, color: Colors.grey), isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8), border: OutlineInputBorder()),
-                                              onChanged: (val) { setStateModal(() {}); },
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                                            onPressed: () { setStateModal(() { budgetRows.removeAt(index); }); },
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: PatientVisualStyle.surface, borderRadius: BorderRadius.circular(8)),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text("TOTAL:", style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text("${formatBRL(getTotal())}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-                    ElevatedButton(
-                      onPressed: budgetRows.isEmpty ? null : () { 
-                        _saveBudgetFromRows(budgetRows); 
-                        Navigator.pop(context); 
-                      },
-                      child: const Text("Salvar Orçamento"),
-                    ),
-                  ],
-                );
-              }
-            );
+      builder: (_) => BudgetCreateDialog(
+        patientName: patientName,
+        clinicName: SessionManager().currentClinicName ?? 'Unidade selecionada',
+        procedures: procedures,
+        onSave: (items, total, metadata) async {
+          if (!mounted ||
+              widget.patientId != patientId ||
+              SessionManager().currentClinicId != clinic) {
+            throw StateError('Unidade alterada');
           }
-        );
-      },
+          final details = <String, dynamic>{
+            ...metadata,
+            if (metadata['validUntil'] is DateTime)
+              'validUntil': Timestamp.fromDate(
+                metadata['validUntil'] as DateTime,
+              ),
+            'clinicName': SessionManager().currentClinicName ?? '',
+          };
+          final budget = BudgetModel(
+            id: ref.id,
+            clinicId: clinic,
+            patientId: patientId,
+            patientName: patientName,
+            total: total,
+            status: 'Pendente',
+            date: DateTime.now(),
+            items: items,
+            details: details,
+          );
+          await ref.set(budget.toMap());
+        },
+      ),
     );
   }
 
-  Future<void> _saveBudgetFromRows(List<Map<String, dynamic>> rows) async {
-    final clinicId = SessionManager().currentClinicId;
-    if (clinicId == null) return;
-
-    List<Map<String, dynamic>> finalItems = [];
-    double total = 0;
-
-    for (var row in rows) {
-      ProcedureModel originalModel = row['model'];
-      String description = row['description'];
-      TextEditingController ctrl = row['priceController'];
-      double finalPrice = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0.0;
-      
-      finalItems.add({
-        'id': originalModel.id, 
-        'category': originalModel.category, 
-        'name': description,     
-        'price': finalPrice      
-      });
-      total += finalPrice;
-    }
-
-    try {
-      final newBudget = BudgetModel(
-        id: '', 
-        clinicId: clinicId,
-        patientId: widget.patientId,
-        patientName: widget.patientName,
-        total: total,
-        status: 'Pendente',
-        date: DateTime.now(),
-        items: finalItems,
-      );
-
-      await _budgetService.add(newBudget);
-      
-      if (mounted) toast(context, "Orçamento criado!");
-    } catch (e) {
-      if (mounted) toast(context, "Erro ao salvar: $e", error: true);
-    }
-  }
-
-  // --- LÓGICA DE APROVAÇÃO ---
-  // SUBSTITUA O MÉTODO _approveBudget INTEIRO POR ESTE:
-  Future<void> _approveBudget(BuildContext context, BudgetModel budget) async {
-    // Abre o Wizard (Diálogo)
-    // O Wizard retorna 'true' se finalizou com sucesso
-    final result = await showDialog<bool>(
+  Future<void> _approveBudget(BuildContext context, BudgetModel b) async {
+    if (b.clinicId != SessionManager().currentClinicId) return;
+    await showDialog<bool>(
       context: context,
-      barrierDismissible: false, // Obriga a usar os botões
-      builder: (context) => BudgetApprovalWizard(budget: budget),
+      barrierDismissible: false,
+      builder: (_) => BudgetApprovalWizard(budget: b),
     );
+  }
 
-    // Se aprovou, recarrega a tela (o StreamBuilder fará isso automaticamente, mas podemos dar um feedback)
-    if (result == true) {
-      // Opcional: Navegar para a aba de Tratamentos ou apenas mostrar mensagem
-      // setState(() {}); 
+  Future<void> _print(List<BudgetModel> budgets) async {
+    final clinic = SessionManager().currentClinicId;
+    if (clinic == null || budgets.any((b) => b.clinicId != clinic)) return;
+    final name = SessionManager().currentClinicName ?? 'Unidade selecionada';
+    try {
+      await printBudgetProposals(
+        budgets,
+        name,
+        stillValid: () => mounted && SessionManager().currentClinicId == clinic,
+      );
+    } catch (e) {
+      if (mounted) {
+        toast(context, 'Não foi possível imprimir a proposta.', error: true);
+      }
     }
   }
 
@@ -303,22 +125,24 @@ class _BudgetsTabState extends State<BudgetsTab> {
   bool _deletingBudget = false;
 
   void _confirmDeleteBudget(BudgetModel budget) {
-    final approved = budget.status == 'Aprovado';
+    final approved =
+        budgetGroup(budget, DateTime.now()) == BudgetGroup.approved;
     final Future<Map<String, int>> countsFuture = approved
-        ? _readPlanId(budget.id)
-            .then<Map<String, int>>((planId) => planId.isEmpty
+        ? _readPlanId(budget.id).then<Map<String, int>>(
+            (planId) => planId.isEmpty
                 ? <String, int>{}
-                : BudgetDeleteService()
-                    .countChildren(budget.id, planId))
+                : BudgetDeleteService().countChildren(budget.id, planId),
+          )
         : Future.value(<String, int>{});
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text("Excluir orçamento?",
-            style:
-                TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Excluir orçamento?",
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -326,33 +150,39 @@ class _BudgetsTabState extends State<BudgetsTab> {
             children: [
               if (!approved)
                 const Text(
-                    "Orçamento ainda pendente: apaga somente o orçamento. Nada mais será tocado.")
+                  "Orçamento ainda pendente: apaga somente o orçamento. Nada mais será tocado.",
+                )
               else ...[
                 const Text(
-                    "Orçamento APROVADO: apaga em cadeia tratamentos, pagamentos, custos e parcelas. NÃO há reversão:"),
+                  "Orçamento APROVADO: apaga em cadeia tratamentos, pagamentos, custos e parcelas. NÃO há reversão:",
+                ),
                 const SizedBox(height: 8),
                 FutureBuilder<Map<String, int>>(
                   future: countsFuture,
                   builder: (context, snap) {
                     if (!snap.hasData) {
                       return const Center(
-                          child: Padding(
-                              padding: EdgeInsets.all(12),
-                              child: CircularProgressIndicator()));
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
                     }
                     if (snap.data!.isEmpty) {
                       return const Text(
-                          "Nenhum vinculado encontrado (só o orçamento sai).",
-                          style: TextStyle(fontSize: 13));
+                        "Nenhum vinculado encontrado (só o orçamento sai).",
+                        style: TextStyle(fontSize: 13),
+                      );
                     }
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         for (final e in snap.data!.entries)
                           if (e.value > 0)
-                            Text("• ${e.key}: ${e.value}",
-                                style:
-                                    const TextStyle(fontSize: 13)),
+                            Text(
+                              "• ${e.key}: ${e.value}",
+                              style: const TextStyle(fontSize: 13),
+                            ),
                       ],
                     );
                   },
@@ -372,8 +202,9 @@ class _BudgetsTabState extends State<BudgetsTab> {
               _runDeleteBudget(budget, approved);
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white),
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: Text(approved ? "EXCLUIR TUDO" : "EXCLUIR"),
           ),
         ],
@@ -393,9 +224,12 @@ class _BudgetsTabState extends State<BudgetsTab> {
     }
   }
 
-  Future<void> _runDeleteBudget(
-      BudgetModel budget, bool approved) async {
-    if (_deletingBudget) return;
+  Future<void> _runDeleteBudget(BudgetModel budget, bool approved) async {
+    if (_deletingBudget ||
+        budget.clinicId != SessionManager().currentClinicId ||
+        budget.patientId != widget.patientId) {
+      return;
+    }
     setState(() => _deletingBudget = true);
     String stage = 'Iniciando...';
     var started = false;
@@ -425,8 +259,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
               } catch (e) {
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (mounted) {
-                  toast(context, "Falha ao excluir: $e",
-                      error: true);
+                  toast(context, "Falha ao excluir: $e", error: true);
                 }
               } finally {
                 if (mounted) {
@@ -454,97 +287,78 @@ class _BudgetsTabState extends State<BudgetsTab> {
   @override
   Widget build(BuildContext context) {
     if (widget.patientId.isEmpty) {
-      return const Center(child: Text("Erro: ID do paciente não fornecido."));
+      return const Center(child: Text('Paciente não informado.'));
     }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _showCreateBudgetDialog(context),
-              icon: const Icon(Icons.add),
-              label: const Text("NOVO ORÇAMENTO"),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            ),
-          ),
-        ),
-        Expanded(
-          child: StreamBuilder<List<BudgetModel>>(
-            stream: _budgetService.getByPatient(widget.patientId),
-            builder: (context, snapshot) {
-              // 1. TRATAMENTO DE ERRO (AQUI ESTÁ A CORREÇÃO PRINCIPAL)
-              if (snapshot.hasError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                      const SizedBox(height: 10),
-                      const Text("Erro ao carregar orçamentos.", style: TextStyle(color: Colors.red)),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text("${snapshot.error}", textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final budgets = snapshot.data ?? [];
-              
-              if (budgets.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.request_quote_outlined, size: 50, color: Colors.grey[300]),
-                      const SizedBox(height: 10),
-                      const Text("Nenhum orçamento encontrado.", style: TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: budgets.length,
-                itemBuilder: (context, index) {
-                  final budget = budgets[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ExpansionTile(
-                      leading: Icon(budget.status == 'Aprovado' ? Icons.check_circle : Icons.request_quote, color: budget.status == 'Aprovado' ? Colors.green : Colors.orange),
-                      title: Text("Orçamento - ${formatDateFull(budget.date)}"),
-                      subtitle: Text("Total: ${formatBRL(budget.total)} • ${budget.status}"),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            color: Colors.red, size: 22),
-                        tooltip: "Excluir orçamento",
-                        onPressed: _deletingBudget
-                            ? null
-                            : () => _confirmDeleteBudget(budget),
-                      ),
-                      children: [
-                        const Divider(),
-                        ...budget.items.map((i) => ListTile(dense: true, title: Text(i['name'] ?? 'Procedimento'), trailing: Text("R\$ ${i['price'] ?? 0}"))),
-                        if (budget.status == 'Pendente')
-                          Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _approveBudget(context, budget), style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white), child: const Text("APROVAR ORÇAMENTO"))))
-                      ],
-                    ),
-                  );
-                },
+    final content = StreamBuilder<List<BudgetModel>>(
+      stream: _budgets,
+      builder: (context, snap) => StreamBuilder<QuerySnapshot>(
+        stream: _plans,
+        builder: (context, plans) {
+          final data = <String, Map<String, dynamic>>{};
+          if (plans.connectionState == ConnectionState.active &&
+              plans.hasData &&
+              !plans.hasError) {
+            for (final d in plans.data!.docs) {
+              data[d.id] = {'id': d.id, ...d.data() as Map<String, dynamic>};
+            }
+          }
+          String planId(BudgetModel b) =>
+              data.containsKey('${b.details['relatedPlanId'] ?? ''}')
+              ? '${b.details['relatedPlanId']}'
+              : '${data.values.where((p) => p['budgetId'] == b.id).firstOrNull?['id'] ?? ''}';
+          return ClinicalBudgetsView(
+            key: ValueKey('budgets-${widget.patientId}'),
+            budgets: snap.data ?? [],
+            plans: data,
+            loading:
+                snap.connectionState != ConnectionState.active &&
+                !snap.hasError,
+            error: snap.hasError
+                ? 'Não foi possível carregar os orçamentos desta unidade.'
+                : null,
+            plansError: plans.hasError
+                ? 'Não foi possível consultar os tratamentos vinculados.'
+                : null,
+            deleting: _deletingBudget,
+            onNew: () => _showCreateBudgetDialog(context),
+            onApprove: (b) => _approveBudget(context, b),
+            onDelete: _confirmDeleteBudget,
+            onPrint: (b) => _print([b]),
+            onPrintAll: _print,
+            onShare: (b) async {
+              final url = budgetLink(
+                b.details['shareUrl'] ?? b.details['proposalUrl'],
               );
+              if (url == null) return;
+              await Clipboard.setData(ClipboardData(text: url.toString()));
+              if (context.mounted) {
+                toast(context, 'Link da proposta copiado.', ok: true);
+              }
             },
-          ),
-        ),
-      ],
+            onTreatment: (b) {
+              final id = planId(b);
+              if (id.isEmpty) return;
+              if (widget.onTreatment != null) {
+                widget.onTreatment!(id);
+              } else {
+                DefaultTabController.maybeOf(context)?.animateTo(3);
+              }
+            },
+            onReceipt: (b) {
+              final url = budgetLink(
+                b.details['receiptUrl'] ?? data[planId(b)]?['receiptUrl'],
+              );
+              if (url != null) openLinkSafe(openBlankTab(), url.toString());
+            },
+          );
+        },
+      ),
     );
+    return widget.embedded
+        ? content
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: content,
+          );
   }
 }

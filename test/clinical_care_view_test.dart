@@ -229,7 +229,10 @@ void main() {
             scrollable: find.byType(Scrollable).first,
           );
           final button = tester.widget<FilledButton>(
-            find.widgetWithText(FilledButton, 'Atendimento finalizado'),
+            find.ancestor(
+              of: find.text('Atendimento finalizado'),
+              matching: find.byWidgetPredicate((w) => w is FilledButton),
+            ),
           );
           expect(button.onPressed, isNull);
         },

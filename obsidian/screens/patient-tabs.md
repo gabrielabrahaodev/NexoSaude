@@ -46,3 +46,17 @@ Tratamentos e Pagamentos aceitam `embedded` para compor a rolagem exclusivamente
 
 
 Aba Laboratório: o mesmo kanban visual do menu geral, restrito ao paciente. Novo Pedido usa o formulário compartilhado e gera conta a pagar apenas com custo explícito. A aba Pagamentos não cria laboratório. Ver [[clinic-lab]].
+
+## Orçamentos — referência de 31/10/2026 (PR #2)
+
+`ClinicalBudgetsView` substitui os ExpansionTiles: CTA azul Novo Orçamento, filtros Todos/Aprovados/Em Negociação/Recusados-Expirados com contagens reais, busca por procedimento/título/valor e impressão filtrada. Pendente mostra tabela de procedimento, região, quantidade, unitário, desconto e subtotal; aprovado tem cartão compacto com o vínculo real de tratamento. Orçamentos e planos são streams escopados e memorizados por paciente. Erro/carregamento não vira lista vazia confirmada. Modo embedded usa a rolagem da ficha, sem altura fixa.
+
+Aprovar e Gerar Tratamento abre BudgetApprovalWizard existente; exclusão mantém confirmação e cascata anterior. Ver Tratamento troca para a aba existente e prioriza o plano vinculado. Não cria nova rota/dashboard. Sem plano confirmado, ação fica indisponível.
+
+Novo Orçamento Clínico usa catálogo ativo da unidade, pesquisa, itens editáveis, região, quantidade inteira, valor unitário e desconto percentual. Guarda `price` como subtotal líquido da linha para compatibilidade com o wizard; `unitPrice`, `quantity`, `discountAmount` e `discountPercent` são metadados explícitos. Total é a soma dos subtotais arredondados em centavos. Condições, forma e parcelamento são sugestões comerciais; lançamentos continuam confirmados pelo assistente anterior. Validade é opcional e gravada somente quando selecionada.
+
+Formulário preserva foco/rascunho, bloqueia cliques e fechar enquanto salva e mantém dados ao falhar. Uma referência de orçamento é reutilizada no retry. Troca de unidade/paciente impede salvar no contexto anterior. Itens/condições não são dados ilustrativos.
+
+Imprimir Proposta e impressão filtrada geram PDF com dados reais, fonte incorporada e aviso de proposta sem comprovação de pagamento. Compartilhar Link copia apenas shareUrl/proposalUrl HTTPS já gravado; sem URL não cria link público. Recibo só aparece com tratamento concluído e receiptUrl HTTPS real. Não inferir pagamento integral, assinatura ou validade. Número formal só quando `number`/`code` existir; fallback é data registrada, sem transformar ID do Firestore em número sequencial.
+
+`BudgetModel.details` preserva metadados reais e parsing aceita BRL/datas legadas. Ausência de data não vira hoje. Desconto ausente usa travessão; região ausente mostra Não informado. Itens antigos continuam tendo price como total da linha, sem multiplicar novamente por quantidade. Campos descritivos/dentários explícitos seguem para os itens do plano ao aprovar; não extrair vínculo FDI de um nome ou texto livre de região.

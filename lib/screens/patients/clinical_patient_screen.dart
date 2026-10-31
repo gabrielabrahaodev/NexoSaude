@@ -45,6 +45,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _expenses;
   late final Future<Map<String, dynamic>> _risk;
   late int _index;
+  String? _budgetPlanId;
   final _scroll = ScrollController();
   @override
   void initState() {
@@ -134,6 +135,7 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
               patientName: patient.name,
               patientId: patient.id,
               embedded: true,
+              initialPlanId: _budgetPlanId,
               onPayments: () => _select(entries.length - 1),
               onOdontogram: caps.canShowOdontogram
                   ? () => _select(
@@ -153,8 +155,14 @@ class _ClinicalPatientScreenState extends State<ClinicalPatientScreen> {
                   embedded: true,
                 ),
                 'Anamnese' => legacy(AnamnesisTab(patientId: patient.id)),
-                'Orçamentos' => legacy(
-                  BudgetsTab(patientName: patient.name, patientId: patient.id),
+                'Orçamentos' => BudgetsTab(
+                  patientName: patient.name,
+                  patientId: patient.id,
+                  embedded: true,
+                  onTreatment: (planId) {
+                    _budgetPlanId = planId;
+                    _select(entries.indexWhere((e) => e.name == 'Tratamentos'));
+                  },
                 ),
                 'Tratamentos' => Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
