@@ -53,3 +53,8 @@ Cobrança, pacotes mensais, relatório financeiro, despesa recorrente, recebimen
 ## Laboratório independente — PR #2
 
 Pedidos são criados somente nos kanbans geral e individual, nunca no recebimento. Se houver custo, `LabService.createOrder` cria uma despesa pendente em uma transação com o pedido, para Relatórios → A Pagar; sem custo, não cria despesa. Estorno/cancelamento de recebimentos preserva pedidos e custos de laboratório. Ver [[clinic-lab]] para vínculos, idempotência, campos novos e tratamento dos dados legados.
+
+
+## Cobranças multi-clínica — PR #2
+
+A apresentação clínica usa fila unificada e inspetor; ver [[collections]] para escopo explícito por unidade, rateio e apuração. Confirmar contato nunca é baixa. Pacotes ainda pendentes podem fixar a apuração revisada, preservando o valor original; confirmação é atômica e idempotente. Recebimento usa PatientFinancialTab e famílias existentes. Lote e reagendamento são manuais, sem SMS nem confirmação bancária. O fallback anterior permanece na flag de comparação.

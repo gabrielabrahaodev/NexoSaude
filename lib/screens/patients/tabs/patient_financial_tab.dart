@@ -20,13 +20,19 @@ import '../../../models/supplier_model.dart';
 class PatientFinancialTab extends StatefulWidget {
   final String patientId;
   final bool embedded;
-  const PatientFinancialTab({super.key, required this.patientId, this.embedded = false});
+  // Optional entry from Cobranças. Reuses the existing guarded payment/family dialogs.
+  final String? initialReceiveId, expectedClinicId;
+  final double? initialReceiveAmount;
+  const PatientFinancialTab({super.key, required this.patientId, this.embedded = false,
+    this.initialReceiveId, this.initialReceiveAmount, this.expectedClinicId});
 
   @override
   State<PatientFinancialTab> createState() => _PatientFinancialTabState();
 }
 
 class _PatientFinancialTabState extends State<PatientFinancialTab> {
+  bool _initialReceiveOpened = false;
+  late Future<void> _initialData;
   final FinancialService _finService = FinancialService();
   final UserService _userService = UserService();
   final SupplierService _supplierService = SupplierService();
@@ -46,7 +52,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initialData = _loadData();
   }
 
   @override
@@ -1193,6 +1199,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
   // --- MODAL DE RECEBIMENTO (BLINDADO) ---
   void _showReceiveDialog(BuildContext context, FinancialModel item, {Map<String, dynamic>? preFilledData}) async {
+    if (!mounted || item.clinicId != SessionManager().currentClinicId) return;
     final amountCtrl = TextEditingController(text: preFilledData?['amount']?.toStringAsFixed(2) ?? (item.amount - item.paidAmount).toStringAsFixed(2));
     final installmentsCtrl = TextEditingController(text: preFilledData?['installments']?.toString() ?? "1");
     // Vencimento por parcela (grade editável); sincronizada com N.
@@ -1669,6 +1676,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                         onPressed: isProcessingPayment
                             ? null
                             : () async {
+                                if (!mounted || SessionManager().currentClinicId != clinicId) {
+                                  toast(context, 'A unidade foi alterada. Reabra a cobrança.'); return;
+                                }
                                 final val = parseBRL(amountCtrl.text);
                                 final remaining =
                                     item.amount - item.paidAmount;
@@ -1852,6 +1862,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       listenable: SessionManager(),
       builder: (context, child) {
         if (SessionManager().currentClinicId == null) return const Center(child: CircularProgressIndicator());
+        if (widget.expectedClinicId != null && widget.expectedClinicId != SessionManager().currentClinicId) {
+          return const Center(child: Text('A unidade foi alterada. Reabra a cobrança na unidade correta.'));
+        }
 
         return StreamBuilder<List<FinancialModel>>(
           stream: _finService.getByPatientId(widget.patientId),
@@ -1861,6 +1874,25 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
               return Center(child: Padding(padding: EdgeInsets.all(20), child: SelectableText("Erro Firestore: ${snapshotFin.error}\n(Clique no link acima se houver para criar índice)", style: TextStyle(color: Colors.red))));
             }
 
+            if (!_initialReceiveOpened && widget.initialReceiveId != null && snapshotFin.hasData) {
+              _initialReceiveOpened = true;
+              final docs = snapshotFin.data!;
+              final item = docs.where((f) => f.id == widget.initialReceiveId).firstOrNull;
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                await _initialData;
+                if (!mounted || widget.expectedClinicId != SessionManager().currentClinicId || item == null) return;
+                if (item.isPaid || FinancialModel.isReplaced(item.status) || item.status.toLowerCase().contains('cancel')) {
+                  _toast('A cobrança foi alterada. Confira os lançamentos atuais.'); return;
+                }
+                final family = FinancialService.familyOf(docs, item);
+                if (family.parent != null || family.children.isNotEmpty) {
+                  _showFamilyModal(item, docs);
+                } else {
+                  final amount = widget.initialReceiveAmount;
+                  _showReceiveDialog(context, item, preFilledData: amount == null ? null : {'amount': amount});
+                }
+              });
+            }
             return StreamBuilder<QuerySnapshot>(
               stream: SessionManager()
                   .applyFilter(FirebaseFirestore.instance
