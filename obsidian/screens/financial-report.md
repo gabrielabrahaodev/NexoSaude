@@ -31,3 +31,7 @@ Fechamento, conferência de líquido, PDF.
 - [[reports-oracle]] — DRE/Livro com dedupe
 - [[expenses]] — despesas no extrato
 - [[reports]] — antecipações e fechamento
+
+## Integração com Relatórios remodelado
+
+`FinancialReportScreen(initialMonth: ...)` recebe o mês selecionado na aba Fluxo de Caixa Real; continua usando o mesmo OracleReportService e a exportação PDF existente. Relatórios gerenciais e Livro Caixa compartilham o cálculo mensal e a exclusão de cancelados/substituídos; não misturar bruto e líquido registrado ao comparar os valores.

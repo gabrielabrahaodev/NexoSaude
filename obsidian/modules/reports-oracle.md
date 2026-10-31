@@ -43,3 +43,11 @@ KPI, antecipação de parcelas, mês fechado, score do paciente.
 
 - [[financial-report]] — extrato que consome a união
 - [[kpi-dashboard]] — KPIs do dia
+
+## Base compartilhada de Relatórios e Livro Caixa
+
+`calculateMonth` recebe `ReportDocument` puro para testar deduplicação, datas efetivas e totais sem conexão. `TransactionItem.details` conserva metadados reais (sem inventar recibo/prontuário/especialidade). Dedupe usa coleção+ID; IDs iguais em receitas/despesas não se anulam. Datas são defensivas; campos ausentes não viram hoje. Cancelados/substituídos excluídos.
+
+Queries `financial`: dueDate/paymentDate/paidDate/date. `expenses`: os mesmos + createdAt legado. Limites [início, primeiro dia do próximo mês), usando os índices existentes. O filtro final também respeita microssegundos. Débito usa caixa por baixa, crédito mantém vencimento salvo antecipado por paidDate. Totais: recebidos brutos, despesas pagas; projeção desconta parciais pendentes. Não é conciliação bancária nem inclui saldo de abertura.
+
+`getCardReceivables` consulta dois campos de data da clínica em janela de 12 meses, deduplica e valida data efetiva/tipo. `StreamCombiner.combineDocs` cancela assinaturas das queries ao sair/trocar período (coberto por teste). Histórico de antecipação só considera dados efetivamente gravados.

@@ -1,6 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../ui/app_theme.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../services/session_manager.dart';
@@ -10,8 +9,11 @@ import '../financial/expenses_screen.dart';
 import '../../utils/display.dart';
 import '../../widgets/status_chip.dart';
 import '../../widgets/page_header.dart';
-import '../../services/oracle_report_service.dart'
-    show StreamCombiner; 
+import '../../services/oracle_report_service.dart';
+import '../../utils/report_export.dart';
+import '../agenda/clinical_agenda_view.dart' show clinicalAgendaEnabled;
+import 'clinical_reports_view.dart';
+import 'report_entry_dialog.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -28,6 +30,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   late Stream<double> _expensesStream;
   late Stream<double> _availableAnticipationStream; 
 
+  late Stream<OracleReportSnapshot> _managementStream;
+  late Stream<List<ReportDocument>> _receivablesStream;
   Timer? _debounceTimer;
   bool _isChangingMonth = false;
 
@@ -47,6 +51,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _initStreams() {
+    _managementStream = OracleReportService().getMonthOverview(_currentMonth);
+    _receivablesStream = OracleReportService().getCardReceivables();
     _revenueStream = _getRevenueStream(_clinicId!);
     _expensesStream = _getExpensesStream(_clinicId!);
     _availableAnticipationStream = _getAvailableAnticipationStream(_clinicId!); 
@@ -228,6 +234,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget build(BuildContext context) {
     if (_clinicId == null) return const Center(child: Text("Erro: Clínica não selecionada."));
 
+    if (clinicalAgendaEnabled) return _clinicalReport();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -348,7 +356,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
                                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                                     const Text("Saldo Projetado (Final do Mês):"),
-                                    Text("${formatBRL(netProfit)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: netProfit >= 0 ? AppColors.textPrimary : Colors.red))
+                                    Text(formatBRL(netProfit), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: netProfit >= 0 ? AppColors.textPrimary : Colors.red))
                                 ]),
                               )
                             ],
@@ -362,6 +370,230 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _clinicalReport() => StreamBuilder<OracleReportSnapshot>(
+    stream: _managementStream,
+    builder: (context, monthly) => StreamBuilder<List<ReportDocument>>(
+      stream: _receivablesStream,
+      builder: (context, cards) {
+        final data =
+            monthly.data ??
+            OracleReportSnapshot(
+              totalRevenue: 0,
+              totalExpenses: 0,
+              netProfit: 0,
+              profitMargin: 0,
+              projectedBalance: 0,
+              transactions: [],
+            );
+        return ClinicalReportsView(
+          month: _currentMonth,
+          clinicName:
+              SessionManager().currentClinicName ?? 'Unidade selecionada',
+          snapshot: data,
+          receivables: cards.data ?? [],
+          loading: _isChangingMonth || monthly.connectionState != ConnectionState.active && !monthly.hasError,
+          error: monthly.hasError
+              ? 'Não foi possível carregar o período. Atualize para tentar novamente.'
+              : null,
+          receivablesError: cards.hasError
+              ? 'Não foi possível carregar os recebíveis futuros.'
+              : !cards.hasData
+              ? 'Carregando recebíveis futuros…'
+              : null,
+          onManageExpenses: () => Navigator.push(context,MaterialPageRoute(builder:(_)=> const ExpensesScreen())),
+          onMonth: _changeMonth,
+          onRefresh: () => setState(_initStreams),
+          onExport: () => downloadReportCsv(_currentMonth, data),
+          onExpense: () => _newEntry(false),
+          onIncome: () => _newEntry(true),
+          onAnticipate: () => _showAnticipationModal(context),
+          onEntry: _entryAction,
+          onCashbook: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  FinancialReportScreen(initialMonth: _currentMonth),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+
+  Future<void> _newEntry(bool income) async {
+    final clinic = _clinicId;
+    if (clinic == null) return;
+    final ref = FirebaseFirestore.instance
+        .collection(income ? 'financial' : 'expenses')
+        .doc();
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ReportEntryDialog(
+        income: income,
+        month: _currentMonth,
+        onSave: (entry) async {
+          if (SessionManager().currentClinicId != clinic) {
+            throw StateError('A unidade foi alterada');
+          }
+          final date = Timestamp.fromDate(entry['date'] as DateTime);
+          final paid = entry['paid'] == true;
+          final data = <String, dynamic>{
+            'clinicId': clinic,
+            'title': entry['title'],
+            'description': entry['description'],
+            'amount': entry['amount'],
+            'date': date,
+            'dueDate': date,
+            'createdAt': Timestamp.now(),
+            'category': entry['category'],
+            'paymentMethod': entry['paymentMethod'],
+            'status': paid
+                ? (income ? 'paid' : 'pago')
+                : (income ? 'pending' : 'pendente'),
+            'paidAmount': paid ? entry['amount'] : 0.0,
+            'isPaid': paid,
+            if (paid) 'paidDate': date,
+            if (income) ...{
+              'type': 'income',
+              'patientId': '',
+              'patientName': 'Receita avulsa',
+            },
+            if (!income) 'supplierName': entry['party'],
+          };
+          // Stable reference makes a retry after a network interruption idempotent.
+          await ref.set(data);
+        },
+      ),
+    );
+  }
+
+  Future<void> _entryAction(TransactionItem item, String action) async {
+    if (action == 'pay' && !item.isIncome) {
+      final clinic = _clinicId;
+      final date = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2100),
+      );
+      if (date == null ||
+          !mounted ||
+          SessionManager().currentClinicId != clinic) {
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Confirmar pagamento'),
+          content: Text(
+            'Baixar ${item.title} por ${reportMoney(item.amount - item.paidAmount)} em ${formatDateFull(date)}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirmar pagamento'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true ||
+          !mounted ||
+          SessionManager().currentClinicId != clinic) {
+        return;
+      }
+      try {
+        final ref = FirebaseFirestore.instance
+            .collection('expenses')
+            .doc(item.id);
+        await FirebaseFirestore.instance.runTransaction((tx) async {
+          final current = await tx.get(ref);
+          final data = current.data();
+          if (data == null ||
+              data['clinicId'] != clinic ||
+              SessionManager().currentClinicId != clinic) {
+            throw StateError('Unidade alterada');
+          }
+          if (reportCanceled(data)) throw StateError('Despesa cancelada');
+          if (FinancialModel.isPaidOf(
+                status: '${data['status'] ?? ''}',
+                paidAmount: data['paidAmount'],
+                amount: data['amount'],
+              ) ||
+              data['isPaid'] == true) {
+            return;
+          }
+          if (parseBRL(data['amount']) != item.amount ||
+              parseBRL(data['paidAmount']) != item.paidAmount) {
+            throw StateError('Valor alterado; atualize o relatório');
+          }
+          tx.update(ref, {
+            'status': 'pago',
+            'isPaid': true,
+            'paidAmount': parseBRL(data['amount']),
+            'paidDate': Timestamp.fromDate(date),
+          });
+        });
+        if (mounted) toast(context, 'Pagamento registrado.', ok: true);
+      } catch (e) {
+        if (mounted) {
+          toast(
+            context,
+            'Não foi possível baixar. Atualize o relatório e tente novamente.',
+            error: true,
+          );
+        }
+      }
+      return;
+    }
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Detalhes do lançamento'),
+        content: SizedBox(
+          width: 440,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final line in [
+                  item.title,
+                  '${item.details['title'] ?? item.details['description'] ?? ''}',
+                  'Valor bruto: ${reportMoney(item.amount)}',
+                  'Líquido registrado: ${reportNet(item) == null ? 'Não informado' : reportMoney(reportNet(item)!)}',
+                  'Data efetiva: ${formatDateFull(item.date)}',
+                  'Vencimento: ${formatDateFull(item.dueDate)}',
+                  'Categoria: ${reportCategory(item)}',
+                  'Forma: ${reportMethod(item)}',
+                  'Status: ${item.details['status'] ?? 'Não informado'}',
+                  if (item.isIncome)
+                    'Profissional: ${item.details['dentistName'] ?? 'Não informado'}',
+                  if (!item.isIncome)
+                    'Fornecedor: ${item.details['supplierName'] ?? 'Não informado'}',
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(line),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Fechar'),
+          ),
+        ],
       ),
     );
   }
@@ -401,19 +633,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     if (snap.hasData) {
                       availableTotal = snap.data!.docs.fold(0.0, (sum, doc) {
                         final data = doc.data() as Map<String, dynamic>; 
-                        final status = (data['status'] ?? '').toString().toLowerCase().trim();
-                        final method = (data['paymentMethod'] ?? '').toString().toLowerCase();
-                        
-                        bool isCard = method.contains('cart') || method.contains('crédit') || method.contains('credit');
-                        bool isAvailable = isCard && !status.contains('anticipat') && !status.contains('antecipad') && !status.contains('cancel');
-                        
-                        Timestamp? ts = data['dueDate'] as Timestamp? ?? data['date'] as Timestamp?;
-                        DateTime dueDate = ts?.toDate() ?? DateTime.now();
-                        DateTime today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-                        bool isExpired = dueDate.isBefore(today);
-                        
-                        if (isAvailable && !isExpired) {
-                           return sum + (double.tryParse(data['amount'].toString()) ?? 0.0);
+                        if (reportCanAnticipate(data, DateTime.now())) {
+                          return sum + parseBRL(data['amount']);
                         }
                         return sum;
                       });
@@ -423,7 +644,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       decoration: BoxDecoration(color: AppColors.isDark ? const Color(0xFF3A2E12) : Colors.amber[50], borderRadius: BorderRadius.circular(8)),
                       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                           const Text("Disponível:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
-                          Text("${formatBRL(availableTotal)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(formatBRL(availableTotal), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       ]),
                     );
                   }
@@ -455,7 +676,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _processAnticipation(BuildContext context, String valueStr, double maxAvailable) async {
-    double targetVal = double.tryParse(valueStr.replaceAll(',', '.')) ?? 0.0;
+    double targetVal = parseBRL(valueStr);
     
     if (targetVal <= 0 || targetVal > (maxAvailable + 0.05)) {
        toast(context, "Valor inválido ou superior ao disponível.", error: true);
@@ -471,19 +692,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     List<DocumentSnapshot> validDocs = [];
     for (var doc in snapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      final status = (data['status'] ?? '').toString().toLowerCase().trim();
-      final method = (data['paymentMethod'] ?? '').toString().toLowerCase();
-      
-      bool isCard = method.contains('cart') || method.contains('crédit') || method.contains('credit');
-      bool isAvailable = isCard && !status.contains('anticipat') && !status.contains('antecipad') && !status.contains('cancel');
-      
-      Timestamp? ts = data['dueDate'] as Timestamp? ?? data['date'] as Timestamp?;
-      DateTime dueDate = ts?.toDate() ?? DateTime.now();
-      DateTime today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-      bool isExpired = dueDate.isBefore(today);
-      
-      if (isAvailable && !isExpired) validDocs.add(doc);
+      final data = doc.data();
+      if (reportCanAnticipate(data, DateTime.now())) validDocs.add(doc);
     }
 
     validDocs.sort((a, b) {
@@ -578,7 +788,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text("Venc: $dateStr", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                            Text("${formatBRL(p.takenAmount)}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(formatBRL(p.takenAmount), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13)),
                           ],
                         ),
                         subtitle: Column(
@@ -600,7 +810,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text("Total Bruto:", style: TextStyle(fontSize: 12)),
-                Text("${formatBRL(totalRealized)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(formatBRL(totalRealized), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               ]),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text("Taxas da Antecipação:", style: TextStyle(fontSize: 12)),
@@ -609,7 +819,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 5),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text("LÍQUIDO A RECEBER:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Text("${formatBRL((totalRealized - totalFees))}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green)),
+                Text(formatBRL((totalRealized - totalFees)), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green)),
               ]),
             ]
           ),
@@ -727,7 +937,7 @@ class _AnticipationCard extends StatelessWidget {
             const Spacer(),
             Text("Disponível p/ Antecipar", style: TextStyle(fontSize: 11, color: AppColors.isDark ? Colors.amber[200] : Colors.amber[800], fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text("${formatBRL(value)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.isDark ? Colors.amber[100] : Colors.amber[900])),
+            Text(formatBRL(value), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.isDark ? Colors.amber[100] : Colors.amber[900])),
         ]),
       ),
     );
@@ -775,7 +985,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
                 const SizedBox(height: 10),
                 Text("Despesas Pagas", style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
-                Text("${formatBRL(widget.totalValue)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+                Text(formatBRL(widget.totalValue), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
               ]
             ),
           ),
@@ -898,7 +1108,7 @@ class _ExpandableExpenseCardState extends State<_ExpandableExpenseCard> {
             )
           ), 
           const SizedBox(width: 8),
-          Text("${formatBRL(val)}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red))
+          Text(formatBRL(val), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red))
         ]
       )
     );
@@ -910,7 +1120,7 @@ class _KpiCard extends StatelessWidget {
   const _KpiCard({required this.title, required this.value, required this.color, required this.icon, this.isHighlight = false});
   @override
   Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) StatusChip(label: "RESULTADO", color: color, horizontal: 8, vertical: 2, fontSize: 8)]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text("${formatBRL(value)}", style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
+    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: isHighlight ? Border.all(color: color, width: 2) : null, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(icon, color: color, size: 20), if (isHighlight) StatusChip(label: "RESULTADO", color: color, horizontal: 8, vertical: 2, fontSize: 8)]), const SizedBox(height: 10), Text(title, style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)), const SizedBox(height: 4), Text(formatBRL(value), style: TextStyle(fontSize: isHighlight ? 24 : 16, fontWeight: FontWeight.bold, color: color))]));
   }
 }
 
