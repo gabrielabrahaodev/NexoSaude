@@ -628,4 +628,66 @@ describe('matriz reavaliação P0/P1', () => {
     assert.equal((await appointment.get()).data().status, 'Confirmado');
   });
 
+  it('Laboratório: pedido e débito independentes são atômicos e isolados por clínica', async () => {
+    const db = ctx('staffA').firestore();
+    const supplier = db.doc('suppliers/labSourceA');
+    await supplier.set({ clinicId: A, name: 'Laboratório de teste' });
+    const order = db.doc('lab_orders/labAtomicA');
+    const expense = db.doc('expenses/lab_labAtomicA');
+    const receipt = db.doc('patients/p1/clinical_data/lab_request_labAtomicA');
+    const create = () => db.runTransaction(async (tx) => {
+      const prior = await tx.get(receipt);
+      if (prior.exists) return;
+      const patient = await tx.get(db.doc('patients/p1'));
+      const lab = await tx.get(supplier);
+      assert.equal(patient.data().clinicId, A);
+      assert.equal(lab.data().clinicId, A);
+      tx.set(order, { clinicId: A, patientId: 'p1', price: 120,
+        status: 'pending_send', relatedExpenseId: expense.id, relatedFinancialId: null });
+      tx.set(expense, { clinicId: A, relatedPatientId: 'p1', amount: 120,
+        dueDate: new Date(), status: 'pendente', category: 'Laboratório',
+        relatedLabOrderId: order.id, relatedFinancialId: null, source: 'lab_order' });
+      tx.set(receipt, { clinicId: A, patientId: 'p1', labOrderId: order.id, expenseId: expense.id });
+    });
+    await assertSucceeds(create());
+    assert.equal((await expense.get()).data().status, 'pendente');
+    await expense.update({ status: 'pago', paidDate: new Date() });
+    await assertSucceeds(create());
+    assert.equal((await expense.get()).data().status, 'pago');
+    for (const path of [order.path, expense.path, receipt.path]) {
+      await assertFails(ctx('staffB').firestore().doc(path).get());
+      await assertFails(ctx(null).firestore().doc(path).get());
+    }
+  });
+
+  it('Laboratório: despesa fora da clínica aborta pedido, custo e comprovante de criação', async () => {
+    const db = ctx('staffA').firestore();
+    const paths = ['lab_orders/labRejectA', 'expenses/lab_labRejectA',
+      'patients/p1/clinical_data/lab_request_labRejectA'];
+    await assertFails(db.runTransaction(async (tx) => {
+      await tx.get(db.doc(paths[2]));
+      tx.set(db.doc(paths[0]), { clinicId: A, patientId: 'p1' });
+      tx.set(db.doc(paths[1]), { clinicId: B, relatedPatientId: 'p1', amount: 120 });
+      tx.set(db.doc(paths[2]), { clinicId: A, patientId: 'p1' });
+    }));
+    await env.withSecurityRulesDisabled(async (admin) => {
+      const adb = admin.firestore();
+      for (const path of paths) assert.equal((await adb.doc(path).get()).exists, false);
+    });
+  });
+
+  it('Laboratório: pedido sem custo não precisa de conta a pagar', async () => {
+    const db = ctx('ownerA').firestore();
+    await assertSucceeds(db.runTransaction(async (tx) => {
+      const receipt = db.doc('patients/p1/clinical_data/lab_request_labFreeA');
+      await tx.get(receipt);
+      tx.set(db.doc('lab_orders/labFreeA'), { clinicId: A, patientId: 'p1', price: 0,
+        hasCost: false, relatedExpenseId: null, relatedFinancialId: null });
+      tx.set(receipt, { clinicId: A, patientId: 'p1', labOrderId: 'labFreeA', expenseId: null });
+    }));
+    await env.withSecurityRulesDisabled(async (admin) => {
+      assert.equal((await admin.firestore().doc('expenses/lab_labFreeA').get()).exists, false);
+    });
+  });
+
 });

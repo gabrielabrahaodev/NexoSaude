@@ -48,3 +48,8 @@ Cobrança, pacotes mensais, relatório financeiro, despesa recorrente, recebimen
 - [[kpi-dashboard]] — a receber/inadimplência
 - [[patient-details]] — aba Pagamentos por paciente
 - [[assinatura-page]] — débitos do owner (plataforma)
+
+
+## Laboratório independente — PR #2
+
+Pedidos são criados somente nos kanbans geral e individual, nunca no recebimento. Se houver custo, `LabService.createOrder` cria uma despesa pendente em uma transação com o pedido, para Relatórios → A Pagar; sem custo, não cria despesa. Estorno/cancelamento de recebimentos preserva pedidos e custos de laboratório. Ver [[clinic-lab]] para vínculos, idempotência, campos novos e tratamento dos dados legados.

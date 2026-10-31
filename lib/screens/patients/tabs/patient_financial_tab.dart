@@ -394,21 +394,13 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
   }
 
   // --- LÓGICA DE ESTORNO ---
-  /// Vinculados (despesas + lab) de um lançamento. Centraliza as 2 queries
-  /// repetidas nos dialogs de estorno/cancelamento.
-  Future<({List<QueryDocumentSnapshot> expenses, List<QueryDocumentSnapshot> labOrders})>
-      relatedDocs(String financialId) async {
+  /// Somente despesas do recebimento; laboratório é independente.
+  Future<List<QueryDocumentSnapshot>> relatedDocs(String financialId) async {
     final expenses = await SessionManager()
-        .applyFilter(FirebaseFirestore.instance
-            .collection('expenses')
+        .applyFilter(FirebaseFirestore.instance.collection('expenses')
             .where('relatedFinancialId', isEqualTo: financialId))
         .get();
-    final labOrders = await SessionManager()
-        .applyFilter(FirebaseFirestore.instance
-            .collection('lab_orders')
-            .where('relatedFinancialId', isEqualTo: financialId))
-        .get();
-    return (expenses: expenses.docs, labOrders: labOrders.docs);
+    return expenses.docs.where((doc) => (doc.data() as Map)['source'] != 'lab_order').toList();
   }
   // Recebe o model (não só o id) para permitir "corrigir e relançar"
   // pré-preenchido após o estorno.
@@ -420,7 +412,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       builder: (c) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Verifica Despesas e Pedidos de Lab vinculados (com erro visível:
+    // Verifica despesas do recebimento vinculadas (com erro visível:
     // antes, falha aqui travava no loading sem dizer nada).
     late final relatedResult;
     try {
@@ -431,13 +423,12 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       _toast("Falha ao verificar vinculados: $e", error: true);
       return;
     }
-    final relatedExpenses = relatedResult.expenses;
-    final relatedLabOrders = relatedResult.labOrders;
+    final relatedExpenses = relatedResult;
 
     if (!mounted) return;
     Navigator.pop(context); // Fecha loading
 
-    bool hasLinkedData = relatedExpenses.isNotEmpty || relatedLabOrders.isNotEmpty;
+    bool hasLinkedData = relatedExpenses.isNotEmpty;
 
     showDialog(
       context: context,
@@ -469,8 +460,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                     const SizedBox(height: 5),
                     if (relatedExpenses.isNotEmpty)
                       Text("• ${relatedExpenses.length} Despesa(s) (Comissão/Custo)", style: const TextStyle(fontSize: 11)),
-                    if (relatedLabOrders.isNotEmpty)
-                      Text("• ${relatedLabOrders.length} Pedido(s) de Laboratório", style: const TextStyle(fontSize: 11)),
                     const SizedBox(height: 5),
                     const Text("Eles serão EXCLUÍDOS se você confirmar.", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   ],
@@ -491,8 +480,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
               try {
                 // Exclui despesas
                 for (var doc in relatedExpenses) { await doc.reference.delete(); }
-                // Exclui pedidos de lab
-                for (var doc in relatedLabOrders) { await doc.reference.delete(); }
 
                 // Executa o estorno
                 await _finService.voidPayment(id);
@@ -512,7 +499,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
               try {
                 // Mesmo zeramento do estorno...
                 for (var doc in relatedExpenses) { await doc.reference.delete(); }
-                for (var doc in relatedLabOrders) { await doc.reference.delete(); }
                 await _finService.voidPayment(id);
               } catch (e) {
                 _toast("Falha ao estornar: $e", error: true);
@@ -547,8 +533,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     );
 
     final related = await relatedDocs(id);
-    final relatedExpenses = related.expenses;
-    final relatedLabOrders = related.labOrders;
+    final relatedExpenses = related;
 
     // Família de parcelamento: irmãs (mesmo parentId) + original pai.
     final parentKey = item.parentId;
@@ -612,11 +597,10 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             const SizedBox(height: 8),
             const Text(
                 "O lançamento sai das cobranças e relatórios, mas o histórico é mantido (status 'cancelado'). Para corrigir valor, use Estornar + Corrigir e relançar."),
-            if (relatedExpenses.isNotEmpty ||
-                relatedLabOrders.isNotEmpty) ...[
+            if (relatedExpenses.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                  "Vinculados que serão EXCLUÍDOS: ${relatedExpenses.length} despesa(s), ${relatedLabOrders.length} pedido(s) de lab.",
+                  "Vinculados que serão EXCLUÍDOS: ${relatedExpenses.length} despesa(s) do recebimento.",
                   style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ],
@@ -630,9 +614,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
             onPressed: () async {
               Navigator.pop(ctx);
               for (var doc in relatedExpenses) {
-                await doc.reference.delete();
-              }
-              for (var doc in relatedLabOrders) {
                 await doc.reference.delete();
               }
               await _finService.cancelCharge(id);
@@ -1254,11 +1235,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     bool hasCost = false;
     bool deductCostFromBase = false; 
 
-    bool generateLabOrder = false;
     bool isProcessingPayment = false; // trava anti-duplo-submit
-    String? selectedLabId;
-    final labCostCtrl = TextEditingController(text: "0.00");
-    DateTime labDeliveryDate = DateTime.now().add(const Duration(days: 7));
 
     DateTime costDueDate = DateTime.now().add(const Duration(days: 30));
     DateTime commissionDueDate = DateTime.now().add(const Duration(days: 30));
@@ -1685,64 +1662,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                       ),
                     ),
 
-                    // --- ÁREA DE LABORATÓRIO ---
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50], 
-                        borderRadius: BorderRadius.circular(8), 
-                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3))
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CheckboxListTile(
-                            title: const Text("Gerar Pedido de Laboratório?", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                            value: generateLabOrder,
-                            onChanged: (v) => setStateModal(() => generateLabOrder = v ?? false),
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            activeColor: Colors.blue,
-                          ),
-                          
-                          if (generateLabOrder) ...[
-                            const SizedBox(height: 5),
-                            DropdownButtonFormField<String>(
-                                value: selectedLabId,
-                                isExpanded: true,
-                                hint: const Text("Selecione o Laboratório"),
-                                items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-                                onChanged: (val) => setStateModal(() => selectedLabId = val),
-                                decoration: InputDecoration(isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: labCostCtrl,
-                                    keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(labelText: "Custo Estimado", prefixText: "R\$ ", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () => pickGenericDate((d) => labDeliveryDate = d, labDeliveryDate),
-                                    child: InputDecorator(
-                                      decoration: InputDecoration(labelText: "Previsão Entrega", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-                                      child: Text(formatDateFull(labDeliveryDate), style: const TextStyle(fontSize: 13)),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          ]
-                        ],
-                      ),
-                    ),
-
                     const SizedBox(height: 25),
                     SizedBox(
                       height: 50,
@@ -1764,15 +1683,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                 final finalCost = parseBRL(costCtrl.text);
 
                                 if (val <= 0) return;
-
-                                if (generateLabOrder && selectedLabId == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              "Selecione o laboratório."),
-                                          backgroundColor: Colors.orange));
-                                  return;
-                                }
 
                                 // Trava anti-duplo-submit (reentrância gera
                                 // parcelas duplicadas)
@@ -1878,33 +1788,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                  'relatedPatientId': widget.patientId,
                                  'isCommission': false,
                                  'relatedFinancialId': item.id, 
-                               });
-                            }
-
-                            if (generateLabOrder && selectedLabId != null) {
-                               String? labName;
-                               try { labName = _suppliers.firstWhere((s) => s.id == selectedLabId).name; } catch (e) {/**/}
-                               
-                               double labCost = parseBRL(labCostCtrl.text);
-
-                               DocumentReference labRef = FirebaseFirestore.instance.collection('lab_orders').doc();
-                               batch.set(labRef, {
-                                 'clinicId': clinicId,
-                                 'patientId': widget.patientId,
-                                 'patientName': item.patientName,
-                                 'dentistId': selectedProfessionalId,
-                                 'dentistName': dentistName,
-                                 'supplierId': selectedLabId,
-                                 'supplierName': labName,
-                                 'procedureName': item.title, 
-                                 'interactions': [],          
-                                 'description': item.title, 
-                                 'cost': labCost,
-                                 'price': labCost, 
-                                 'deliveryDate': labDeliveryDate,
-                                 'createdAt': DateTime.now(), 
-                                 'status': 'Solicitado', 
-                                 'relatedFinancialId': item.id,
                                });
                             }
 
