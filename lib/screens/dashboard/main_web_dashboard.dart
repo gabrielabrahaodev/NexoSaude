@@ -743,12 +743,6 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                                 ),
                               ),
                             ),
-                            Flexible(
-                              child: Text(
-                                _displayUserName(),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
                           ],
                         ),
                       ),

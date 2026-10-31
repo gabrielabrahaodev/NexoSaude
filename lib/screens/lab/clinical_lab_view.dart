@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import '../../models/lab_order.dart';
 import '../../utils/display.dart';
 import '../agenda/clinical_agenda_view.dart';
@@ -304,7 +305,7 @@ class _ClinicalLabViewState extends State<ClinicalLabView> {
                                   () => _query = v.toLowerCase().trim(),
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: 'Buscar paciente, OS ou tipo…',
+                                  hintText: 'Buscar paciente ou trabalho…',
                                   prefixIcon: const Icon(
                                     Icons.search,
                                     size: 18,
@@ -490,39 +491,11 @@ class _ClinicalLabViewState extends State<ClinicalLabView> {
                                                                         bottom:
                                                                             18,
                                                                       ),
-                                                                  child:
-                                                                      LongPressDraggable<
-                                                                        LabOrderModel
-                                                                      >(
-                                                                        data:
-                                                                            order,
-                                                                        feedback: Material(
-                                                                          color:
-                                                                              Colors.transparent,
-                                                                          child: SizedBox(
-                                                                            width:
-                                                                                width -
-                                                                                36,
-                                                                            child: _card(
-                                                                              order,
-                                                                              stage.color,
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                        childWhenDragging: Opacity(
-                                                                          opacity:
-                                                                              .35,
-                                                                          child: _card(
-                                                                            order,
-                                                                            stage.color,
-                                                                          ),
-                                                                        ),
-                                                                        child: _card(
-                                                                          order,
-                                                                          stage
-                                                                              .color,
-                                                                        ),
-                                                                      ),
+                                                                  child: _draggable(
+                                                                    order,
+                                                                    stage.color,
+                                                                    width - 36,
+                                                                  ),
                                                                 ),
                                                             ],
                                                           )
@@ -548,6 +521,29 @@ class _ClinicalLabViewState extends State<ClinicalLabView> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _draggable(LabOrderModel order, Color color, double width) {
+    final feedback = Material(
+      color: Colors.transparent,
+      child: SizedBox(width: width, child: _card(order, color)),
+    );
+    final faded = Opacity(opacity: .35, child: _card(order, color));
+    return _MouseLabDraggable(
+      data: order,
+      feedback: feedback,
+      childWhenDragging: faded,
+      child: LongPressDraggable<LabOrderModel>(
+        data: order,
+        delay: const Duration(milliseconds: 300),
+        feedback: feedback,
+        childWhenDragging: faded,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.grab,
+          child: _card(order, color),
+        ),
       ),
     );
   }
@@ -635,26 +631,12 @@ class _ClinicalLabViewState extends State<ClinicalLabView> {
             child: Row(
               children: [
                 Icon(
-                  Icons.medical_services_outlined,
+                  Icons.drag_indicator,
                   size: 18,
                   color: ClinicalAgendaStyle.muted,
                 ),
                 const SizedBox(width: 6),
-                Expanded(
-                  child: Tooltip(
-                    message: o.id,
-                    child: Text(
-                      'OS · ${o.id}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ClinicalAgendaStyle.muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
+                const Spacer(),
                 PopupMenuButton<String>(
                   tooltip: 'Ações do pedido',
                   iconSize: 18,
@@ -810,4 +792,27 @@ class _ClinicalLabViewState extends State<ClinicalLabView> {
       ),
     );
   }
+}
+
+/// Mouse drags start immediately; touch remains a long press in the child,
+/// so the horizontal board and vertical lists can still scroll on phones.
+class _MouseLabDraggable extends Draggable<LabOrderModel> {
+  const _MouseLabDraggable({
+    required super.data,
+    required super.feedback,
+    required super.childWhenDragging,
+    required super.child,
+  });
+  @override
+  MultiDragGestureRecognizer createRecognizer(
+    GestureMultiDragStartCallback onStart,
+  ) => ImmediateMultiDragGestureRecognizer(
+    supportedDevices: const {
+      PointerDeviceKind.mouse,
+      PointerDeviceKind.trackpad,
+      PointerDeviceKind.stylus,
+      PointerDeviceKind.invertedStylus,
+    },
+    allowedButtonsFilter: (buttons) => buttons == kPrimaryButton,
+  )..onStart = onStart;
 }

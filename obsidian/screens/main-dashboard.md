@@ -57,3 +57,8 @@ Ordem visual: Agenda, Pacientes, Dashboard…; abre na Agenda (`_selectedIndex =
 `ClinicalUserFooter` reúne identidade, Sair e seletor sol/lua no rodapé esquerdo. O seletor fica abaixo de Sair; não aparece no cabeçalho. No celular, fica no rodapé do drawer.
 
 O índice 2 usa `PatientWorkspace` com chave da clínica. Selecionar uma linha da lista abre `ClinicalPatientScreen(embedded: true)` somente na região direita, sem `Navigator.push`, animação de rota ou segundo dashboard. Voltar/Back retorna à lista preservada pelo `IndexedStack`. Mudar de menu desmonta o workspace; mudar a chave da clínica descarta a seleção anterior. Rotas externas existentes continuam independentes.
+
+
+## Cabeçalho — ajuste PR #2
+
+O nome do usuário aparece somente no rodapé do menu. O cabeçalho compartilhado de todas as telas exibe a navegação da clínica, sem repetir a identidade do operador. Auditoria e nomes dos profissionais nos dados clínicos não são alterados.

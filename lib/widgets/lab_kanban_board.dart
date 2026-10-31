@@ -8,6 +8,7 @@ import 'package:odonto_controle/utils/display.dart';
 
 class LabKanbanBoard extends StatefulWidget {
   final List<LabOrderModel> orders;
+  final LabService? service;
   final bool showPatientName;
   final VoidCallback onNew;
   final bool loading, creating;
@@ -21,6 +22,7 @@ class LabKanbanBoard extends StatefulWidget {
     this.loading = false,
     this.creating = false,
     this.error,
+    this.service,
   });
 
   @override
@@ -28,7 +30,12 @@ class LabKanbanBoard extends StatefulWidget {
 }
 
 class _LabKanbanBoardState extends State<LabKanbanBoard> {
-  final LabService _labService = LabService();
+  late final LabService _labService;
+  @override
+  void initState() {
+    super.initState();
+    _labService = widget.service ?? LabService();
+  }
 
   // --- CONFIRMAÇÃO DE EXCLUSÃO ---
   void _confirmDelete(String orderId) {
@@ -268,7 +275,7 @@ class _LabKanbanBoardState extends State<LabKanbanBoard> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Pedido ${order.id}',
+                'Detalhes do pedido',
                 style: Theme.of(c).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),

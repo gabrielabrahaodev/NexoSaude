@@ -11,8 +11,16 @@
 9. Trocar clínica/paciente: não deve aparecer pedido da unidade anterior. Tentar vínculo de laboratório/paciente/plano de outra clínica deve falhar sem gravação parcial.
 10. Conferir geral e individual em claro/escuro, larguras 320/390/768/1200/1440. No celular, rolar a página/coluna para acessar ações e deslizar horizontalmente entre etapas.
 
-Dados não inventados: IDs reais em vez de OS sequencial; ausência de urgência/horário específicos; atraso pela data; dados antigos sem tipo/fornecedor/solicitante/custo explícito ficam Não informado. Não há criação retroativa automática de despesas para pedidos legados.
+Dados não inventados: IDs internos não exibidos nos cartões; ausência de urgência/horário específicos; atraso pela data; dados antigos sem tipo/fornecedor/solicitante/custo explícito ficam Não informado. Não há criação retroativa automática de despesas para pedidos legados.
 
 Testes: `flutter test`; `flutter analyze --no-pub`; `flutter build web --release --no-pub`; `firebase emulators:exec --only firestore --project nexosaude-test "npm --prefix test/rules test"`. Nenhuma publicação de Rules ou dados de produção faz parte desta revisão.
 
-Validação concluída: **369 testes Flutter aprovados**, **37 testes de autorização no emulador aprovados**, análise estática com **0 erros** (213 avisos/informações remanescentes) e build Web release concluído. As prévias do kanban foram renderizadas e inspecionadas nos modos claro e escuro.
+Validação concluída: **377 testes Flutter aprovados**, **37 testes de autorização no emulador aprovados**, análise estática com **0 erros** (213 avisos/informações remanescentes) e build Web release concluído. As prévias do kanban foram renderizadas e inspecionadas nos modos claro e escuro.
+
+
+## Ajustes de cabeçalho, OS e arraste
+
+- Cabeçalho de todas as telas sem nome do usuário; identidade permanece no rodapé do menu.
+- Cartões e título dos detalhes sem número/ID de OS; busca indica paciente ou trabalho.
+- Mouse: clicar e arrastar diretamente, sem segurar primeiro. Toque: manter pressionado por 300 ms e arrastar até a coluna. Confirmar a data no diálogo para gravar a etapa.
+- Verificar Enviado, Aguardando Retorno e Entregue no geral e no paciente; mover não cria custo nem altera a conta existente. Regressão por gesto real em `lab_drag_drop_test.dart`, com serviço de gravação controlado, nos dois temas.
