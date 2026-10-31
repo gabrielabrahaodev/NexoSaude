@@ -1,3 +1,4 @@
+import '../clinical_patient_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../../ui/app_theme.dart';
@@ -242,7 +243,7 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                             style: const TextStyle(
                                 fontSize: 12, color: Colors.grey)),
                         const SizedBox(height: 4),
-                        Text("Realizado por: ${data['dentistName'] ?? 'Profissional'}", style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                        Text("Realizado por: ${data['dentistName'] ?? 'Profissional'}", style: TextStyle(fontSize: 12, color: PatientVisualStyle.textSecondary, fontStyle: FontStyle.italic)),
                         const Divider(),
                         Text(data['description'] ?? '', style: const TextStyle(fontSize: 14, height: 1.4)),
                         

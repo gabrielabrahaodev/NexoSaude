@@ -44,7 +44,10 @@ import '../../main.dart';
 import '../../utils/display.dart'; 
 
 class MainWebDashboard extends StatefulWidget {
-  const MainWebDashboard({super.key});
+  const MainWebDashboard({super.key, this.detail, this.detailClinicId, this.initialIndex = 1});
+  final Widget? detail;
+  final String? detailClinicId;
+  final int initialIndex;
 
   @override
   State<MainWebDashboard> createState() => _MainWebDashboardState();
@@ -53,6 +56,7 @@ class MainWebDashboard extends StatefulWidget {
 class _MainWebDashboardState extends State<MainWebDashboard> {
   // Tela inicial: Agenda (índice 1 em _screens).
   int _selectedIndex = 1;
+  bool _detailOpen = true;
   String? _userRole;
   String? _currentClinicId; 
   String? _currentClinicType; // <--- NOVO ESTADO: Tipo da clínica atual
@@ -60,6 +64,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     _fetchUserData();
     _currentClinicId = SessionManager().currentClinicId;
     _currentClinicType = SessionManager().clinicType;
@@ -283,7 +288,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     if (!await _flushCareDrafts() || !mounted) return;
     // Em setup, só Clínicas (8) é navegável (KPI e atalhos respeitam).
     if (_needsClinicSetup && index != 8) return;
-    setState(() => _selectedIndex = index);
+    setState(() { _selectedIndex = index; _detailOpen = false; });
     // Checa versão a cada troca de menu (navegação explícita, sem risco
     // de interromper digitação); o aviso aparece 1x por sessão.
     _checkAppVersion();
@@ -418,6 +423,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   final type = data['type'] ?? 'dental'; 
 
                   setState(() {
+                    _detailOpen = false;
                     _currentClinicId = newClinicId;
                     _currentClinicType = type; // <--- ATUALIZA TIPO PARA MUDAR O MENU
                     SessionManager().setClinic(newClinicId, data['name'], type);
@@ -513,7 +519,8 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   Widget _buildClinicalAgendaShell(BuildContext context, ThemeData contentTheme) {
     _ensurePendingStreams();
-    final screen = Theme(data: contentTheme, child: _screens[_effectiveIndex]);
+    final showingDetail = _detailOpen && widget.detail != null && widget.detailClinicId == SessionManager().currentClinicId && _canShow('pacientes');
+    final screen = Theme(data: contentTheme, child: showingDetail ? widget.detail! : _screens[_effectiveIndex]);
     final mobile = MediaQuery.sizeOf(context).width < 768;
     final entries = <(int, String, String, IconData)>[
       (1, 'agenda', 'Agenda', Icons.calendar_today_outlined),

@@ -1,3 +1,4 @@
+import '../clinical_patient_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -236,7 +237,7 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Dados Cadastrais", style: AppTextStyles.h2),
+                    Text("Dados Cadastrais", style: AppTextStyles.h2.copyWith(color: PatientVisualStyle.textPrimary)),
                     TextButton.icon(
                       icon: Icon(_isEditing ? Icons.cancel : Icons.edit, size: 18, color: _isEditing ? AppColors.danger : AppColors.primary),
                       label: Text(_isEditing ? "Cancelar" : "Editar", style: TextStyle(color: _isEditing ? AppColors.danger : AppColors.primary)),
@@ -395,7 +396,7 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
       enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)), 
       disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade200)), 
       filled: !_isEditing,
-      fillColor: AppColors.surface,
+      fillColor: PatientVisualStyle.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
     );
   }

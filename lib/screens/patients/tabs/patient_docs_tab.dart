@@ -1,3 +1,4 @@
+import '../clinical_patient_view.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -95,7 +96,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                     onChanged: (val) => setStateDialog(() => category = val!),
                   ),
                   const SizedBox(height: 10),
-                  Text("Tamanho aprox: ${(size / 1024).toStringAsFixed(0)} KB", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text("Tamanho aprox: ${(size / 1024).toStringAsFixed(0)} KB", style: TextStyle(color: PatientVisualStyle.textSecondary, fontSize: 12)),
                 ],
               ),
               actions: [
@@ -174,7 +175,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: PatientVisualStyle.background,
       floatingActionButton: FloatingActionButton(
         onPressed: DocumentService.isPrivateStorageConfigured
             ? () => _pickFile(false)
@@ -196,9 +197,9 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
               margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: PatientVisualStyle.surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.25)),
+                border: Border.all(color: PatientVisualStyle.textSecondary.withValues(alpha: 0.25)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +209,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                   Expanded(
                     child: Text(
                       'O armazenamento privado ainda não foi configurado neste build. Os documentos existentes continuam disponíveis; configure PRIVATE_FILES_API_URL para habilitar novos envios.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      style: TextStyle(color: PatientVisualStyle.textSecondary, fontSize: 12),
                     ),
                   ),
                 ],
@@ -217,7 +218,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
 
           // Filtros (Chips)
           Container(
-            color: AppColors.surface,
+            color: PatientVisualStyle.surface,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: SingleChildScrollView(
@@ -232,9 +233,9 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                       label: Text(cat),
                       selected: isSel,
                       onSelected: (val) => setState(() => _selectedCategory = cat),
-                      backgroundColor: AppColors.surface,
+                      backgroundColor: PatientVisualStyle.surface,
                       selectedColor: Colors.blue[100],
-                      labelStyle: TextStyle(color: isSel ? Colors.blue[900] : AppColors.textPrimary),
+                      labelStyle: TextStyle(color: isSel ? Colors.blue[900] : PatientVisualStyle.textPrimary),
                       checkmarkColor: Colors.blue[900],
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSel ? Colors.blue : Colors.transparent)),
                     ),
@@ -348,8 +349,8 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(4)),
-              child: Text(doc.category, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+              decoration: BoxDecoration(color: PatientVisualStyle.surface, borderRadius: BorderRadius.circular(4)),
+              child: Text(doc.category, style: TextStyle(fontSize: 10, color: PatientVisualStyle.textSecondary)),
             ),
             const SizedBox(width: 8),
             Text(formatDateTimeFull(doc.uploadedAt), style: const TextStyle(fontSize: 11)),

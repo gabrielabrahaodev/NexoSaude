@@ -1,3 +1,5 @@
+import '../clinical_patient_view.dart';
+import '../../agenda/clinical_agenda_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:url_launcher/url_launcher.dart'; 
@@ -17,7 +19,8 @@ import '../../../models/supplier_model.dart';
 
 class PatientFinancialTab extends StatefulWidget {
   final String patientId;
-  const PatientFinancialTab({super.key, required this.patientId});
+  final bool embedded;
+  const PatientFinancialTab({super.key, required this.patientId, this.embedded = false});
 
   @override
   State<PatientFinancialTab> createState() => _PatientFinancialTabState();
@@ -832,7 +835,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                         "${prog.paid}/${prog.total} pagas",
                         style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary)),
+                            color: PatientVisualStyle.textSecondary)),
                     const SizedBox(height: 6),
                     LinearProgressIndicator(
                       value: prog.total == 0
@@ -1037,7 +1040,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     } else if (!isIncome) {
       bgColor = Colors.orange[50]!;
     } else if (isPending) {
-      bgColor = AppColors.surface;
+      bgColor = PatientVisualStyle.surface;
     } else {
       bgColor = Colors.green[50]!;
     }
@@ -1058,9 +1061,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
         ThemeData.estimateBrightnessForColor(bgColor) ==
             Brightness.light;
     final titleColor =
-        onLight ? const Color(0xFF1A1D21) : AppColors.textPrimary;
+        onLight ? const Color(0xFF1A1D21) : PatientVisualStyle.textPrimary;
     final subColor =
-        onLight ? Colors.grey[800]! : AppColors.textSecondary;
+        onLight ? Colors.grey[800]! : PatientVisualStyle.textSecondary;
 
     // Variáveis visuais
     double taxVal = 0.0;
@@ -1160,7 +1163,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.red.withValues(alpha: 0.2))),
+                  decoration: BoxDecoration(color: PatientVisualStyle.surface, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.red.withValues(alpha: 0.2))),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -1465,7 +1468,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                              }
                           },
                           selectedColor: AppColors.primary,
-                          labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.textPrimary),
+                          labelStyle: TextStyle(color: isSelected ? Colors.white : PatientVisualStyle.textPrimary),
                         );
                       }).toList(),
                     ),
@@ -1555,7 +1558,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                       Container(
                         margin: const EdgeInsets.symmetric(vertical: 10),
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+                        decoration: BoxDecoration(color: PatientVisualStyle.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
                         child: Column(
                           children: [
                             if (feeProfile != null)
@@ -1599,7 +1602,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                               hint: const Text("Quem executou?"),
                               items: _dentists.map((user) => DropdownMenuItem(value: user.id, child: Text(user.name))).toList(),
                               onChanged: (val) { setStateModal(() { selectedProfessionalId = val; }); },
-                              decoration: InputDecoration(isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
+                              decoration: InputDecoration(isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
                           ),
                           
                           if (selectedProfessionalId != null) ...[
@@ -1608,7 +1611,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                Container(
                                  padding: const EdgeInsets.all(8),
                                  margin: const EdgeInsets.only(bottom: 10),
-                                  decoration: BoxDecoration(color: AppColors.surface.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.brown.shade200)),
+                                  decoration: BoxDecoration(color: PatientVisualStyle.surface.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.brown.shade200)),
                                  child: Column(
                                    children: [
                                      const Align(alignment: Alignment.centerLeft, child: Text("Custo Operacional", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.brown))),
@@ -1619,7 +1622,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                         hint: const Text("Fornecedor"),
                                         items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
                                         onChanged: (val) => setStateModal(() => selectedSupplierId = val),
-                                        decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 10), border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
+                                        decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 10), border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
                                      ),
                                      const SizedBox(height: 8),
                                      Row(
@@ -1628,7 +1631,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                            child: TextField(
                                               controller: costCtrl,
                                               keyboardType: TextInputType.number,
-                                              decoration: InputDecoration(labelText: "Valor Custo", prefixText: "R\$ ", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
+                                              decoration: InputDecoration(labelText: "Valor Custo", prefixText: "R\$ ", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
                                               onChanged: (v) => recalculateFromPercent(),
                                            ),
                                          ),
@@ -1637,7 +1640,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                            child: InkWell(
                                              onTap: () => pickGenericDate((d) => costDueDate = d, costDueDate),
                                              child: InputDecorator(
-                                               decoration: InputDecoration(labelText: "Vencimento", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+                                               decoration: InputDecoration(labelText: "Vencimento", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                                                child: Text(formatDateShort(costDueDate), style: const TextStyle(fontSize: 13)),
                                              ),
                                            ),
@@ -1661,11 +1664,11 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                               children: [
                                 SizedBox(
                                   width: 80,
-                                  child: TextField(controller: commPercentCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "%", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true), onChanged: (v) => recalculateFromPercent()),
+                                  child: TextField(controller: commPercentCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "%", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true), onChanged: (v) => recalculateFromPercent()),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: TextField(controller: commValueCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "Valor Repasse", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true, prefixText: "R\$ "), onChanged: (v) => recalculateFromValue()),
+                                  child: TextField(controller: commValueCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "Valor Repasse", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true, prefixText: "R\$ "), onChanged: (v) => recalculateFromValue()),
                                 ),
                               ],
                             ),
@@ -1711,7 +1714,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                 hint: const Text("Selecione o Laboratório"),
                                 items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
                                 onChanged: (val) => setStateModal(() => selectedLabId = val),
-                                decoration: InputDecoration(isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
+                                decoration: InputDecoration(isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
                             ),
                             const SizedBox(height: 8),
                             Row(
@@ -1720,7 +1723,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                   child: TextField(
                                     controller: labCostCtrl,
                                     keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(labelText: "Custo Estimado", prefixText: "R\$ ", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
+                                    decoration: InputDecoration(labelText: "Custo Estimado", prefixText: "R\$ ", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -1728,7 +1731,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                   child: InkWell(
                                     onTap: () => pickGenericDate((d) => labDeliveryDate = d, labDeliveryDate),
                                     child: InputDecorator(
-                                      decoration: InputDecoration(labelText: "Previsão Entrega", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+                                      decoration: InputDecoration(labelText: "Previsão Entrega", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                                       child: Text(formatDateFull(labDeliveryDate), style: const TextStyle(fontSize: 13)),
                                     ),
                                   ),
@@ -1951,6 +1954,15 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     );
   }
 
+  void _chooseOpenCharge(List<FinancialModel> docs) {
+    final open = FinancialService.visibleCharges(docs).where((f) => !f.isPaid && f.status.toLowerCase() != 'cancelado').toList();
+    if (open.isEmpty) { _toast('Nenhuma cobrança em aberto. Novos lançamentos seguem o fluxo de Orçamentos e Tratamentos.'); return; }
+    showModalBottomSheet(context: context, isScrollControlled: true, builder: (ctx) => SafeArea(child: SizedBox(height: MediaQuery.sizeOf(ctx).height * .6, child: ListView(children: [
+      const ListTile(title: Text('Escolha a cobrança para receber', style: TextStyle(fontWeight: FontWeight.w700))),
+      for (final f in open) ListTile(title: Text(f.title), subtitle: Text(formatBRL(f.amount - f.paidAmount)), trailing: const Icon(Icons.chevron_right), onTap: () { Navigator.pop(ctx); final family = FinancialService.familyOf(docs, f); if (family.parent != null || family.children.isNotEmpty) { _showFamilyModal(f, docs); } else { _showReceiveDialog(context, f); } }),
+    ]))));
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -2048,6 +2060,29 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                     maxValue != null ||
                     _procedureFilter != null;
 
+                if (clinicalAgendaEnabled) {
+                  final docs = [for (final e in timeline) if (e is FinancialModel) e];
+                  final children = <Widget>[
+                    PatientSectionHeading(title: 'Livro caixa & cobranças do paciente', subtitle: 'Transações registradas, pendências e pagamentos', action: Wrap(spacing: 8, runSpacing: 8, children: [
+                      OutlinedButton.icon(onPressed: () => _openFilterSheet(procedures), icon: const Icon(Icons.filter_list, size: 16), label: Text(_activeFilterCount > 0 ? 'Filtros ($_activeFilterCount)' : 'Filtros')),
+                      OutlinedButton.icon(onPressed: _toggleDueSort, icon: const Icon(Icons.swap_vert, size: 16), label: Text(_sortMode == 'dueAsc' ? 'Próximos' : _sortMode == 'dueDesc' ? 'Distantes' : 'Registro')),
+                      FilledButton.icon(onPressed: () => _chooseOpenCharge(docs), icon: const Icon(Icons.add, size: 17), label: const Text('Novo recebimento')),
+                    ])),
+                    ClinicalPatientLedger(professionals: {for (final d in _dentists) d.id: d.name}, charges: [for (final item in visible) if (item is FinancialModel) item],
+                      onOpen: (f) => _showFamilyModal(f, docs),
+                      onReceive: (f) {
+                        final family = FinancialService.familyOf(docs, f);
+                        if (family.children.isNotEmpty || family.parent != null || FinancialModel.isReplaced(f.status)) { _showFamilyModal(f, docs); }
+                        else { _showReceiveDialog(context, f); }
+                      }),
+                    if (visible.any((e) => e is ExpenseModel)) ...[
+                      const PatientSectionHeading(title: 'Custos e repasses', subtitle: 'Despesas vinculadas ao paciente'),
+                      for (final e in visible.whereType<ExpenseModel>()) _buildTimelineItem(e, false),
+                    ],
+                  ];
+                  if (widget.embedded) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+                  return ListView(padding: const EdgeInsets.all(16), children: children);
+                }
                 return Column(
                   children: [
                     const SizedBox(height: 12),

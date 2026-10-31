@@ -1,3 +1,4 @@
+import '../clinical_patient_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../ui/app_theme.dart';
@@ -79,7 +80,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: AppColors.isDark
-                                ? AppColors.background
+                                ? PatientVisualStyle.background
                                 : Colors.blue[50],
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.blue.withValues(alpha: 0.2))
@@ -120,7 +121,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                                 const SizedBox(height: 5),
                                 TextField(
                                   controller: tempDescriptionCtrl,
-                                  decoration: InputDecoration(labelText: "Descrição", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
+                                  decoration: InputDecoration(labelText: "Descrição", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
@@ -129,7 +130,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                                       child: TextField(
                                         controller: tempPriceCtrl,
                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        decoration: InputDecoration(labelText: "Valor (R\$)", hintText: "0,00", isDense: true, border: OutlineInputBorder(), fillColor: AppColors.surface, filled: true),
+                                        decoration: InputDecoration(labelText: "Valor (R\$)", hintText: "0,00", isDense: true, border: OutlineInputBorder(), fillColor: PatientVisualStyle.surface, filled: true),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
@@ -207,7 +208,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
                         const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(color: PatientVisualStyle.surface, borderRadius: BorderRadius.circular(8)),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [

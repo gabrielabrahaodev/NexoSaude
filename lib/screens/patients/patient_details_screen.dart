@@ -1,3 +1,5 @@
+import '../agenda/clinical_agenda_view.dart';
+import 'clinical_patient_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:odonto_controle/models/financial_model.dart';
@@ -27,7 +29,7 @@ class PatientDetailsScreen extends StatefulWidget {
   final String? phone;
   final String? birth;
   final String? cpf;
-  final int initialTab;
+  final int? initialTab;
 
   const PatientDetailsScreen({
     super.key,
@@ -36,7 +38,7 @@ class PatientDetailsScreen extends StatefulWidget {
     this.phone,
     this.birth,
     this.cpf,
-    this.initialTab = 0,
+    this.initialTab,
   });
 
   @override
@@ -57,6 +59,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final caps = ClinicCapabilities.current();
+    if (clinicalAgendaEnabled) return ClinicalPatientScreen(patientId: widget.patientId, fallbackName: widget.patientName, initialTab: widget.initialTab);
 
     // Calcula número de tabs dinamicamente
     // Dental: 9 tabs | Psychology: 6 tabs (sem Orçamentos, Odontograma, Laboratório)
@@ -65,7 +68,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
     return DefaultTabController(
       length: tabCount,
-      initialIndex: widget.initialTab.clamp(0, tabCount - 1),
+      initialIndex: (widget.initialTab ?? 0).clamp(0, tabCount - 1),
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
