@@ -1,19 +1,56 @@
 @echo off
+setlocal EnableExtensions DisableDelayedExpansion
+rem Sempre executar a partir da pasta deste BAT, inclusive ao abrir pelo Explorer.
+pushd "%~dp0"
+if errorlevel 1 goto :directory_error
+call :deploy
+set "DEPLOY_EXIT_CODE=%ERRORLEVEL%"
+popd
+goto :finish
+
+:directory_error
+echo ERRO: nao foi possivel abrir a pasta do projeto.
+set "DEPLOY_EXIT_CODE=1"
+
+:finish
+if not "%DEPLOY_EXIT_CODE%"=="0" echo ERRO: deploy interrompido. Codigo de saida: %DEPLOY_EXIT_CODE%. Verifique a mensagem acima.
+rem Use --no-pause somente para automacao que ja captura a saida.
+if /I not "%~1"=="--no-pause" pause
+exit /b %DEPLOY_EXIT_CODE%
+
+:deploy
+echo --- VERIFICANDO REQUISITOS ---
+where powershell.exe >nul 2>nul
+if errorlevel 1 (
+  echo ERRO: PowerShell nao encontrado no PATH.
+  exit /b 1
+)
+where flutter >nul 2>nul
+if errorlevel 1 (
+  echo ERRO: Flutter nao encontrado no PATH. Verifique a instalacao do Flutter.
+  exit /b 1
+)
+where firebase >nul 2>nul
+if errorlevel 1 (
+  echo ERRO: Firebase CLI nao encontrado no PATH. Instale com npm install -g firebase-tools.
+  exit /b 1
+)
+if not defined PRIVATE_FILES_API_URL (
+  echo ERRO: configure PRIVATE_FILES_API_URL com a URL HTTPS base do Worker Cloudflare.
+  echo No PowerShell, defina $env:PRIVATE_FILES_API_URL antes de executar .\deploy.bat.
+  echo Deploy cancelado. Nenhum arquivo foi publicado.
+  exit /b 1
+)
 echo --- 0. CARIMBANDO VERSAO DO PWA ---
-powershell -ExecutionPolicy Bypass -File tool\bump_version.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File "tool\bump_version.ps1"
 if errorlevel 1 (
   echo ERRO: nao foi possivel atualizar a versao do PWA.
   exit /b 1
 )
 echo --- 1. LIMPANDO E GERANDO BUILD ---
-if "%PRIVATE_FILES_API_URL%"=="" (
-  echo ERRO: configure PRIVATE_FILES_API_URL com a URL HTTPS base do Worker Cloudflare.
-  echo Ele atende documentos privados e pedidos de trial com rate-limit. Deploy cancelado.
-  exit /b 1
-)
 call flutter clean
 if errorlevel 1 exit /b 1
-call flutter build web --base-href "/sistema-interno/" --dart-define=PRIVATE_FILES_API_URL=%PRIVATE_FILES_API_URL%
+call flutter build web --base-href "/sistema-interno/" "--dart-define=PRIVATE_FILES_API_URL=%PRIVATE_FILES_API_URL%"
 if errorlevel 1 exit /b 1
 call powershell -NoProfile -ExecutionPolicy Bypass -File tool\write_worker_config.ps1 -OutputPath "build\web\worker-config.js" -WorkerUrl "%PRIVATE_FILES_API_URL%"
 if errorlevel 1 exit /b 1
@@ -73,4 +110,4 @@ if errorlevel 1 (
 )
 
 echo --- SUCESSO! SITE ATUALIZADO ---
-pause
+exit /b 0

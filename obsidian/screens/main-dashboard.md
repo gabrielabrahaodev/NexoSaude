@@ -62,3 +62,5 @@ O índice 2 usa `PatientWorkspace` com chave da clínica. Selecionar uma linha d
 ## Cabeçalho — ajuste PR #2
 
 O nome do usuário aparece somente no rodapé do menu. O cabeçalho compartilhado de todas as telas exibe a navegação da clínica, sem repetir a identidade do operador. Auditoria e nomes dos profissionais nos dados clínicos não são alterados.
+
+- Deploy BAT: usa a pasta do próprio script (`pushd %~dp0`), valida PATH de PowerShell/Flutter/Firebase e variável `PRIVATE_FILES_API_URL` antes de carimbar/buildar. A execução interna retorna ao wrapper e pausa tanto no sucesso quanto na falha. `--no-pause` permite automação preservando exit code. Não publica Rules nem índices.
