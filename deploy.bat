@@ -35,11 +35,16 @@ if errorlevel 1 (
   echo ERRO: Firebase CLI nao encontrado no PATH. Instale com npm install -g firebase-tools.
   exit /b 1
 )
-if not defined PRIVATE_FILES_API_URL (
-  echo ERRO: configure PRIVATE_FILES_API_URL com a URL HTTPS base do Worker Cloudflare.
-  echo No PowerShell, defina $env:PRIVATE_FILES_API_URL antes de executar .\deploy.bat.
-  echo Deploy cancelado. Nenhum arquivo foi publicado.
-  exit /b 1
+rem Integracao R2/Worker adormecida por padrao; ativacao futura e explicita.
+set "DEPLOY_WORKER_URL="
+if /I "%NEXO_ENABLE_PRIVATE_STORAGE%"=="true" (
+  if not defined PRIVATE_FILES_API_URL (
+    echo ERRO: integracao privada ativada sem PRIVATE_FILES_API_URL.
+    exit /b 1
+  )
+  set "DEPLOY_WORKER_URL=%PRIVATE_FILES_API_URL%"
+) else (
+  echo INFO: integracao R2/Worker desativada. Deploy segue normalmente.
 )
 echo --- 0. CARIMBANDO VERSAO DO PWA ---
 powershell -NoProfile -ExecutionPolicy Bypass -File "tool\bump_version.ps1"
@@ -50,9 +55,13 @@ if errorlevel 1 (
 echo --- 1. LIMPANDO E GERANDO BUILD ---
 call flutter clean
 if errorlevel 1 exit /b 1
-call flutter build web --base-href "/sistema-interno/" "--dart-define=PRIVATE_FILES_API_URL=%PRIVATE_FILES_API_URL%"
+call flutter build web --base-href "/sistema-interno/" "--dart-define=PRIVATE_FILES_API_URL=%DEPLOY_WORKER_URL%"
 if errorlevel 1 exit /b 1
-call powershell -NoProfile -ExecutionPolicy Bypass -File tool\write_worker_config.ps1 -OutputPath "build\web\worker-config.js" -WorkerUrl "%PRIVATE_FILES_API_URL%"
+if defined DEPLOY_WORKER_URL (
+  powershell -NoProfile -ExecutionPolicy Bypass -File tool\write_worker_config.ps1 -OutputPath "build\web\worker-config.js" -WorkerUrl "%DEPLOY_WORKER_URL%"
+) else (
+  powershell -NoProfile -ExecutionPolicy Bypass -File tool\write_worker_config.ps1 -OutputPath "build\web\worker-config.js" -Disabled
+)
 if errorlevel 1 exit /b 1
 
 echo --- 2. ORGANIZANDO PASTAS DE SEGURANCA ---

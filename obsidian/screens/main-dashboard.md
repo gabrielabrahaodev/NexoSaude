@@ -63,4 +63,6 @@ O índice 2 usa `PatientWorkspace` com chave da clínica. Selecionar uma linha d
 
 O nome do usuário aparece somente no rodapé do menu. O cabeçalho compartilhado de todas as telas exibe a navegação da clínica, sem repetir a identidade do operador. Auditoria e nomes dos profissionais nos dados clínicos não são alterados.
 
-- Deploy BAT: usa a pasta do próprio script (`pushd %~dp0`), valida PATH de PowerShell/Flutter/Firebase e variável `PRIVATE_FILES_API_URL` antes de carimbar/buildar. A execução interna retorna ao wrapper e pausa tanto no sucesso quanto na falha. `--no-pause` permite automação preservando exit code. Não publica Rules nem índices.
+- Deploy BAT: usa a pasta do próprio script (`pushd %~dp0`), valida PATH de PowerShell/Flutter/Firebase antes de carimbar/buildar. A execução interna retorna ao wrapper e pausa tanto no sucesso quanto na falha. `--no-pause` permite automação preservando exit code. Não publica Rules nem índices.
+
+- R2/Worker adormecido por decisão do usuário: deploy padrão ignora PRIVATE_FILES_API_URL herdada e compila URL vazia; gera worker-config.js com origem vazia para não reutilizar configuração antiga. Não exige conta/Worker. Futuro opt-in: NEXO_ENABLE_PRIVATE_STORAGE=true e PRIVATE_FILES_API_URL real; somente nesse modo exige/valida URL. Sem integração, novos uploads privados e pedidos de trial continuam indisponíveis com aviso; nenhuma gravação insegura alternativa foi habilitada.
