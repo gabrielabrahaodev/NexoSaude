@@ -1,28 +1,42 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../ui/app_theme.dart';
-import '../../widgets/page_header.dart';
+import 'clinical_dashboard_view.dart';
+
 import '../../models/financial_model.dart';
+import '../../models/patient_model.dart';
+import '../../utils/display.dart' show parseBRL;
+import '../agenda/agenda_cell_factory.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/session_manager.dart';
-import '../../utils/display.dart';
+
 
 /// Dashboard de KPIs da clínica (item 0 do menu).
 ///
 /// Cabeçalho + 4 cards + próximos vencimentos + aniversariantes,
 /// com largura máxima para não esticar em telas ultrawide.
-class KpiDashboardScreen extends StatelessWidget {
+class KpiDashboardScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigate;
 
   const KpiDashboardScreen({super.key, this.onNavigate});
+
+  @override
+  State<KpiDashboardScreen> createState() => _KpiDashboardScreenState();
+}
+
+class _KpiDashboardScreenState extends State<KpiDashboardScreen> {
+  ValueChanged<int>? get onNavigate => widget.onNavigate;
+  String? _streamKey;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _financialStream;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _appointmentsStream;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _birthdaysStream;
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _pendingFinancial(
       String clinicId) {
     return FirebaseFirestore.instance
         .collection('financial')
         .where('clinicId', isEqualTo: clinicId)
-        .where('status', whereIn: ['pendente', 'pending'])
+        .where('status', whereIn: ['pendente', 'pending', 'cobrado', 'parcial', 'partial'])
         .where('type', isEqualTo: 'income')
         .snapshots();
   }
@@ -37,13 +51,13 @@ class KpiDashboardScreen extends StatelessWidget {
   }
 
   double _toDouble(dynamic value) {
-    if (value is num) return value.toDouble();
-    return double.tryParse('$value'.replaceAll(',', '.')) ?? 0.0;
+    return parseBRL(value);
   }
 
   DateTime? _toDate(dynamic value) {
     if (value is Timestamp) return value.toDate();
-    return null;
+    if (value is DateTime) return value;
+    return value is String ? DateTime.tryParse(value) : null;
   }
 
   int? _birthMonth(String? birthDate) {
@@ -79,27 +93,32 @@ class KpiDashboardScreen extends StatelessWidget {
     final monthLabel =
         DateFormat('MMMM yyyy', 'pt_BR').format(now);
 
+    final streamKey = '$clinicId|$startOfDay';
+    if (_streamKey != streamKey) {
+      _streamKey = streamKey;
+      // Explicit clinicId scope is required even for owner/ALL sessions.
+      _financialStream = _pendingFinancial(clinicId);
+      _appointmentsStream = FirebaseFirestore.instance.collection('appointments')
+          .where('clinicId', isEqualTo: clinicId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThan: Timestamp.fromDate(endOfDay)).snapshots();
+      _birthdaysStream = FirebaseFirestore.instance.collection('patients')
+          .where('clinicId', isEqualTo: clinicId)
+          .where('birthMonth', isEqualTo: now.month.toString().padLeft(2, '0')).snapshots();
+    }
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _pendingFinancial(clinicId),
+      stream: _financialStream,
       builder: (context, finSnap) {
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('appointments')
-              .where('clinicId', isEqualTo: clinicId)
-              .where('date',
-                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-              .where('date', isLessThan: Timestamp.fromDate(endOfDay))
-              .snapshots(),
+          stream: _appointmentsStream,
           builder: (context, apptSnap) {
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('patients')
-                  .where('clinicId', isEqualTo: clinicId)
-                  .where('birthMonth',
-                      isEqualTo:
-                          DateTime.now().month.toString().padLeft(2, '0'))
-                  .snapshots(),
+              stream: _birthdaysStream,
               builder: (context, patSnap) {
+                if (finSnap.hasError || apptSnap.hasError || patSnap.hasError) {
+                  return const Center(child: Text('Não foi possível carregar o Dashboard. Tente novamente ao reabrir a tela.'));
+                }
                 if (finSnap.connectionState == ConnectionState.waiting ||
                     apptSnap.connectionState == ConnectionState.waiting ||
                     patSnap.connectionState == ConnectionState.waiting) {
@@ -114,10 +133,11 @@ class KpiDashboardScreen extends StatelessWidget {
                 final upcoming = <Map<String, dynamic>>[];
                 for (final doc in finSnap.data?.docs ?? []) {
                   final data = doc.data();
-                  if (_isPaid(data)) continue;
+                  if (_isPaid(data) || _toDouble(data['amount']) <= _toDouble(data['paidAmount'])) continue;
                   final due = _toDate(data['dueDate']);
                   final amount =
                       _toDouble(data['amount']) - _toDouble(data['paidAmount']);
+                  if (amount <= 0) continue;
                   if (due != null &&
                       !due.isBefore(startOfMonth) &&
                       due.isBefore(startOfNextMonth)) {
@@ -129,7 +149,7 @@ class KpiDashboardScreen extends StatelessWidget {
                   }
                   upcoming.add({
                     'name': '${data['patientName'] ?? 'Paciente'}',
-                    'title': '${data['title'] ?? ''}',
+                    'title': '${data['title'] ?? data['description'] ?? ''}',
                     'due': due,
                     'amount': amount,
                   });
@@ -154,10 +174,11 @@ class KpiDashboardScreen extends StatelessWidget {
                 final weekAgo = startOfDay.subtract(const Duration(days: 7));
                 for (final doc in finSnap.data?.docs ?? []) {
                   final data = doc.data();
-                  if (_isPaid(data)) continue;
+                  if (_isPaid(data) || _toDouble(data['amount']) <= _toDouble(data['paidAmount'])) continue;
                   final due = _toDate(data['dueDate']);
                   if (due != null && due.isBefore(startOfDay)) {
-                    overdueIds.add('${data['patientId'] ?? ''}');
+                    final patientId = '${data['patientId'] ?? ''}';
+                    if (patientId.isNotEmpty) overdueIds.add(patientId);
                     if (!due.isAfter(weekAgo)) oldOverdueCount++;
                   }
                 }
@@ -181,267 +202,31 @@ class KpiDashboardScreen extends StatelessWidget {
                 final birthdays = <Map<String, dynamic>>[];
                 for (final doc in patSnap.data?.docs ?? []) {
                   final data = doc.data();
-                  if (_birthMonth(data['birthDate']?.toString()) ==
+                  final birthDate = PatientModel.fromMap(doc.id, data).birthDate;
+                  if (_birthMonth(birthDate) ==
                       now.month) {
                     birthdays.add({
                       'name': '${data['name'] ?? 'Sem nome'}',
-                      'day': _birthDay(data['birthDate']?.toString()) ?? 0,
+                      'day': _birthDay(birthDate) ?? 0,
                     });
                   }
                 }
                 birthdays.sort((a, b) =>
                     (a['day'] as int).compareTo(b['day'] as int));
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(maxWidth: 1100),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _Header(
-                            clinicName:
-                                session.currentClinicName ?? 'Clínica',
-                            monthLabel: monthLabel,
-                          ),
-                          const SizedBox(height: 12),
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final narrow =
-                                  constraints.maxWidth < 720;
-                              final cards = [
-                                _KpiCard(
-                                  label: "A receber",
-                                  value:
-                                      "${formatBRL(toReceive)}",
-                                  caption: "neste mês",
-                                  color: const Color(0xFF1E88E5),
-                                  icon: Icons.trending_up,
-                                ),
-                                _KpiCard(
-                                  label: "Inadimplência",
-                                  value:
-                                      "${formatBRL(overdue)}",
-                                  caption: "$overdueCount em atraso",
-                                  color: const Color(0xFFE53935),
-                                  icon: Icons.warning_amber_rounded,
-                                ),
-                                _KpiCard(
-                                  label: "Hoje",
-                                  value: "$todayCount",
-                                  caption: todayCount == 1
-                                      ? "agendamento"
-                                      : "agendamentos",
-                                  color: const Color(0xFF43A047),
-                                  icon: Icons.calendar_today,
-                                ),
-                                _KpiCard(
-                                  label: "Aniversariantes",
-                                  value: "${birthdays.length}",
-                                  caption: DateFormat('MMMM', 'pt_BR')
-                                      .format(now),
-                                  color: const Color(0xFF8E24AA),
-                                  icon: Icons.cake,
-                                ),
-                              ];
-                              if (narrow) {
-                                return Column(
-                                  children: [
-                                    Row(children: [
-                                      Expanded(child: cards[0]),
-                                      const SizedBox(width: 12),
-                                      Expanded(child: cards[1]),
-                                    ]),
-                                    const SizedBox(height: 12),
-                                    Row(children: [
-                                      Expanded(child: cards[2]),
-                                      const SizedBox(width: 12),
-                                      Expanded(child: cards[3]),
-                                    ]),
-                                  ],
-                                );
-                              }
-                              return IntrinsicHeight(
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    for (var i = 0;
-                                        i < cards.length;
-                                        i++) ...[
-                                      if (i > 0)
-                                        const SizedBox(width: 12),
-                                      Expanded(child: cards[i]),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          if (noConfirm.isNotEmpty ||
-                              debtorsToday.isNotEmpty ||
-                              oldOverdueCount > 0) ...[
-                            _SectionTitle(
-                              icon: Icons.priority_high,
-                              title: "Exceções de hoje",
-                            ),
-                            const SizedBox(height: 8),
-                            _Panel(
-                              child: Column(
-                                children: [
-                                  if (debtorsToday.isNotEmpty)
-                                    ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: const Icon(
-                                          Icons.warning_amber_rounded,
-                                          color: Colors.red),
-                                      title: Text(
-                                          "${debtorsToday.length} paciente(s) de hoje com conta vencida",
-                                          style: const TextStyle(
-                                              fontWeight:
-                                                  FontWeight.w600,
-                                              fontSize: 13)),
-                                      subtitle: Text(
-                                          debtorsToday
-                                              .take(3)
-                                              .map((d) =>
-                                                  '${d.data()['patientName'] ?? 'Paciente'}')
-                                              .join(', '),
-                                          style: const TextStyle(
-                                              fontSize: 12)),
-                                      trailing: TextButton(
-                                        onPressed: onNavigate == null
-                                            ? null
-                                            : () => onNavigate!(7),
-                                        child: const Text("Cobranças"),
-                                      ),
-                                    ),
-                                  if (noConfirm.isNotEmpty)
-                                    ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: const Icon(
-                                          Icons.mark_email_unread_outlined,
-                                          color: Colors.orange),
-                                      title: Text(
-                                          "${noConfirm.length} agendamento(s) sem confirmação hoje",
-                                          style: const TextStyle(
-                                              fontWeight:
-                                                  FontWeight.w600,
-                                              fontSize: 13)),
-                                      subtitle: Text(
-                                          noConfirm
-                                              .take(3)
-                                              .map((d) =>
-                                                  '${d.data()['patientName'] ?? 'Paciente'}')
-                                              .join(', '),
-                                          style: const TextStyle(
-                                              fontSize: 12)),
-                                      trailing: TextButton(
-                                        onPressed: onNavigate == null
-                                            ? null
-                                            : () => onNavigate!(1),
-                                        child: const Text("Agenda"),
-                                      ),
-                                    ),
-                                  if (oldOverdueCount > 0)
-                                    ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: const Icon(Icons.schedule,
-                                          color: Colors.red),
-                                      title: Text(
-                                          "$oldOverdueCount conta(s) vencida(s) há 7+ dias",
-                                          style: const TextStyle(
-                                              fontWeight:
-                                                  FontWeight.w600,
-                                              fontSize: 13)),
-                                      trailing: TextButton(
-                                        onPressed: onNavigate == null
-                                            ? null
-                                            : () => onNavigate!(7),
-                                        child: const Text("Cobranças"),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          _SectionTitle(
-                            icon: Icons.schedule,
-                            title: "Próximos vencimentos",
-                            actionLabel: "Cobranças",
-                            onAction: onNavigate == null
-                                ? null
-                                : () => onNavigate!(7),
-                          ),
-                          const SizedBox(height: 8),
-                          _Panel(
-                            child: upcoming.isEmpty
-                                ? const _EmptyState(
-                                    icon: Icons.check_circle_outline,
-                                    text:
-                                        "Nenhuma conta pendente. Tudo em dia!",
-                                  )
-                                : Column(
-                                    children: [
-                                      for (var i = 0;
-                                          i <
-                                              upcoming
-                                                  .take(5)
-                                                  .length;
-                                          i++) ...[
-                                        if (i > 0)
-                                          const Divider(
-                                              height: 1, indent: 44),
-                                        _DueRow(
-                                          item: upcoming[i],
-                                          startOfDay: startOfDay,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                          ),
-                          const SizedBox(height: 16),
-                          _SectionTitle(
-                            icon: Icons.cake_outlined,
-                            title: "Aniversariantes do mês",
-                            actionLabel: "Pacientes",
-                            onAction: onNavigate == null
-                                ? null
-                                : () => onNavigate!(2),
-                          ),
-                          const SizedBox(height: 8),
-                          _Panel(
-                            child: birthdays.isEmpty
-                                ? const _EmptyState(
-                                    icon:
-                                        Icons.sentiment_satisfied_alt,
-                                    text:
-                                        "Nenhum aniversariante este mês.",
-                                  )
-                                : Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: birthdays
-                                        .map((b) => Chip(
-                                              avatar: const Icon(
-                                                  Icons.cake,
-                                                  size: 16),
-                                              label: Text(
-                                                  "${b['name']} • dia ${b['day']}",
-                                                  style:
-                                                      const TextStyle(
-                                                          fontSize: 13)),
-                                            ))
-                                        .toList(),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
+                return ClinicalDashboardView(
+                  monthLabel: monthLabel,
+                  toReceive: toReceive, overdue: overdue,
+                  overdueCount: overdueCount, todayCount: todayCount,
+                  oldOverdueCount: oldOverdueCount,
+                  unconfirmedCount: noConfirm.length,
+                  debtorsTodayCount: debtorsToday.length,
+                  upcoming: upcoming.take(5).toList(), birthdays: birthdays,
+                  now: now, onNavigate: onNavigate,
+                  onNewAppointment: () => AgendaCellFactory.openForm(
+                    context: context, date: now, time: '08:00',
+                    selectedDentistId: null,
+                    fullWeekdayName: (day) => const ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'][day - 1],
                   ),
                 );
               },
@@ -449,225 +234,6 @@ class KpiDashboardScreen extends StatelessWidget {
           },
         );
       },
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  final String clinicName;
-  final String monthLabel;
-
-  const _Header({required this.clinicName, required this.monthLabel});
-
-  @override
-  Widget build(BuildContext context) {
-    return PageTitle(
-      title: "Visão geral",
-      subtitle: "$clinicName • $monthLabel",
-    );
-  }
-}
-
-class _KpiCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final String caption;
-  final Color color;
-  final IconData icon;
-
-  const _KpiCard({
-    required this.label,
-    required this.value,
-    required this.caption,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const Spacer(),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: const TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-          Text(
-            caption,
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const _SectionTitle({
-    required this.icon,
-    required this.title,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.w700),
-        ),
-        const Spacer(),
-        if (actionLabel != null && onAction != null)
-          TextButton(
-            onPressed: onAction,
-            child: Text("Ver em $actionLabel"),
-          ),
-      ],
-    );
-  }
-}
-
-class _Panel extends StatelessWidget {
-  final Widget child;
-
-  const _Panel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _DueRow extends StatelessWidget {
-  final Map<String, dynamic> item;
-  final DateTime startOfDay;
-
-  const _DueRow({required this.item, required this.startOfDay});
-
-  @override
-  Widget build(BuildContext context) {
-    final due = item['due'] as DateTime?;
-    final isOverdue = due != null && due.isBefore(startOfDay);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isOverdue ? Colors.red : Colors.green,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${item['name']}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(
-                  '${item['title']}${due != null ? ' • Vence ${formatDateShort(due)}' : ''}',
-                  style:
-                      TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          if (isOverdue)
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                "ATRASADO",
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red),
-              ),
-            ),
-          Text(
-            "${formatBRL((item['amount'] as double))}",
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _EmptyState({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: Colors.grey[400]),
-          const SizedBox(width: 8),
-          Text(text, style: TextStyle(color: AppColors.textSecondary)),
-        ],
-      ),
     );
   }
 }
