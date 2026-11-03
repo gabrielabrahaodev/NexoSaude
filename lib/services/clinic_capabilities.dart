@@ -34,7 +34,7 @@ class ClinicCapabilities {
   /// Normaliza papéis antigos em inglês e português para evitar que
   /// usuários legados desapareçam dos seletores de profissionais.
   static String normalizeRole(String role) {
-    final value = role.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
+    final value = role.trim().toLowerCase().replaceAll('ó', 'o').replaceAll('-', '_').replaceAll(' ', '_');
     switch (value) {
       case 'dentist':
       case 'dental_professional':

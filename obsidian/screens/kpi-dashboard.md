@@ -39,3 +39,6 @@ Visão do dia, cobrança prioritária (vermelho = vencido), parabéns do mês.
 - [[collections]] — "Ver em Cobranças"
 - [[patient-list]] — "Ver em Pacientes" (aniversariantes)
 - [[main-dashboard]] — shell que hospeda o KPI
+
+## Redesenho Clinical Precision — novembro/2026
+Apresentação em `clinical_dashboard_view.dart`, com quatro cartões, alertas de exceção, tabela de vencimentos e coluna de status/aniversariantes. Claro/escuro, coluna única no mobile e adaptação 2/4 cartões. Fontes memorizadas por clínica/dia; erros de streams bloqueiam valores parciais. Receitas `cobrado`, `parcial` e `partial` continuam pendentes; saldo não positivo é ignorado. Moeda pt-BR, nascimento Timestamp pelo PatientModel. Novo agendamento reutiliza AgendaCellFactory; lembretes navegam à régua manual. Sem telemetria real de ocupação/plantão: informação explícita, sem dados ilustrativos. Mês atual; valores de pacotes são os saldos registrados (apuração permanece em Cobranças). Roteiro e limitações: `docs/design/dashboard/TESTE.md`.

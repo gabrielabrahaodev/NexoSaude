@@ -1,9 +1,12 @@
 param(
     [Parameter(Mandatory = $true)][string]$OutputPath,
-    [Parameter(Mandatory = $true)][string]$WorkerUrl
+    [string]$WorkerUrl = '',
+    [switch]$Disabled
 )
 
 $ErrorActionPreference = 'Stop'
+$origin = ''
+if (-not $Disabled) {
 try {
     $uri = [System.Uri]::new($WorkerUrl.Trim())
 } catch {
@@ -19,6 +22,7 @@ if ($uri.Scheme -ne 'https' -or
 }
 
 $origin = $uri.GetLeftPart([System.UriPartial]::Authority)
+}
 $json = ConvertTo-Json -InputObject $origin -Compress
 $content = "window.NEXO_WORKER_URL = $json;" + [Environment]::NewLine
 $parent = Split-Path -Parent $OutputPath
@@ -30,4 +34,8 @@ if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
     $content,
     [System.Text.UTF8Encoding]::new($false)
 )
-Write-Output 'Configuração pública do Worker gerada no diretório de build.'
+if ($Disabled) {
+    Write-Output 'Integração privada desativada neste build.'
+} else {
+    Write-Output 'Configuração pública do Worker gerada no diretório de build.'
+}

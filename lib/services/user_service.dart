@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import 'clinic_capabilities.dart';
 import 'session_manager.dart';
 import 'clinic_member_directory.dart';
+import 'agenda_professionals.dart';
 
 /// Dentista padrão da próxima sessão (puro e testado): mantém o atual
 /// se ainda atende; senão o primeiro da lista; sem lista, o atual.
@@ -25,12 +26,22 @@ class UserService {
   Future<({String type})> _getClinicInfo(String clinicId) async {
     final doc = await _clinics.doc(clinicId).get();
     if (!doc.exists) return (type: 'dental');
-    final data = doc.data() as Map<String, dynamic>?;
+    final data = doc.data();
     return (type: data?['type']?.toString() ?? 'dental');
   }
 
   bool _matchesClinicType(String role, String clinicType) {
     return ClinicCapabilities.ofType(clinicType).matchesProfessionalRole(role);
+  }
+
+  /// Diretório público mínimo já adotado pela nova-audit. Alterações de
+  /// vínculo/status aparecem na agenda sem recarregar o aplicativo.
+  Stream<List<UserModel>> watchAgendaProfessionals(String clinicId) {
+    if (clinicId.isEmpty || clinicId == 'ALL') return Stream.value([]);
+    return _clinics.doc(clinicId).collection('members').snapshots().map((snapshot) =>
+      agendaProfessionalsFromMembers(snapshot.docs.map((doc) => {
+        ...doc.data(), 'uid': doc.id,
+      })));
   }
 
   // --- MÉTODO EXISTENTE (Mantido para compatibilidade) ---
@@ -68,7 +79,7 @@ class UserService {
     return _clinics.doc(clinicId).snapshots().asyncMap((clinicDoc) async {
       if (!clinicDoc.exists) return <Map<String, dynamic>>[];
 
-      final clinicData = clinicDoc.data() as Map<String, dynamic>?;
+      final clinicData = clinicDoc.data();
       final clinicType = clinicData?['type'] ?? 'dental';
       
       // 3. Lê somente a projeção pública mínima da clínica.

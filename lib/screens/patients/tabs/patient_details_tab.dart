@@ -1,3 +1,12 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../../models/patient_registration.dart';
+import '../../../models/patient_model.dart';
+import '../../../services/session_manager.dart';
+import '../../../utils/external_link.dart';
+import '../../agenda/clinical_agenda_view.dart';
+import '../clinical_registration_view.dart';
+import '../clinical_patient_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,7 +20,10 @@ import '../../../utils/display.dart';
 class PatientDetailsTab extends StatefulWidget {
   final String patientName;
   final String patientId; 
-  const PatientDetailsTab({super.key, required this.patientName, required this.patientId});
+  const PatientDetailsTab({super.key, required this.patientName, required this.patientId, this.embedded = false, this.patientStream});
+  final bool embedded;
+  /// Optional source for deterministic widget tests. Production watches the patient document.
+  final Stream<DocumentSnapshot<Map<String, dynamic>>>? patientStream;
 
   @override
   State<PatientDetailsTab> createState() => _PatientDetailsTabState();
@@ -28,6 +40,71 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
   final _rgCtrl = TextEditingController();
   final _birthCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+
+  late final Map<String, TextEditingController> _registrationControllers;
+  PatientRegistrationDraft? _registrationDraft;
+  bool _savingRegistration = false, _lookingUpCep = false;
+  int _cepRequestId = 0;
+  late Stream<DocumentSnapshot<Map<String, dynamic>>> _patientStream;
+  @override
+  void initState() {
+    super.initState();
+    _patientStream = _watchPatient();
+    _registrationControllers = {
+      'name': _nameCtrl, 'phone': _phoneCtrl, 'cpf': _cpfCtrl, 'rg': _rgCtrl, 'birthDate': _birthCtrl,
+      for (final key in ['socialName','profession','email','biologicalSex','maritalStatus','rgIssuer','cns','cep','street','number','complement','neighborhood','city','state','cityState','emergencyName','emergencyRelationship','emergencyPhone','referralSource']) key: TextEditingController(),
+    };
+  }
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _watchPatient() => widget.patientStream ?? (widget.patientId.isEmpty
+      ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
+      : FirebaseFirestore.instance.collection('patients').doc(widget.patientId).snapshots());
+
+  @override
+  void didUpdateWidget(covariant PatientDetailsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.patientId != widget.patientId || oldWidget.patientStream != widget.patientStream) {
+      _patientStream = _watchPatient();
+      _registrationDraft = null;
+      _isEditing = false;
+      _cepRequestId++;
+      _lookingUpCep = false;
+    }
+  }
+
+  @override
+  void dispose() { for (final c in {..._registrationControllers.values, _addressCtrl}) { c.dispose(); } super.dispose(); }
+  Future<void> _lookupCep() async {
+    final cep = _registrationControllers['cep']!.text.replaceAll(RegExp(r'\D'), '');
+    if (cep.length != 8) { toast(context, 'Informe um CEP com 8 dígitos.', error: true); return; }
+    final ticket = ++_cepRequestId;
+    final clinicId = SessionManager().currentClinicId;
+    setState(() => _lookingUpCep = true);
+    try {
+      final response = await http.get(Uri.https('viacep.com.br', '/ws/$cep/json/')).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) throw Exception('Consulta indisponível');
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map || '${decoded['erro']}'.toLowerCase() == 'true' || decoded['cep'] == null) throw Exception('CEP não encontrado');
+      if (!mounted || !_isEditing || ticket != _cepRequestId || clinicId != SessionManager().currentClinicId || _registrationControllers['cep']!.text.replaceAll(RegExp(r'\D'), '') != cep) return;
+      setState(() {
+        for (final entry in {'street':'logradouro', 'neighborhood':'bairro', 'city':'localidade', 'state':'uf'}.entries) {
+          _registrationControllers[entry.key]!.text = '${decoded[entry.value] ?? ''}';
+        }
+        _registrationControllers['cityState']!.text = '${decoded['localidade'] ?? ''} - ${decoded['uf'] ?? ''}';
+      });
+    } catch (_) { if (mounted && ticket == _cepRequestId) toast(context, 'Não foi possível consultar o CEP. Você pode preencher o endereço manualmente.', error: true); }
+    finally { if (mounted && ticket == _cepRequestId) setState(() => _lookingUpCep = false); }
+  }
+  Future<void> _saveClinicalRegistration(String docId) async {
+    if (_savingRegistration || _registrationDraft == null || _formKey.currentState?.validate() != true) return;
+    if (_registrationDraft!.original['clinicId'] != SessionManager().currentClinicId) { toast(context, 'A unidade mudou. Reabra o cadastro para salvar.', error: true); return; }
+    for (final entry in _registrationControllers.entries) { _registrationDraft!.values[entry.key] = entry.value.text.trim(); }
+    setState(() => _savingRegistration = true);
+    try {
+      await FirebaseFirestore.instance.collection('patients').doc(docId).update(_registrationDraft!.toPatch());
+      if (mounted) { setState(() => _isEditing = false); toast(context, 'Cadastro atualizado com sucesso!', ok: true); }
+    } catch (_) { if (mounted) toast(context, 'Não foi possível salvar o cadastro. Suas alterações continuam na tela.', error: true); }
+    finally { if (mounted) setState(() => _savingRegistration = false); }
+  }
 
   final maskPhone = MaskTextInputFormatter(mask: '(##) #####-####', filter: { "#": RegExp(r'[0-9]') }, type: MaskAutoCompletionType.lazy);
   final maskCPF = MaskTextInputFormatter(mask: '###.###.###-##', filter: { "#": RegExp(r'[0-9]') }, type: MaskAutoCompletionType.lazy);
@@ -180,10 +257,7 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
     }
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('patients')
-          .doc(widget.patientId)
-          .snapshots(),
+      stream: _patientStream,
       builder: (context, snapshot) {
         // 1. TRATAMENTO DE ERRO (Correção Principal)
         if (snapshot.hasError) {
@@ -216,14 +290,36 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
         var doc = snapshot.data!;
         var data = doc.data() as Map<String, dynamic>;
 
+        if (clinicalAgendaEnabled) {
+          if (!_isEditing) {
+            _registrationDraft = PatientRegistrationDraft.fromMap(data);
+            for (final entry in _registrationControllers.entries) { entry.value.text = _registrationDraft!.values[entry.key] ?? ''; }
+          }
+          final consent = data['lgpdPortalConsent'] is Map ? Map<String, dynamic>.from(data['lgpdPortalConsent']) : <String, dynamic>{};
+          final accepted = consent['accepted'] == true;
+          final at = consent['at'];
+          final summary = accepted ? (at is Timestamp ? 'Aceite do portal em ${formatDateTimeFull(at.toDate())}' : 'Aceite do portal registrado') : 'Sem aceite registrado';
+          final pdf = '${data['lgpdConsentDocumentUrl'] ?? ''}';
+          final form = ClinicalRegistrationView(controllers: _registrationControllers, formKey: _formKey, editing: _isEditing, saving: _savingRegistration, lookingUpCep: _lookingUpCep, channels: _registrationDraft!.reminderChannels,
+            inputFormatters: {'phone': [maskPhone], 'cpf': [maskCPF], 'birthDate': [maskDate], 'cep': [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(8)]},
+            onEdit: () => setState(() { _cepRequestId++; _lookingUpCep = false; _isEditing = !_isEditing; }),
+            onSave: () => _saveClinicalRegistration(doc.id), onLookupCep: _lookupCep,
+            onWhatsApp: () { final tab = openBlankTab(); openWhatsAppSafe(context, tab, phone: _phoneCtrl.text, message: ''); },
+            onChanged: () => setState(() {}), onChannel: (channel) => setState(() { if (!_registrationDraft!.reminderChannels.add(channel)) _registrationDraft!.reminderChannels.remove(channel); }),
+            consentSummary: summary, onOpenConsent: Uri.tryParse(pdf)?.scheme == 'https' ? () { final tab = openBlankTab(); openLinkSafe(tab, pdf); } : null,
+            portal: _portalSection(doc.id, '${data['portalToken'] ?? ''}', accepted, at),
+          );
+          return widget.embedded ? form : SingleChildScrollView(padding: const EdgeInsets.all(16), child: form);
+        }
+
         // Preenche os campos apenas se não estiver editando para não sobrescrever o que o usuário digita
         if (!_isEditing) {
           _nameCtrl.text = data['name'] ?? '';
           _phoneCtrl.text = data['phone'] ?? '';
           _cpfCtrl.text = data['cpf'] ?? '';
           _rgCtrl.text = data['rg'] ?? '';
-          _birthCtrl.text = data['birthDate'] ?? data['birth'] ?? '';
-          _addressCtrl.text = data['address'] ?? '';
+          _birthCtrl.text = PatientModel.fromMap(doc.id, data).birthDate ?? '';
+          _addressCtrl.text = PatientModel.fromMap(doc.id, data).address ?? '';
         }
 
         return SingleChildScrollView(
@@ -236,7 +332,7 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Dados Cadastrais", style: AppTextStyles.h2),
+                    Text("Dados Cadastrais", style: AppTextStyles.h2.copyWith(color: PatientVisualStyle.textPrimary)),
                     TextButton.icon(
                       icon: Icon(_isEditing ? Icons.cancel : Icons.edit, size: 18, color: _isEditing ? AppColors.danger : AppColors.primary),
                       label: Text(_isEditing ? "Cancelar" : "Editar", style: TextStyle(color: _isEditing ? AppColors.danger : AppColors.primary)),
@@ -395,7 +491,7 @@ class _PatientDetailsTabState extends State<PatientDetailsTab> {
       enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)), 
       disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade200)), 
       filled: !_isEditing,
-      fillColor: AppColors.surface,
+      fillColor: PatientVisualStyle.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
     );
   }

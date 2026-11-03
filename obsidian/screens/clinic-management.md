@@ -40,3 +40,7 @@ Nova clínica, renomear, trocar tipo dental/psicologia.
 - [[employee-manager]] — quem pode entrar em cada unidade
 
 - Excluir: a cascata inclui leads e projeção pública. Em clínica expirada/bloqueada, a exclusão completa pode falhar porque as Rules bloqueiam leitura/operações dessa clínica; necessário fluxo administrativo/servidor.
+
+## Preflight da exclusão (revisão 03/11/2026)
+
+`ClinicDeleteService.deleteClinic` impede início da cascata pelo navegador quando a clínica está bloqueada/expirada ou sem trial válido (ressalvas de legado descritas em `clinic_trial_policy.dart`). Confere os pacientes da unidade e arquivos remotos Cloudinary/R2 **antes da primeira gravação**; preserva `users/{uid}` e remove apenas o vínculo `allowedClinics` da clínica excluída. Lotes podem concluir parcialmente; para clínica bloqueada ou com arquivos remotos, usar diagnóstico e script administrativo em DRY-RUN conforme `migrate/DELETE-CLINIC.md`, sem executar `--apply` sem autorização. Ver [[auditoria-codigo-2026-11-03]], [[patients]], [[comms]].

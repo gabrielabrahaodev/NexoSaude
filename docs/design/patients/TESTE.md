@@ -1,0 +1,61 @@
+# Ficha do paciente — avaliação na PR #2
+
+Referências recebidas em 30/10/2026: `screen.png`, `code(3).html` e `DESIGN.md`.
+
+## Abrir
+
+Na branch `feat/agenda-clinical-dark`, executar `flutter pub get` e `flutter run -d chrome`. Abrir **Pacientes** e selecionar um cadastro. A abertura padrão mostra **Cadastro** em odontologia e psicologia. Odontograma contém somente o mapa dental. Links de Agenda/Atendimento continuam abrindo a aba solicitada. Psicologia mantém suas seis abas.
+
+## Conferir com contas de teste
+
+1. Conferir menu/unidade e `logo.png` original. Nome, situação, contato, CPF mascarado, ID e consentimento devem refletir o cadastro real. O selo LGPD aparece somente quando há aceite registrado.
+2. Na aba **Pagamentos**, conferir os quatro indicadores. Eles não aparecem nas outras abas. Valores dependem dos registros da clínica; dados ilustrativos e percentuais da imagem não são inseridos. Falha ou carregamento dos indicadores não deve ser apresentado como saldo confirmado.
+3. Clicar nas nove abas odontológicas ou seis de psicologia. Conferir edição do cadastro, anamnese, documentos, prontuário, laboratório e orçamentos existentes. Alternar unidade ou menu deve retirar a ficha anterior da área visível.
+4. Conferir o odontograma já salvo. Alterar uma face, salvar e reabrir. Testar raiz com pressão prolongada, endodontia, implante, coroa e suas restrições. Testar zoom +/−, ajuste à tela e arrastar. No celular o mapa começa em escala legível e permite arrastar até os demais dentes. Uma falha de leitura deve mostrar erro, não um mapa saudável editável.
+5. Tratamentos: conferir valores, parcelas, margem e diálogo financeiro. Receber parcela leva à seleção de cobranças reais em Pagamentos. Novo tratamento abre Orçamentos, mantendo o fluxo de aprovação existente. Encerrar exige confirmação e usa o serviço atual.
+6. Cobranças: testar filtro de valor/procedimento e ordenação. Livro caixa e cobranças devem aparecer apenas em Pagamentos. No desktop há tabela; no mobile, lista. Receber uma cobrança avulsa abre o diálogo existente; cobranças parceladas continuam no modal da família. Conferir pagamentos parciais, parcelas, cancelados, substituídos, estorno e correção. Novo recebimento seleciona um lançamento em aberto, sem criar cobrança arbitrária. Custos e repasses permanecem abaixo da tabela.
+7. Na aba **Cadastro**, atualizar resumo clínico e conferir alertas reais. O card de contexto não aparece nas outras abas. A atualização usa o resumo já existente no sistema, sem enviar dados para um serviço de IA externo.
+
+## Verificação automatizada
+
+`test/clinical_patient_view_test.dart` cobre larguras 320/390/768/1024/1440, identidade/CPF/consentimento, callbacks financeiros e de tratamento, faces/raiz do odontograma, zoom e salvar. Prévia interna renderizada em 390 e 1000px para comparação visual. Testes visuais usam dados controlados e não substituem a validação autenticada.
+
+A flag `--dart-define=AGENDA_CLINICAL_DARK=false` mantém a ficha anterior para comparação. Sem alteração de Rules, dependências ou deploy.
+
+
+## Correção das referências de Cadastro e Tratamentos
+
+- Odontograma não pode exibir o título Planos de Tratamento nem Livro Caixa. Conferir essas seções apenas em Tratamentos e Pagamentos, respectivamente.
+- Em Tratamentos, conferir título e botão Novo Tratamento, margem, valores alinhados à direita, progresso, Receber Parcela, Ver Dentes Vinculados e encerramento com confirmação. Conferir plano sem dentes associados: não devem aparecer vínculos inventados.
+- Cadastro: comparar os cinco cartões e suas duas colunas com `image(1).png`; editar e salvar todos os campos novos, cancelar e reabrir. Conferir paciente legado com endereço String e Map, sem perda de dados. Conferir telefone/CPF/data, CEP válido/ausente/falha de rede, resposta atrasada após cancelar e dados de emergência/preferências.
+- Consentimento e controles do portal continuam separados da gravação do cadastro. O PDF depende de documento registrado.
+- Testes adicionais em `patient_registration_test.dart` e `clinical_registration_view_test.dart` cobrem preservação de mapas, patch limitado ao cadastro, CPF, vínculos dentários explícitos e formulário em 320/390/600/1000/1440px.
+
+Validação da correção: 331 testes Flutter aprovados; análise estática sem erros; build Web release concluído. Prévia de Cadastro em 600px e de Tratamentos em 900px renderizada e conferida com as imagens enviadas, além dos testes de formulário em larguras de 320 a 1440px.
+
+## Abertura e foco
+
+Abrir pela lista deve selecionar Cadastro. Links diretos continuam selecionando a aba solicitada. Em Editar Dados, digitar frases completas sem clicar novamente no campo; conferir cursor no ponto inserido e ausência de carregamento entre letras. Receber atualização do documento durante a edição não deve apagar o texto local. Cancelar edição deve recuperar a última versão recebida. Cobertura em `patient_registration_focus_test.dart` e `patient_route_test.dart`.
+
+
+## Cores do odontograma e escolha de tema
+
+- No rodapé esquerdo, abaixo de Sair (desktop e menu lateral no celular), usar sol/lua para alternar claro/escuro. Confirmar a mesma preferência em Gestão → Configurações → Aparência e após novo login.
+- Conferir Agenda, Atendimento dental/psicologia, Cadastro, Tratamentos, Odontograma e Pagamentos em ambos os modos. Texto, campos, botões e menu devem continuar legíveis.
+- Abrir Cadastro, editar e alternar tema: preservar conteúdo e aba.
+- Odontograma: registrar restauração na oclusal, procedimento planejado e endodontia na raiz; conferir face, número e moldura correspondentes. Faces saudáveis vizinhas não recebem o preenchimento da restauração. Salvar e reabrir para confirmar os status; limpar uma face para remover sua marca.
+- Em 320/390px, conferir menu e alternância; zoom do mapa permanece disponível. Testes de componentes executam nos dois temas, e `clinical_theme_tooth_test.dart` verifica contraste, molduras e pixels do desenho.
+
+Validação desta revisão: 331 testes Flutter aprovados; análise com 0 erros e os mesmos 233 avisos/informações da base; build Web release concluído. Odontograma renderizado e inspecionado nos dois temas.
+
+
+## Abertura na região direita e rodapé
+
+- Digitar uma busca na lista, selecionar um paciente e conferir: sidebar, unidade e usuário permanecem no lugar; ficha inicia em Cadastro, sem animação de nova rota.
+- Voltar pela seta da ficha ou Back: mesma lista e busca anterior.
+- Trocar menu e unidade: paciente anterior não permanece visível nem reaparece em outra clínica.
+- Conferir sol/lua abaixo de Sair, no rodapé esquerdo; no celular, abrir o menu lateral. Não deve existir o ícone no cabeçalho.
+- `patient_workspace_test.dart` verifica região direita, identidade do menu, uma única rota, retorno com busca preservada e descarte por clínica em 390/1200px; `clinical_user_footer_test.dart` verifica posição e ações em ambos os temas e larguras 220/288/320px.
+
+
+Ajuste de visibilidade dos resumos: percorrer todas as abas em odontologia e psicologia, nos dois temas. Cadastro deve exibir somente contexto; Pagamentos, somente os quatro indicadores. Verificar também o layout anterior com a flag visual desligada. Cabeçalho/abas permanecem visíveis e não há lacunas dos blocos ocultos. Esta alteração foi conferida estruturalmente; não houve nova execução da suíte Flutter nesta rodada.

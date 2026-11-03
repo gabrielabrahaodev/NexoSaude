@@ -1,3 +1,4 @@
+import '../clinical_patient_view.dart';
 import 'dart:async'; // Necessário para o StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -215,7 +216,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: PatientVisualStyle.surface,
       appBar: AppBar(
         title: const Text("Ficha de Anamnese", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         elevation: 0,
@@ -280,8 +281,8 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: AppColors.isDark
-                      ? AppColors.background
-                      : AppColors.surface,
+                      ? PatientVisualStyle.background
+                      : PatientVisualStyle.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey[200]!)
                 ),

@@ -580,4 +580,171 @@ describe('matriz reavaliação P0/P1', () => {
     await assertSucceeds(
       ctx('staffA').firestore().doc('anamnesis/p1').update({ smoker: false }));
   });
+
+  it('Atendimento: rascunho é escopado à clínica e não admite escrita anônima', async () => {
+    const staff = ctx('staffA').firestore();
+    await assertSucceeds(staff.doc('appointments/careDraftA').set({
+      clinicId: A, patientId: 'p1', status: 'Confirmado', date: new Date(),
+    }));
+    await assertSucceeds(staff.doc('appointments/careDraftA').update({
+      'careDrafts.staffA': { text: 'Texto de rascunho', markers: ['Marcador'], updatedAt: new Date() },
+    }));
+    await assertFails(ctx('staffB').firestore().doc('appointments/careDraftA').update({
+      'careDrafts.staffB': { text: 'Outra clínica' },
+    }));
+    await assertFails(ctx(null).firestore().doc('appointments/careDraftA').update({
+      careDrafts: { anon: { text: 'Não autorizado' } }, status: 'Confirmado', proofToken: 'tok123',
+    }));
+  });
+
+  it('Atendimento: evolução e presença são gravadas em uma transação sem ler registro inexistente', async () => {
+    const db = ctx('staffA').firestore();
+    const appointment = db.doc('appointments/careFinishA');
+    const record = db.doc('clinical_records/care_careFinishA');
+    await assertSucceeds(appointment.set({ clinicId: A, patientId: 'p1', status: 'Em Atendimento' }));
+    await assertSucceeds(db.runTransaction(async (tx) => {
+      const current = await tx.get(appointment);
+      assert.equal(current.data().clinicId, A);
+      tx.set(record, { clinicId: A, patientId: 'p1', appointmentId: 'careFinishA',
+        description: 'Registro de teste', careType: 'psychology', date: new Date() }, { merge: true });
+      tx.update(appointment, { status: 'Finalizado', attendanceStatus: 'Attended',
+        hasMedicalCertificate: false, careEvolutionId: record.id });
+    }));
+    assert.equal((await appointment.get()).data().attendanceStatus, 'Attended');
+    assert.equal((await record.get()).data().description, 'Registro de teste');
+    await assertFails(ctx('staffB').firestore().doc(record.path).get());
+    await assertFails(ctx(null).firestore().doc(record.path).get());
+  });
+
+  it('Atendimento: registro fora da clínica aborta toda a finalização', async () => {
+    const db = ctx('staffA').firestore();
+    const appointment = db.doc('appointments/careAtomicA');
+    await appointment.set({ clinicId: A, patientId: 'p1', status: 'Confirmado' });
+    await assertFails(db.runTransaction(async (tx) => {
+      await tx.get(appointment);
+      tx.set(db.doc('clinical_records/care_wrongTenant'), { clinicId: B, patientId: 'p2', description: 'Inválido', date: new Date() });
+      tx.update(appointment, { status: 'Finalizado', attendanceStatus: 'Attended' });
+    }));
+    assert.equal((await appointment.get()).data().status, 'Confirmado');
+  });
+
+  it('Laboratório: pedido e débito independentes são atômicos e isolados por clínica', async () => {
+    const db = ctx('staffA').firestore();
+    const supplier = db.doc('suppliers/labSourceA');
+    await supplier.set({ clinicId: A, name: 'Laboratório de teste' });
+    const order = db.doc('lab_orders/labAtomicA');
+    const expense = db.doc('expenses/lab_labAtomicA');
+    const receipt = db.doc('patients/p1/clinical_data/lab_request_labAtomicA');
+    const create = () => db.runTransaction(async (tx) => {
+      const prior = await tx.get(receipt);
+      if (prior.exists) return;
+      const patient = await tx.get(db.doc('patients/p1'));
+      const lab = await tx.get(supplier);
+      assert.equal(patient.data().clinicId, A);
+      assert.equal(lab.data().clinicId, A);
+      tx.set(order, { clinicId: A, patientId: 'p1', price: 120,
+        status: 'pending_send', relatedExpenseId: expense.id, relatedFinancialId: null });
+      tx.set(expense, { clinicId: A, relatedPatientId: 'p1', amount: 120,
+        dueDate: new Date(), status: 'pendente', category: 'Laboratório',
+        relatedLabOrderId: order.id, relatedFinancialId: null, source: 'lab_order' });
+      tx.set(receipt, { clinicId: A, patientId: 'p1', labOrderId: order.id, expenseId: expense.id });
+    });
+    await assertSucceeds(create());
+    assert.equal((await expense.get()).data().status, 'pendente');
+    await expense.update({ status: 'pago', paidDate: new Date() });
+    await assertSucceeds(create());
+    assert.equal((await expense.get()).data().status, 'pago');
+    for (const path of [order.path, expense.path, receipt.path]) {
+      await assertFails(ctx('staffB').firestore().doc(path).get());
+      await assertFails(ctx(null).firestore().doc(path).get());
+    }
+  });
+
+  it('Laboratório: despesa fora da clínica aborta pedido, custo e comprovante de criação', async () => {
+    const db = ctx('staffA').firestore();
+    const paths = ['lab_orders/labRejectA', 'expenses/lab_labRejectA',
+      'patients/p1/clinical_data/lab_request_labRejectA'];
+    await assertFails(db.runTransaction(async (tx) => {
+      await tx.get(db.doc(paths[2]));
+      tx.set(db.doc(paths[0]), { clinicId: A, patientId: 'p1' });
+      tx.set(db.doc(paths[1]), { clinicId: B, relatedPatientId: 'p1', amount: 120 });
+      tx.set(db.doc(paths[2]), { clinicId: A, patientId: 'p1' });
+    }));
+    await env.withSecurityRulesDisabled(async (admin) => {
+      const adb = admin.firestore();
+      for (const path of paths) assert.equal((await adb.doc(path).get()).exists, false);
+    });
+  });
+
+  it('Laboratório: pedido sem custo não precisa de conta a pagar', async () => {
+    const db = ctx('ownerA').firestore();
+    await assertSucceeds(db.runTransaction(async (tx) => {
+      const receipt = db.doc('patients/p1/clinical_data/lab_request_labFreeA');
+      await tx.get(receipt);
+      tx.set(db.doc('lab_orders/labFreeA'), { clinicId: A, patientId: 'p1', price: 0,
+        hasCost: false, relatedExpenseId: null, relatedFinancialId: null });
+      tx.set(receipt, { clinicId: A, patientId: 'p1', labOrderId: 'labFreeA', expenseId: null });
+    }));
+    await env.withSecurityRulesDisabled(async (admin) => {
+      assert.equal((await admin.firestore().doc('expenses/lab_labFreeA').get()).exists, false);
+    });
+  });
+
+  it('Cobranças: confirmação/apuração atômica e retry preserva pagamento', async () => {
+    const db = ctx('staffA').firestore();
+    const f = db.doc('financial/collectionA');
+    const receipt = db.doc('patients/p1/clinical_data/collection_eventA');
+    const record = db.doc('clinical_records/collection_eventA');
+    await f.set({ clinicId: A, patientId: 'p1', amount: 480, paidAmount: 0, status: 'pending' });
+    const confirm = () => db.runTransaction(async (tx) => {
+      const patient = await tx.get(db.doc('patients/p1'));
+      const current = await tx.get(f);
+      const previous = await tx.get(receipt);
+      if (previous.exists) return;
+      assert.equal(patient.data().clinicId, A);
+      assert.equal(current.data().status, 'pending');
+      tx.update(f, { amount: 200, billingOriginalAmount: 480, billingRatedAmount: 200,
+        billingAppliedAt: new Date(), status: 'cobrado', lastContactDate: new Date(),
+        contactHistory: [{ eventId: 'eventA', date: new Date().toISOString(), method: 'whatsapp_manual' }] });
+      tx.set(receipt, { clinicId: A, patientId: 'p1', eventId: 'eventA', message: 'Texto exato' });
+      tx.set(record, { clinicId: A, patientId: 'p1', procedureName: 'Cobrança via WhatsApp', description: 'Texto exato', date: new Date() });
+    });
+    await assertSucceeds(confirm());
+    const data = (await f.get()).data();
+    assert.equal(data.paidAmount, 0); assert.equal(data.amount, 200);
+    assert.equal(data.billingOriginalAmount, 480); assert.equal(data.isPaid, undefined);
+    await f.update({ status: 'pago', paidAmount: 200, isPaid: true });
+    await assertSucceeds(confirm());
+    assert.equal((await f.get()).data().status, 'pago');
+    for (const path of [f.path, receipt.path, record.path]) {
+      await assertFails(ctx('staffB').firestore().doc(path).get());
+      await assertFails(ctx(null).firestore().doc(path).get());
+    }
+  });
+
+  it('Cobranças: reagendamento não quita; registro fora da clínica aborta transação', async () => {
+    const db = ctx('staffA').firestore();
+    const f = db.doc('financial/collectionDelayA');
+    await f.set({ clinicId: A, patientId: 'p1', amount: 100, paidAmount: 0, status: 'pending' });
+    await assertSucceeds(db.runTransaction(async (tx) => {
+      await tx.get(f);
+      tx.update(f, { nextContactAt: new Date('2026-11-05T12:00:00Z'), contactHistory: [{ method: 'manual_reschedule', date: new Date().toISOString() }] });
+    }));
+    assert.equal((await f.get()).data().status, 'pending');
+    assert.equal((await f.get()).data().paidAmount, 0);
+    await assertFails(db.runTransaction(async (tx) => {
+      await tx.get(f);
+      await tx.get(db.doc('patients/p1/clinical_data/collection_reject'));
+      tx.update(f, { status: 'cobrado' });
+      tx.set(db.doc('clinical_records/collection_reject'), { clinicId: B, patientId: 'p2', description: 'Inválido' });
+      tx.set(db.doc('patients/p1/clinical_data/collection_reject'), { clinicId: A, patientId: 'p1' });
+    }));
+    assert.equal((await f.get()).data().status, 'pending');
+    await env.withSecurityRulesDisabled(async (admin) => {
+      const adb = admin.firestore();
+      assert.equal((await adb.doc('clinical_records/collection_reject').get()).exists, false);
+      assert.equal((await adb.doc('patients/p1/clinical_data/collection_reject').get()).exists, false);
+    });
+  });
+
 });

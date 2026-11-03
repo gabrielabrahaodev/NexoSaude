@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../ui/app_theme.dart';
-import 'patient_details_screen.dart'; 
-import 'create_patient_screen.dart'; 
-import '../../services/session_manager.dart'; 
-import '../../services/patient_service.dart'; // NOVO IMPORT 
+import '../../models/patient_list_entry.dart';
+import '../../services/patient_list_service.dart';
+import '../../utils/patient_list_export.dart';
+import '../agenda/clinical_agenda_view.dart';
+import 'clinical_patient_list_view.dart';
+import 'patient_details_screen.dart';
+import 'create_patient_screen.dart';
+import '../../services/session_manager.dart';
+import '../../services/patient_service.dart'; // NOVO IMPORT
 
 class PatientListScreen extends StatefulWidget {
-  const PatientListScreen({super.key});
+  const PatientListScreen({super.key, this.onOpenPatient});
+  final void Function(String patientId, String patientName)? onOpenPatient;
 
   @override
   State<PatientListScreen> createState() => _PatientListScreenState();
@@ -18,19 +24,127 @@ class _PatientListScreenState extends State<PatientListScreen> {
   final PatientService _patientService = PatientService();
   String _searchText = "";
   bool _onlyNoConsent = false;
+  final _listService = PatientListService();
+  late Stream<List<PatientListEntry>> _patients;
+  late Stream<PatientListContext> _context;
+  String? _clinicId;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSources();
+    SessionManager().addListener(_sessionChanged);
+  }
+
+  void _initSources() {
+    _clinicId = SessionManager().currentClinicId;
+    final valid = _clinicId != null && _clinicId != 'ALL';
+    _patients = valid ? _listService.patients() : Stream.value([]);
+    _context = valid
+        ? _listService.context(_clinicId!)
+        : Stream.value(const PatientListContext());
+  }
+
+  void _sessionChanged() {
+    if (mounted && _clinicId != SessionManager().currentClinicId) {
+      setState(_initSources);
+    }
+  }
+
+  void _openPatient(PatientListEntry p) {
+    if (p.data['clinicId'] != SessionManager().currentClinicId) return;
+    if (widget.onOpenPatient != null) {
+      widget.onOpenPatient!(p.id, p.name);
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PatientDetailsScreen(
+          patientName: p.name,
+          patientId: p.id,
+          phone: p.phone,
+          cpf: p.cpf,
+          birth: p.data['birthDate'],
+        ),
+      ),
+    );
+  }
+
+  void _newPatient() => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const CreatePatientScreen()),
+  );
+  Widget _clinicalList() => StreamBuilder<List<PatientListEntry>>(
+    key: ValueKey('patient-list-$_clinicId'),
+    stream: _patients,
+    builder: (context, patients) => StreamBuilder<PatientListContext>(
+      stream: _context,
+      builder: (context, extra) {
+        final contextReady =
+            (extra.connectionState == ConnectionState.active ||
+                extra.connectionState == ConnectionState.done) &&
+            !extra.hasError;
+        return ClinicalPatientListView(
+          key: ValueKey('list-view-$_clinicId'),
+          patients: patients.data ?? [],
+          contextData: contextReady
+              ? extra.data ?? const PatientListContext()
+              : const PatientListContext(),
+          loading:
+              _clinicId != null &&
+              _clinicId != 'ALL' &&
+              (patients.connectionState == ConnectionState.waiting ||
+                  patients.connectionState == ConnectionState.none) &&
+              !patients.hasError,
+          error: _clinicId == null || _clinicId == 'ALL'
+              ? 'Selecione uma unidade para consultar os pacientes.'
+              : patients.hasError
+              ? 'Não foi possível carregar os pacientes desta unidade.'
+              : null,
+          contextLoading: !contextReady && !extra.hasError,
+          contextError: extra.hasError
+              ? 'Não foi possível carregar os filtros complementares.'
+              : null,
+          clinicType: SessionManager().clinicType,
+          onOpen: _openPatient,
+          onDelete: (p) {
+            if (p.data['clinicId'] == SessionManager().currentClinicId) {
+              _showDeleteConfirmation(p.id, p.name);
+            }
+          },
+          onNew: _newPatient,
+          onExport: (rows) {
+            if (_clinicId == SessionManager().currentClinicId) {
+              downloadPatientList(rows, contextReady ? extra.data : null);
+            }
+          },
+          onRefresh: () => setState(_initSources),
+        );
+      },
+    ),
+  );
 
   @override
   void dispose() {
+    SessionManager().removeListener(_sessionChanged);
     _searchController.dispose();
     super.dispose();
   }
 
   Color _getAvatarColor(String name) {
     if (name.isEmpty) return AppColors.primary;
-    final int hash = name.codeUnitAt(0) + (name.length > 1 ? name.codeUnitAt(1) : 0);
+    final int hash =
+        name.codeUnitAt(0) + (name.length > 1 ? name.codeUnitAt(1) : 0);
     final List<Color> colors = [
-      Colors.blue, Colors.teal, Colors.indigo, Colors.deepPurple,
-      Colors.orange, Colors.pinkAccent, Colors.green, Colors.redAccent
+      Colors.blue,
+      Colors.teal,
+      Colors.indigo,
+      Colors.deepPurple,
+      Colors.orange,
+      Colors.pinkAccent,
+      Colors.green,
+      Colors.redAccent,
     ];
     return colors[hash % colors.length];
   }
@@ -38,12 +152,15 @@ class _PatientListScreenState extends State<PatientListScreen> {
   @override
   Widget build(BuildContext context) {
     final clinicId = SessionManager().currentClinicId;
+    if (clinicalAgendaEnabled) return _clinicalList();
 
     return Scaffold(
-      backgroundColor: AppColors.background, 
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Meus Pacientes",
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Meus Pacientes",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -53,7 +170,9 @@ class _PatientListScreenState extends State<PatientListScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const CreatePatientScreen()),
+            MaterialPageRoute(
+              builder: (context) => const CreatePatientScreen(),
+            ),
           );
         },
         backgroundColor: AppColors.primary,
@@ -69,40 +188,43 @@ class _PatientListScreenState extends State<PatientListScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-              controller: _searchController,
-              style: TextStyle(color: AppColors.textPrimary),
-              onChanged: (value) {
-                setState(() {
-                  _searchText = value.toLowerCase().trim();
-                });
-              },
-              decoration: InputDecoration(
-                hintText: "Buscar por nome, CPF ou telefone...",
-                hintStyle: TextStyle(color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                suffixIcon: _searchText.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.grey),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchText = "");
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: AppColors.isDark
-                    ? const Color(0xFF262B31)
-                    : AppColors.surface,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+                  controller: _searchController,
+                  style: TextStyle(color: AppColors.textPrimary),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchText = value.toLowerCase().trim();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: "Buscar por nome, CPF ou telefone...",
+                    hintStyle: TextStyle(color: AppColors.textSecondary),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    suffixIcon: _searchText.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchText = "");
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.isDark
+                        ? const Color(0xFF262B31)
+                        : AppColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 0,
+                      horizontal: 20,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Align(
@@ -110,8 +232,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   child: FilterChip(
                     label: const Text("Sem aceite LGPD"),
                     selected: _onlyNoConsent,
-                    onSelected: (v) =>
-                        setState(() => _onlyNoConsent = v),
+                    onSelected: (v) => setState(() => _onlyNoConsent = v),
                   ),
                 ),
               ],
@@ -124,9 +245,17 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   .where('clinicId', isEqualTo: clinicId)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return const Center(child: Text("Erro ao carregar pacientes."));
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return _buildEmptyState("Nenhum paciente cadastrado.");
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text("Erro ao carregar pacientes."),
+                  );
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _buildEmptyState("Nenhum paciente cadastrado.");
+                }
 
                 final docs = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
@@ -144,17 +273,28 @@ class _PatientListScreenState extends State<PatientListScreen> {
                       cpf.contains(_searchText) ||
                       phone.contains(_searchText);
                 }).toList();
-                
+
                 docs.sort((a, b) {
-                  final da = (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
-                  final db = (b['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+                  final da =
+                      (a['createdAt'] as Timestamp?)?.toDate() ??
+                      DateTime(2000);
+                  final db =
+                      (b['createdAt'] as Timestamp?)?.toDate() ??
+                      DateTime(2000);
                   return db.compareTo(da);
                 });
 
-                if (docs.isEmpty) return _buildEmptyState("Nenhum paciente encontrado para a busca.");
+                if (docs.isEmpty) {
+                  return _buildEmptyState(
+                    "Nenhum paciente encontrado para a busca.",
+                  );
+                }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final doc = docs[index];
@@ -171,15 +311,19 @@ class _PatientListScreenState extends State<PatientListScreen> {
     );
   }
 
-  Future<void> _confirmDelete({required String docId, required String name}) async {
+  Future<void> _confirmDelete({
+    required String docId,
+    required String name,
+  }) async {
     final clinicId = SessionManager().currentClinicId;
     if (clinicId == null) return;
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text("Excluindo paciente e dados associados..."),
-          duration: Duration(seconds: 2)),
+        content: Text("Excluindo paciente e dados associados..."),
+        duration: Duration(seconds: 2),
+      ),
     );
 
     try {
@@ -187,35 +331,44 @@ class _PatientListScreenState extends State<PatientListScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text("Paciente '$name' excluído com sucesso"),
-              backgroundColor: Colors.green),
+            content: Text("Paciente '$name' excluído com sucesso"),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erro ao excluir: $e"), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text("Erro ao excluir: $e"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 
   void _showDeleteConfirmation(String docId, String name) {
+    final selectedClinic = SessionManager().currentClinicId;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Excluir Paciente"),
         content: Text(
-            "Tem certeza que deseja excluir '$name'?\n\nIsso removerá permanentemente:\n• Cadastro do paciente\n• Orçamentos\n• Tratamentos e Planos\n• Prontuário/Documentos\n• Pagamentos/Financeiro\n• Agendamentos\n• Laboratório\n• Odontograma/Anamnese\n\nEsta ação NÃO pode ser desfeita."),
+          "Tem certeza que deseja excluir '$name'?\n\nIsso removerá permanentemente:\n• Cadastro do paciente\n• Orçamentos\n• Tratamentos e Planos\n• Prontuário/Documentos\n• Pagamentos/Financeiro\n• Agendamentos\n• Laboratório\n• Odontograma/Anamnese\n\nEsta ação NÃO pode ser desfeita.",
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancelar")),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(ctx);
-              await _confirmDelete(docId: docId, name: name);
+              if (selectedClinic == SessionManager().currentClinicId) {
+                await _confirmDelete(docId: docId, name: name);
+              }
             },
             child: const Text("EXCLUIR"),
           ),
@@ -225,7 +378,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
   }
 
   Widget _buildPatientCard(
-      BuildContext context, String docId, Map<String, dynamic> data) {
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
     final String name = data['name'] ?? 'Sem Nome';
     final String phone = data['phone'] ?? 'Sem telefone';
     final String cpf = data['cpf'] ?? '';
@@ -240,6 +396,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
+          if (widget.onOpenPatient != null) {
+            widget.onOpenPatient!(docId, name);
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -263,7 +423,14 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 child: CircleAvatar(
                   radius: 28,
                   backgroundColor: avatarColor.withValues(alpha: 0.2),
-                  child: Text(firstLetter, style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 22)),
+                  child: Text(
+                    firstLetter,
+                    style: TextStyle(
+                      color: avatarColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -271,10 +438,41 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 4),
-                    Row(children: [const Icon(Icons.phone, size: 14, color: Colors.grey), const SizedBox(width: 4), Text(phone.isNotEmpty ? phone : "Não informado", style: AppTextStyles.caption)]),
-                    if (cpf.isNotEmpty) ...[const SizedBox(height: 2), Row(children: [const Icon(Icons.badge_outlined, size: 14, color: Colors.grey), const SizedBox(width: 4), Text(cpf, style: AppTextStyles.caption)])],
+                    Row(
+                      children: [
+                        const Icon(Icons.phone, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          phone.isNotEmpty ? phone : "Não informado",
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                    if (cpf.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.badge_outlined,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(cpf, style: AppTextStyles.caption),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -288,7 +486,16 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 itemBuilder: (context) => [
                   const PopupMenuItem<String>(
                     value: 'delete',
-                    child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 8), Text("Excluir Paciente", style: TextStyle(color: Colors.red))]),
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          "Excluir Paciente",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -300,6 +507,18 @@ class _PatientListScreenState extends State<PatientListScreen> {
   }
 
   Widget _buildEmptyState(String message) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.person_search, size: 64, color: Colors.grey[300]), const SizedBox(height: 12), Text(message, style: const TextStyle(color: Colors.grey, fontSize: 14))]));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_search, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: const TextStyle(color: Colors.grey, fontSize: 14),
+          ),
+        ],
+      ),
+    );
   }
 }

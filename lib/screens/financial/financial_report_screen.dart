@@ -21,7 +21,8 @@ import '../../utils/display.dart';
 import '../../widgets/page_header.dart';
 
 class FinancialReportScreen extends StatefulWidget {
-  const FinancialReportScreen({super.key});
+  const FinancialReportScreen({super.key, this.initialMonth});
+  final DateTime? initialMonth;
 
   @override
   State<FinancialReportScreen> createState() => _FinancialReportScreenState();
@@ -31,6 +32,12 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
   final OracleReportService _service = OracleReportService();
   final PaymentService _paymentService = PaymentService(); 
   DateTime _currentMonth = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentMonth = widget.initialMonth ?? DateTime.now();
+  }
 
   /// Filtro da lista (totais do mês não mudam).
   FlowFilter _filter = FlowFilter.todos;

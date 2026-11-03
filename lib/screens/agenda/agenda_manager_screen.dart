@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart'; 
 
 import 'agenda_cell_factory.dart';
+import 'clinical_agenda_view.dart';
+import 'agenda_professional_selector.dart';
+import '../../services/agenda_professionals.dart';
+import '../../services/clinic_capabilities.dart';
 import 'agenda_form_screen.dart';
 import '../patients/patient_details_screen.dart';
 
@@ -57,13 +61,17 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   final PatientService _patientService = PatientService();
 
   DateTime _currentWeekStart = DateTime.now().subtract(Duration(days: DateTime.now().weekday - 1));
+  DateTime _selectedAgendaDay = DateTime.now();
   final List<String> _timeSlots = [];
   final double _rowHeight = 32.0;
   final double _headerHeight = 36.0;
 
   // Filtros
   String? _selectedDentistId;
-  List<DropdownMenuItem<String>> _dentistItems = [];
+  List<UserModel> _professionals = [];
+  StreamSubscription<List<UserModel>>? _professionalsSubscription;
+  String? _professionalsError;
+  int _professionalsGeneration = 0;
   bool _isLoadingDentists = false;
   bool _shouldShowFilter = false;
 
@@ -75,40 +83,72 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     _checkRoleAndFetchDentists();
   }
 
-  void _checkRoleAndFetchDentists() async {
-    final role = SessionManager().userRole?.toLowerCase().trim();
-    final clinicId = SessionManager().currentClinicId;
-
-    // Janela de slots do portal (14 dias, fim de semana incluso):
-    // throttled em 6h no service — 1 leitura na maioria das vezes.
-    if (clinicId != null) {
-      PortalMirrorSync.ensureWindow(clinicId);
-    }
-
-    if ((role == 'recepcionista' || role == 'owner') && clinicId != null) {
+  void _checkRoleAndFetchDentists() {
+    final session = SessionManager();
+    final clinicId = session.currentClinicId;
+    final generation = ++_professionalsGeneration;
+    _professionalsSubscription?.cancel();
+    setState(() {
+      _shouldShowFilter = true;
+      _isLoadingDentists = true;
+      _professionalsError = null;
+      _professionals = [];
+    });
+    if (clinicId == null || clinicId.isEmpty || clinicId == 'ALL') {
       setState(() {
-        _shouldShowFilter = true;
-        _isLoadingDentists = true;
+        _selectedDentistId = null;
+        _isLoadingDentists = false;
+        _professionalsError = 'Selecione uma clínica para abrir a agenda.';
       });
-
-      List<UserModel> dentists = await _userService.getDentistsForClinic(clinicId);
-
-      if (mounted) {
-        setState(() {
-          _dentistItems = dentists.map((u) => DropdownMenuItem(
-            value: u.id,
-            child: Text(u.name, style: const TextStyle(fontSize: 14)),
-          )).toList();
-          
-          if (_dentistItems.isNotEmpty) {
-             if (_selectedDentistId == null || !dentists.any((u) => u.id == _selectedDentistId)) {
-               _selectedDentistId = dentists.first.id;
-             }
-          }
-          _isLoadingDentists = false;
-        });
-      }
+      return;
     }
+    PortalMirrorSync.ensureWindow(clinicId);
+    _professionalsSubscription = _userService.watchAgendaProfessionals(clinicId).listen((users) {
+      if (!mounted || generation != _professionalsGeneration || session.currentClinicId != clinicId) return;
+      final available = selectableAgendaProfessionals(users,
+        role: session.userRole, userId: session.userId);
+      setState(() {
+        _professionals = available;
+        _selectedDentistId = selectedAgendaProfessional(_selectedDentistId, available);
+        _isLoadingDentists = false;
+        _professionalsError = null;
+      });
+    }, onError: (Object error) {
+      if (!mounted || generation != _professionalsGeneration) return;
+      debugPrint('Erro no diretório de profissionais da agenda: $error');
+      setState(() {
+        _professionals = [];
+        _selectedDentistId = null;
+        _isLoadingDentists = false;
+        _professionalsError = 'Não foi possível carregar os profissionais da clínica.';
+      });
+    });
+  }
+
+  Widget _professionalSelector({int appointmentCount = 0}) => AgendaProfessionalSelector(
+    professionals: _professionals, selectedId: _selectedDentistId,
+    loading: _isLoadingDentists, error: _professionalsError,
+    enabled: canChooseAgendaProfessional(SessionManager().userRole),
+    appointmentCount: appointmentCount,
+    onChanged: (value) => setState(() => _selectedDentistId = value),
+    onRetry: _checkRoleAndFetchDentists,
+  );
+
+  void _openAgendaSlot(DateTime date, String time) {
+    if (_selectedDentistId == null || _professionalsError != null || _isLoadingDentists) {
+      toast(context, 'Selecione um profissional ativo da clínica.');
+      return;
+    }
+    AgendaCellFactory.openForm(context: context, date: date, time: time,
+      selectedDentistId: _selectedDentistId, fullWeekdayName: _getFullWeekDayName);
+  }
+
+  void _openManagement() {
+    if (_selectedDentistId == null || _professionalsError != null || _isLoadingDentists) {
+      toast(context, 'Selecione um profissional ativo da clínica.');
+      return;
+    }
+    _showManagementMenu();
   }
 
   void _generateTimeSlots() {
@@ -120,11 +160,15 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   }
 
   void _changeWeek(int days) {
-    setState(() => _currentWeekStart = _currentWeekStart.add(Duration(days: days)));
+    setState(() {
+      _currentWeekStart = _currentWeekStart.add(Duration(days: days));
+      _selectedAgendaDay = _selectedAgendaDay.add(Duration(days: days));
+    });
   }
 
   @override
   void dispose() {
+    _professionalsSubscription?.cancel();
     _monthCache.dispose();
     super.dispose();
   }
@@ -337,10 +381,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
   void _showManagementMenu() {
     // Padrão = semana visível (não o hoje): evita "liberar" o dia errado.
-    DateTime targetDate = managementInitialDate(
-      now: DateTime.now(),
-      weekStart: _currentWeekStart,
-    );
+    DateTime targetDate = clinicalAgendaEnabled
+      ? DateTime(_selectedAgendaDay.year, _selectedAgendaDay.month, _selectedAgendaDay.day)
+      : managementInitialDate(now: DateTime.now(), weekStart: _currentWeekStart);
 
     showModalBottomSheet(
       context: context,
@@ -616,7 +659,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
       return;
     }
 
-    bool isConfirmed = appt.status == 'Confirmado';
+    bool isConfirmed = const {'Confirmado', 'Em Atendimento', 'Pausado'}.contains(appt.status);
     bool isCancelled = appt.status == 'Cancelado';
     bool isFinished = appt.status == 'Finalizado';
     
@@ -827,11 +870,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     enabled: canFitIn,
                     onTap: canFitIn ? () {
                       Navigator.pop(context);
-                      Map<String, dynamic> preFill = {
-                        'date': Timestamp.fromDate(appt.date),
-                        'dentistId': appt.dentistId
-                      };
-                      Navigator.push(context, MaterialPageRoute(builder: (c) => AgendaFormScreen(initialData: preFill)));
+                      AgendaCellFactory.openForm(context: context, date: appt.date,
+                        time: _hhmm(appt.date), selectedDentistId: appt.dentistId ?? _selectedDentistId,
+                        fullWeekdayName: _getFullWeekDayName);
                     } : null,
                   ),
 
@@ -1142,14 +1183,110 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
   Widget build(BuildContext context) {
     DateTime weekEnd = _currentWeekStart.add(const Duration(days: 7));
     final clinicId = SessionManager().currentClinicId;
-    final userRole = SessionManager().userRole?.toLowerCase().trim();
-    final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
+    final userRole = ClinicCapabilities.normalizeRole(SessionManager().userRole ?? '');
+    final currentUserUid = SessionManager().userId ?? FirebaseAuth.instance.currentUser?.uid;
 
     if (clinicId == null) return const Center(child: Text("Erro: Sessão inválida"));
 
     // Janela mensal em cache (anterior/atual/proximo). Idempotente e
     // cobre troca de semana E troca de clinica (limpa e recomeca).
     _monthCache.ensureWindow(clinicId, _currentWeekStart);
+
+    if (clinicalAgendaEnabled) {
+      return Theme(
+        data: ClinicalAgendaStyle.forContext(context),
+        child: Scaffold(
+          backgroundColor: ClinicalAgendaStyle.background,
+          floatingActionButton: FloatingActionButton.extended(
+            backgroundColor: ClinicalAgendaStyle.teal,
+            foregroundColor: const Color(0xFF002E26),
+            onPressed: _openManagement,
+            icon: const Icon(Icons.edit_calendar_outlined),
+            label: const Text(
+              'Gestão',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          body: StreamBuilder<Map<String, List<AppointmentModel>>>(
+            stream: _monthCache.stream,
+            builder: (context, snapshot) {
+              final loading =
+                  _isLoadingDentists ||
+                  !_monthCache.cachedMonths.contains(
+                    MonthAgendaCache.keyOf(_currentWeekStart),
+                  ) ||
+                  !_monthCache.cachedMonths.contains(
+                    MonthAgendaCache.keyOf(
+                      weekEnd.subtract(const Duration(days: 1)),
+                    ),
+                  );
+              final appointments = _monthCache
+                  .forWeek(_currentWeekStart, weekEnd)
+                  .where((appt) {
+                    return agendaAppointmentMatchesProfessional(appt,
+                      selectedId: _selectedDentistId, role: userRole, userId: currentUserUid);
+                  })
+                  .toList();
+              return ClinicalAgendaView(
+                weekStart: _currentWeekStart,
+                appointments: appointments,
+                loading: loading,
+                error: _professionalsError ?? (snapshot.hasError
+                    ? 'Erro ao carregar agenda: ${snapshot.error}'
+                    : (!_isLoadingDentists && _selectedDentistId == null
+                      ? 'Nenhum profissional ativo vinculado à clínica.' : null)),
+                professionalSelector: _professionalSelector(appointmentCount: appointments.where((a) =>
+                  !a.isCancelled && a.status != 'Bloqueado' && a.patientId != 'BLOCKED_SLOT').length),
+                onSelectedDay: (day) => _selectedAgendaDay = day,
+                onChangeWeek: _changeWeek,
+                onToday: () {
+                  final now = DateTime.now();
+                  _selectedAgendaDay = now;
+                  setState(
+                    () => _currentWeekStart = DateTime(
+                      now.year,
+                      now.month,
+                      now.day,
+                    ).subtract(Duration(days: now.weekday - 1)),
+                  );
+                },
+                onEmptySlot: _openAgendaSlot,
+                onAppointment: (appt) {
+                  if (appt.isCancelled) {
+                    showModalBottomSheet(context: context, builder: (sheetContext) => SafeArea(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        ListTile(leading: const Icon(Icons.info_outline), title: const Text('Detalhes do cancelamento'),
+                          onTap: () { Navigator.pop(sheetContext); _showCancellationDetails(appt); }),
+                        ListTile(leading: const Icon(Icons.add), title: const Text('Novo agendamento aqui'),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _openAgendaSlot(appt.date, _hhmm(appt.date));
+                          }),
+                      ]),
+                    ));
+                    return;
+                  }
+                  final end = appt.date.add(
+                    Duration(minutes: appt.durationMinutes),
+                  );
+                  final concurrent = appointments
+                      .where(
+                        (a) =>
+                            !a.isCancelled &&
+                            a.date.isBefore(end) &&
+                            a.date
+                                .add(Duration(minutes: a.durationMinutes))
+                                .isAfter(appt.date),
+                      )
+                      .length;
+                  _showAppointmentOptions(appt, concurrent);
+                },
+              );
+            },
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1163,7 +1300,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
       ),
       
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showManagementMenu,
+        onPressed: _openManagement,
         icon: const Icon(Icons.edit_calendar, color: Colors.white),
         label: const Text("Gestão", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.accent,
@@ -1176,17 +1313,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
               width: double.infinity, margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
-              child: _isLoadingDentists 
-                ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-                : DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isDense: true,
-                      isExpanded: true, value: _selectedDentistId,
-                      items: _dentistItems,
-                      onChanged: (val) => setState(() => _selectedDentistId = val),
-                      hint: const Text("Selecione o Profissional"),
-                    ),
-                  ),
+              child: _professionalSelector(),
             ),
 
           Padding(
@@ -1236,9 +1363,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
 
                 for (var appt
                     in _monthCache.forWeek(_currentWeekStart, weekEnd)) {
-                  if (userRole == 'dentista' && appt.dentistId != currentUserUid) continue;
-                  if (_shouldShowFilter && _selectedDentistId != null) {
-                    if (appt.dentistId != null && appt.dentistId != _selectedDentistId) continue;
+                  if (!agendaAppointmentMatchesProfessional(appt,
+                    selectedId: _selectedDentistId, role: userRole, userId: currentUserUid)) {
+                    continue;
                   }
 
                   int slots = (appt.durationMinutes / 30).ceil();
@@ -1349,7 +1476,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
           children: activeAppts.map((appt) {
             
             bool isBlocked = appt.status == 'Bloqueado'; 
-            bool isConfirmed = appt.status == 'Confirmado';
+            bool isConfirmed = const {'Confirmado', 'Em Atendimento', 'Pausado'}.contains(appt.status);
             bool isFinished = appt.status == 'Finalizado';
             bool isRemarcar = appt.status.toLowerCase() == 'remarcar' &&
                 appt.proposedDate != null;
@@ -1436,11 +1563,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                      title: const Text("Novo Agendamento Aqui"),
                      onTap: () {
                        Navigator.pop(ctx);
-                        Map<String, dynamic> preFill = {
-                          'date': Timestamp.fromDate(DateTime(date.year, date.month, date.day, int.parse(time.split(':')[0]), int.parse(time.split(':')[1]))),
-                          'dentistId': _selectedDentistId 
-                        };
-                        Navigator.push(context, MaterialPageRoute(builder: (c) => AgendaFormScreen(initialData: preFill)));
+                        _openAgendaSlot(date, time);
                      }
                    )
                  ],
@@ -1484,13 +1607,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     else {
       return InkWell(
         onTap: () {
-          AgendaCellFactory.openForm(
-            context: context,
-            date: date,
-            time: time,
-            selectedDentistId: _selectedDentistId,
-            fullWeekdayName: _getFullWeekDayName,
-          );
+          _openAgendaSlot(date, time);
         },
         child: SizedBox(height: rowHeight),
       );

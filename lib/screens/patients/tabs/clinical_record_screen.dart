@@ -1,11 +1,10 @@
+import '../clinical_records_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
-import '../../../ui/app_theme.dart';
 import '../../../services/session_manager.dart';
 import '../../../services/clinical_record_service.dart';
 import '../../../services/treatment_service.dart';
 import '../../../utils/display.dart'; // Import para buscar tratamentos
-import '../../../widgets/status_chip.dart';
 
 class ClinicalRecordTab extends StatefulWidget {
   final String patientName;
@@ -31,13 +30,30 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
   String? _selectedProcedure;
   List<dynamic> _proceduresOfSelectedPlan = [];
 
+  late Stream<QuerySnapshot> _records = _service.getByPatient(widget.patientId);
+
+  @override
+  void didUpdateWidget(covariant ClinicalRecordTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.patientId != widget.patientId) _records = _service.getByPatient(widget.patientId);
+  }
+
+  @override
+  void dispose() { _noteController.dispose(); super.dispose(); }
+
   // Modal para Adicionar/Editar
   void _showAddNoteModal({DocumentSnapshot? docToEdit}) {
+    final openedClinic = SessionManager().currentClinicId;
+    final openedPatient = widget.patientId;
+    final plans = _treatmentService.getPlansStream(openedPatient);
+    bool saving = false;
+    String? error;
     if (docToEdit != null) {
       final data = docToEdit.data() as Map<String, dynamic>;
       _noteController.text = data['description'] ?? '';
       _selectedProcedure = data['procedureName'];
       _selectedTreatmentId = data['treatmentId'];
+      _proceduresOfSelectedPlan = [];
       // Se for edição, idealmente carregaríamos os procedimentos daquele tratamento, 
       // mas para simplificar, permitimos editar o texto.
     } else {
@@ -60,8 +76,9 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                   // 1. SELECIONAR TRATAMENTO (Novo passo)
                   if (docToEdit == null) ...[
                     StreamBuilder<QuerySnapshot>(
-                      stream: _treatmentService.getPlansStream(widget.patientId),
+                      stream: plans,
                       builder: (context, snapshot) {
+                        if (snapshot.hasError) return const Text('Não foi possível carregar os tratamentos. Você pode salvar uma evolução geral.');
                         if (!snapshot.hasData) return const LinearProgressIndicator();
                         
                         // Apenas planos ativos
@@ -80,10 +97,11 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                           isExpanded: true,
                           items: activePlans.map((doc) {
                             final data = doc.data() as Map<String, dynamic>;
-                            final date = (data['startDate'] as Timestamp).toDate();
+                            final rawDate = data['startDate'];
+                            final date = rawDate is Timestamp ? rawDate.toDate() : null;
                             return DropdownMenuItem(
                               value: doc.id,
-                              child: Text("Iniciado em ${formatDateShortYear(date)}"),
+                              child: Text(date == null ? 'Tratamento sem data cadastrada' : 'Iniciado em ${formatDateShortYear(date)}'),
                               onTap: () {
                                 setStateModal(() {
                                   _proceduresOfSelectedPlan = List.from(data['items'] ?? []);
@@ -118,6 +136,7 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                     const SizedBox(height: 10),
                   ],
 
+                  if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   TextField(
                     controller: _noteController,
                     maxLines: 4,
@@ -131,30 +150,44 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+              TextButton(onPressed: saving ? null : () => Navigator.pop(context), child: const Text("Cancelar")),
               ElevatedButton(
-                onPressed: () async {
+                onPressed: saving ? null : () async {
                   if (_noteController.text.trim().isEmpty) return;
                   
                   final clinicId = SessionManager().currentClinicId;
-                  final data = {
+                  if (clinicId == null || clinicId != openedClinic || widget.patientId != openedPatient) {
+                    setStateModal(() => error = 'A unidade ou paciente mudou. Feche e reabra o formulário.'); return;
+                  }
+                  setStateModal(() { saving = true; error = null; });
+                  final data = <String, dynamic>{
                     'clinicId': clinicId,
                     'treatmentId': _selectedTreatmentId ?? docToEdit?['treatmentId'], // Mantém ID se editando
                     'patientId': widget.patientId,
                     'patientName': widget.patientName,
                     'procedureName': _selectedProcedure ?? 'Geral',
                     'description': _noteController.text.trim(),
-                    'dentistName': SessionManager().userName ?? 'Dr(a).',
-                    'date': docToEdit == null ? DateTime.now() : (docToEdit['date'] as Timestamp).toDate(),
+                    if (docToEdit == null) ...{
+                      'dentistName': SessionManager().userName ?? 'Não informado',
+                      'operatorName': SessionManager().userName ?? 'Não informado',
+                      'date': DateTime.now(),
+                    } else ...{
+                      'editedBy': SessionManager().userName ?? 'Não informado',
+                      'editedAt': FieldValue.serverTimestamp(),
+                    },
                   };
 
+                  try {
                   if (docToEdit == null) {
                     await _service.add(data);
                   } else {
                     await _service.update(docToEdit.id, data);
                   }
                   
-                  if (mounted) Navigator.pop(context);
+                  if (context.mounted) Navigator.pop(context);
+                  } catch (_) {
+                    if (context.mounted) setStateModal(() { saving = false; error = 'Não foi possível salvar. Seu texto foi mantido.'; });
+                  }
                 },
                 child: const Text("Salvar"),
               )
@@ -166,126 +199,24 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    // REMOVIDO SCAFFOLD PARA CABER NA ABA
-    return Stack(
-      children: [
-        StreamBuilder<QuerySnapshot>(
-          stream: _service.getByPatient(widget.patientId),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) return const Center(child: Text("Erro ao carregar."));
-            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-            
-            final docs = snapshot.data!.docs;
-
-            if (docs.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.history_edu, size: 60, color: Colors.grey[300]),
-                    const SizedBox(height: 10),
-                    const Text("Nenhum registro clínico encontrado.", style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-              );
-            }
-            
-              return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), // Espaço para o FAB
-              itemCount: docs.length,
-              itemBuilder: (context, index) {
-                final doc = docs[index];
-                final data = doc.data() as Map<String, dynamic>;
-                final date = (data['date'] as Timestamp).toDate();
-                // Cobrança (WhatsApp) vs atendimento: visual distinto.
-                final isCharge =
-                    '${data['procedureName'] ?? ''}' ==
-                        'Cobrança via WhatsApp';
-                final accent =
-                    isCharge ? Colors.green : AppColors.primary;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                          color: accent.withValues(alpha: 0.4))),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                                child: Text(
-                                    data['procedureName'] ??
-                                        'Procedimento',
-                                    style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold))),
-                            StatusChip(
-                              label:
-                                  isCharge ? "Cobrança" : "Atendimento",
-                              color: accent,
-                              horizontal: 8,
-                              vertical: 2,
-                              fontSize: 10,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(formatDateTimeFull(date),
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.grey)),
-                        const SizedBox(height: 4),
-                        Text("Realizado por: ${data['dentistName'] ?? 'Profissional'}", style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
-                        const Divider(),
-                        Text(data['description'] ?? '', style: const TextStyle(fontSize: 14, height: 1.4)),
-                        
-                        Align(
-                          alignment: Alignment.centerRight, 
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 20, color: Colors.grey), 
-                                onPressed: () => _showAddNoteModal(docToEdit: doc)
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, size: 20, color: Colors.red), 
-                                onPressed: () async {
-                                  final confirm = await showDialog(context: context, builder: (c) => AlertDialog(title: const Text("Excluir?"), actions: [TextButton(onPressed: ()=>Navigator.pop(c, false), child: const Text("Não")), TextButton(onPressed: ()=>Navigator.pop(c, true), child: const Text("Sim"))]));
-                                  if (confirm == true) await _service.delete(doc.id);
-                                }
-                              ),
-                            ],
-                          )
-                        )
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-        
-        // FAB FLUTUANTE MANUALMENTE POSICIONADO (Já que não temos Scaffold)
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton.extended(
-            onPressed: () => _showAddNoteModal(), 
-            label: const Text("NOVO REGISTRO"), 
-            icon: const Icon(Icons.edit_note),
-            backgroundColor: AppColors.primary,
-          ),
-        )
-      ],
-    );
-  }
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot>(
+    stream: _records,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) return const Center(child: Text('Não foi possível carregar o prontuário. Reabra a ficha para tentar novamente.'));
+      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+      final docs = {for (final doc in snapshot.data!.docs) doc.id: doc};
+      return ClinicalRecordsView(
+        records: docs.values.map((d) => ClinicalRecordEntry(d.id, Map<String, dynamic>.from(d.data() as Map))).toList(),
+        onNew: () => _showAddNoteModal(),
+        onEdit: (id) => _showAddNoteModal(docToEdit: docs[id]),
+        onDelete: (id) async {
+          final clinic = SessionManager().currentClinicId;
+          final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(title: const Text('Excluir registro?'), content: const Text('Esta ação remove o registro do prontuário.'), actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Excluir'))]));
+          if (confirm != true || !mounted || clinic != SessionManager().currentClinicId) return;
+          try { await _service.delete(id); }
+          catch (_) { if (mounted) toast(context, 'Não foi possível excluir o registro.', error: true); }
+        },
+      );
+    },
+  );
 }

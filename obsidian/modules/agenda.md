@@ -35,7 +35,7 @@ Grade, criar/editar/cancelar agendamento, presença, encaixe, disponibilidade.
 ## Regras / Gotchas
 
 - `appointment` carrega `scheduleId/planId` — base do billing por presença; não remover.
-- Cancelado sai do billing e do risco; pendente (`Aguardando Confirmação`) não entra no cálculo.
+- Cancelados não são sessões faturáveis no fluxo por presença. **Cancelamento solicitado pelo paciente** pode contar como falta no perfil de risco (`patient_service.dart`); não documentar que todo cancelamento sai do risco. Pendente (`Aguardando Confirmação`) não entra no cálculo por presença.
 - Disponibilidade: slots de 30min a partir de `durationMinutes`.
 - Células: nome em 12px negrito adaptativo (`textPrimary`: branco no escuro); borda/ícone mantêm a cor do status; fundo de bloqueio escurecido no dark.
 - Bloqueio por intervalo: 1 doc (`BLOCKED_SLOT`, `date`+duração); paciente primeiro, fusão, idempotência. Ver `services/block_interval.dart`.
@@ -46,3 +46,9 @@ Grade, criar/editar/cancelar agendamento, presença, encaixe, disponibilidade.
 - [[agenda-form]] — criação/edição com trava de choque
 - [[care-day]] — executa os agendamentos do dia
 - [[portal-mirror]] — bloqueios viram slots livres/removidos
+
+## Auditoria de cancelamento — 03/11/2026 (variante clínica)
+
+O diálogo `_showCancellationDialog`, em `lib/screens/agenda/agenda_manager_screen.dart`, faz **duas gravações distintas**: primeiro atualiza `appointments/{id}` para `Cancelado` com `cancelledBy`, `cancellationReason`, `cancellationSource` e `cancelledAt`; depois cria um `clinical_records` com `procedureName = 'Cancelamento de Consulta'`, descrição do motivo, origem e operador. **Não há atomicidade garantida entre elas**. O método genérico `AppointmentService.cancel(id)` é outro caminho: altera o agendamento e o espelho/slots, mas não cria registro clínico. Não concluir que todos os cancelamentos, de qualquer origem, aparecem no prontuário.
+
+**Pendente (não corrigido nesta documentação):** revisar contrato único de cancelamento, tratar falha da segunda gravação, idempotência e isolamento por clínica, e testar cancelamento repetido. O prontuário da variante clínica usa `ClinicalRecordsView` para classificar cancelamentos por campos/títulos efetivamente registrados. Ver [[auditoria-codigo-2026-11-03]] e [[patient-tabs]].

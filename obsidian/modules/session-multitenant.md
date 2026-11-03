@@ -46,3 +46,9 @@ Auth, troca de clínica, filtro por clínica, regra "só psico" / "só dental", 
 - [[main-dashboard]] — shell que consome sessão, clínica e acesso
 - [[clinic-management]] — cria unidades + troca de contexto
 - [[employee-manager]] — vínculo `allowedClinics` por usuário
+
+## Diretório de equipe e agenda na variante clínica — 03/11/2026
+
+Na branch `feat/agenda-clinical-dark`, `clinics/{clinicId}/members/{uid}` expõe um espelho funcional mínimo para telas autorizadas; `members_private/{uid}` mantém dados sensíveis e permissões para owner/superadmin conforme as Rules dessa branch. `UserService.watchAgendaProfessionals` utiliza o diretório público **somente da unidade selecionada**. `agenda_professionals.dart` considera membros `Ativo` (normalizados) com papéis owner, dentista ou psicólogo; recepção não vira profissional por estar na equipe. Gestores podem selecionar profissional, enquanto o profissional clínico visualiza a própria agenda na UI.
+
+**Importante:** filtro do seletor não concede nem substitui autorização do Firestore. A branch precisa de testes de Rules para perfis pendentes/desativados, isolamento multicínica, leitura do diretório privado e trial bloqueado. A versão publicada deve ser conferida separadamente. Ver [[auditoria-codigo-2026-11-03]] e [[agenda-manager]].
