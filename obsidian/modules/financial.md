@@ -58,3 +58,11 @@ Pedidos são criados somente nos kanbans geral e individual, nunca no recebiment
 ## Cobranças multi-clínica — PR #2
 
 A apresentação clínica usa fila unificada e inspetor; ver [[collections]] para escopo explícito por unidade, rateio e apuração. Confirmar contato nunca é baixa. Pacotes ainda pendentes podem fixar a apuração revisada, preservando o valor original; confirmação é atômica e idempotente. Recebimento usa PatientFinancialTab e famílias existentes. Lote e reagendamento são manuais, sem SMS nem confirmação bancária. O fallback anterior permanece na flag de comparação.
+
+## Parcial, cobrança e projeção — conferência 03/11/2026
+
+O cálculo deve distinguir **valor original**, **recebido** e **restante**. `FinancialService.partialRemainder` calcula `amount - paidAmount - payValue`; `partialSummary` e `restoredAmount` tratam formatos legados e parcelas-filhas de maneira específica. No portal, `buildPortalMirror` soma `amount - paidAmount` dos débitos elegíveis em aberto. Exemplo legado: `amount = 200` e `paidAmount = 80` implica **R$ 120,00** em aberto, sem cobrar os R$ 80,00 novamente.
+
+No formato novo, `amount` pode guardar o saldo restante e filhas registram pagamentos: **não** somar filhas ao saldo nem contar baixa duas vezes. Confirmar valor exibido, mensagem WhatsApp, Pix efetivamente gerado, Livro Caixa, oráculo, filtros, estorno e cobrança de pacote antes de liberar. Contato no WhatsApp e `avisoPagamento` público são avisos, **não comprovação de liquidação**.
+
+Na variante clínica, `CollectionQueueService` usa consultas explícitas por `clinicId` e um inspetor de cobranças; regras de apresentação não substituem a autorização das Firestore Rules. Pedidos de laboratório com custo geram despesas pelo serviço de laboratório, não pelo recebimento de pacientes. Consulte [[auditoria-codigo-2026-11-03]] e [[remodelagem-plano-testes]].
