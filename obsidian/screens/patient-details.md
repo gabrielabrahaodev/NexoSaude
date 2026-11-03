@@ -70,3 +70,7 @@ Pela lista do dashboard, a ficha usa `embedded: true` e callback `onBack`: retor
 Resumo de contexto (`PatientSmartContextCard`) somente em Cadastro. Os quatro indicadores de assiduidade/a receber/recebido/custo operacional (`_metrics`) somente em Pagamentos. As demais abas não montam esses blocos nem reservam o espaço deles. Identificação e navegação permanecem compartilhadas. A regra também vale para o layout anterior (`AGENDA_CLINICAL_DARK=false`), com contexto na primeira aba e resumo na última, sem depender dos índices específicos de odontologia/psicologia. Dados, cálculos e ações são preservados.
 
 - Prontuário (03/11/2026): visual ClinicalRecordsView com filtros e contagens reais por categoria, ordenação e cards de evolução/cancelamento/administrativo. Cancelamento legado mostra operador, nunca dentista responsável. Editar preserva autor/data, grava editedBy/editedAt; sem anexos/orçamentos ilustrativos. Detalhes e validação pendente em docs/design/patients/PRONTUARIO.md.
+
+## Documentação privada e exclusão — auditoria 03/11/2026
+
+Na variante clínica, a aba Documentação (`patient_docs_tab.dart`) bloqueia novos uploads enquanto `DocumentService.isPrivateStorageConfigured` for falso; arquivos legados podem permanecer acessíveis por suas URLs. A ativação de R2 depende de configuração explícita de build e Worker. A exclusão de paciente não deve iniciar com referências de binários remotos ainda pendentes de limpeza; os lotes de Firestore não são uma transação única. Ver [[comms]], [[patients]], [[auditoria-codigo-2026-11-03]].
