@@ -1,35 +1,41 @@
 ---
 name: screen-care-day
-description: Meu dia do Modo Atendimento (só hoje, filtro por profissional).
+description: Meu dia com fichas distintas de odontologia e psicologia.
 title: Care Day (Meu dia)
-tags:
-  - nexosaude
-  - brain
-  - screens
-  - atendimento
+tags: [nexosaude, brain, screens, atendimento]
 ---
 
 # Care Day (Meu dia)
 
-`lib/screens/care/care_day_screen.dart` (+ `care_visit_screen.dart`, `remarcar_dialog.dart`)
+`care_day_screen.dart` carrega consultas de hoje da clínica atual, excluindo cancelamentos e bloqueios. Dentistas/psicólogos veem a própria agenda; gestão e recepção podem filtrar profissional e status. Nomes vêm de `clinics/{clinicId}/members`, sem consulta geral de usuários. Confirmação em massa revalida cada consulta e informa falhas parciais.
 
-## O que é
+## Ficha e persistência
 
-"Meu dia" do [[atendimento]]: só hoje da clínica; dentista/psicólogo vê só `dentistId == uid`; recepção vê todos + nome do profissional. Sem Bloqueado/Cancelado. Selo Pago via 1 query extra do dia.
+Desktop com espaço suficiente usa lista cronológica e ficha lado a lado. No mobile a ficha abre em modal com fechamento explícito. `clinical_care_view.dart` contém apresentação; `care_visit_service.dart` centraliza gravações e valida clínica, paciente, operador e estado atual em transações.
 
-## Quando usar
+- Salvar evolução grava o registro clínico sem finalizar nem registrar presença.
+- Finalizar grava evolução e presença conjuntamente; sessões finalizadas ficam somente leitura.
+- Iniciar/pausar atualiza o estado real. A agenda trata esses estados como consultas já confirmadas.
+- Rascunho é individual por operador no documento da consulta, com salvamento automático. Navegar, trocar unidade, sair ou abrir prontuário/Pagamentos aguarda a gravação; falhas impedem a saída silenciosa.
+- Prontuário e Pagamentos abrem as abas corretas conforme a especialidade.
 
-Rotina do profissional; remarcação do portal se decide só na [[agenda-manager]] (aqui o card é normal).
+## Odontologia
 
-## Fluxos
+Marcadores clínicos, texto formal, alertas da anamnese quando existentes, recebimento de lançamentos existentes e retorno sugerido em 30 ou 21 dias, ou data personalizada. Agendamento preserva paciente/profissional e verifica todo o intervalo na grade da clínica.
 
-- Tile → modal com a ficha (`CareVisitPanel`: evolução + baixa de existente + próxima) em 92% da tela — sem nova tela; `CareVisitScreen` virou casca fina (compat).
-- Cobrança recebe SOMENTE lançamento existente (criado em Pagamentos); nova sessão com seletor de profissional (padrão = atual) + só horários livres (`getBusySlots` por dentista) com revalidação no agendar.
-- Próxima sessão sugerida (+7 dias, `repeatNextWeek` + `isSlotFree`, recarrega ao trocar profissional); botão "Repetir próxima semana" agenda direto.
-- Presença em massa: checkbox nas rows `Aguardando Confirmação` (`needsConfirmation`, puro e testado) + barra "Confirmar presença (N)"; falha parcial avisa quais faltaram; seleção obsoleta é podada.
-- Cards translúcidos (surface 72–92% + borda/sombra na cor do status) com `StatusChip`; dentistas carregados de `users` por `allowedClinics` (mapa id→nome).
+## Psicologia
 
-## Gotchas
+Marcadores de intervenção e síntese da sessão, rascunho explícito, progresso do contrato real, distinção pacote/avulsa e sugestão semanal/quinzenal. Pacote mensal mantém cálculo por presença e atestado: não se converte em carteira de créditos. A próxima sessão já gerada é reutilizada; avulsa abre o formulário existente para criar sessão e financeiro corretamente. Contratos e cobranças mensais são tratados nos fluxos existentes de Pagamentos.
 
-> [!warning]
-> Filtro de dentista é client-side de propósito (evita índice triplo). Query do dia já é limitada.
+## Verificação
+
+`care_workflow_test.dart`, `clinical_care_view_test.dart` e matriz do emulador cobrem estados, escopo, duração, callbacks, telas de 320–1440px e autorização. Ver roteiro autenticado em `docs/design/care/TESTE.md`.
+
+## Fidelidade visual às referências
+
+O tema de Atendimento usa Plus Jakarta Sans incluída no app (licença OFL), superfícies tonais, marcadores sem contorno e botões verdes. Odontologia usa um painel contínuo com seções numeradas e rodapé de ações fixo; Psicologia conserva cartões independentes para registro, contrato/cobrança e próxima sessão. O contrato e os controles financeiros se organizam em duas colunas quando há espaço, empilhando no mobile. O menu mantém o logo original e usa destaque tonal no item ativo. Fluxos de gravação, presença, permissão e cobrança permanecem os mesmos.
+
+
+## Temas claro e escuro — PR #2
+
+A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua fica abaixo de Sair no rodapé do menu lateral (desktop e drawer mobile); usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.

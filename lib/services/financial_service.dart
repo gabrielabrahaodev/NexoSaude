@@ -18,7 +18,8 @@ class InstallmentSlice {
 
 class FinancialService {
   // --- ESSA LINHA É CRÍTICA PARA FUNCIONAR ---
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  FinancialService({FirebaseFirestore? firestore}) : _db = firestore ?? FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
 
   /// Delta do espelho após mutação de lançamento (1 leitura + patch).
   Future<void> _syncDebtOfCharge(String id) async {
@@ -286,16 +287,11 @@ class FinancialService {
     for (var i = 0; i < ids.length; i += 10) {
       final chunk =
           ids.sublist(i, i + 10 > ids.length ? ids.length : i + 10);
-      final exps = await _db
+      final exps = await SessionManager().applyFilter(_db
           .collection('expenses')
-          .where('relatedFinancialId', whereIn: chunk)
-          .get();
-      final labs = await _db
-          .collection('lab_orders')
-          .where('relatedFinancialId', whereIn: chunk)
-          .get();
-      for (var doc in [...exps.docs, ...labs.docs]) {
-        batch.delete(doc.reference);
+          .where('relatedFinancialId', whereIn: chunk)).get();
+      for (var doc in exps.docs) {
+        if (doc.data()['source'] != 'lab_order') batch.delete(doc.reference);
       }
     }
     for (final fid in ids) {

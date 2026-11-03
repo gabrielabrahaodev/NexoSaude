@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import '../agenda/clinical_agenda_view.dart' show clinicalAgendaEnabled;
+import 'clinical_collections_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:universal_html/html.dart' as html;
 import '../../ui/app_theme.dart';
 import 'package:intl/intl.dart';
@@ -539,6 +541,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
 
   @override
   Widget build(BuildContext context) {
+    if (clinicalAgendaEnabled) return const ClinicalCollectionsScreen();
     final clinicId = SessionManager().currentClinicId;
     final caps = ClinicCapabilities.current();
     final isPsychology = caps.isPsychology;

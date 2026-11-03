@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../services/menu_access.dart';
 import '../../services/session_manager.dart';
-import '../../ui/app_theme.dart';
+import 'clinical_operations_style.dart';
 import 'tabs/procedures_tab.dart';
 import 'tabs/inventory_tab.dart';
 import 'tabs/suppliers_tab.dart'; // Importe a nova aba
@@ -103,36 +103,42 @@ class _OperationsManagerScreenState extends State<OperationsManagerScreen>
   Widget build(BuildContext context) {
     final tabs = _loading ? const <Tab>[] : _tabs;
     final bodies = _loading ? const <Widget>[] : _bodies;
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text("Gestão Operacional",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: true,
-        bottom: tabs.isEmpty
-            ? null
-            : TabBar(
-                controller: _controller(tabs.length),
-                labelColor: AppColors.primary,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: AppColors.primary,
-                isScrollable:
-                    true, // Adicionado scroll caso a tela seja pequena
-                tabs: tabs,
-              ),
+    final theme = Theme.of(context);
+    final accent = ClinicalOperationsStyle.teal(context);
+    return Theme(
+      data: theme.copyWith(
+        scaffoldBackgroundColor: ClinicalOperationsStyle.background(context),
+        cardTheme: CardThemeData(color: ClinicalOperationsStyle.panel(context), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+        inputDecorationTheme: theme.inputDecorationTheme.copyWith(filled: true, fillColor: ClinicalOperationsStyle.elevated(context), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : tabs.isEmpty
-              ? const Center(
-                  child: Text(
-                      "Nenhuma aba liberada para seu usuário. Fale com o proprietário."))
-              : TabBarView(
-                  controller: _controller(tabs.length),
-                  children: bodies,
-                ),
+      child: ColoredBox(color: ClinicalOperationsStyle.background(context), child: Padding(
+        padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 16 : 32),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('NEXOSAÚDE • MÓDULO ADMINISTRATIVO / GESTÃO OPERACIONAL', style: TextStyle(color: accent, fontSize: 11, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Wrap(spacing: 14, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            Text('Gestão Operacional', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+            Chip(label: Text(SessionManager().currentClinicName ?? 'Unidade ativa', style: TextStyle(color: accent)), backgroundColor: accent.withValues(alpha: .12), side: BorderSide.none),
+          ]),
+          const SizedBox(height: 8),
+          Text('Controle central de catálogo de procedimentos, suprimentos, parceiros, adquirentes e permissões de perfil.', style: TextStyle(color: ClinicalOperationsStyle.muted(context), height: 1.5)),
+          const SizedBox(height: 24),
+          if (tabs.isNotEmpty) Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: ClinicalOperationsStyle.panel(context), borderRadius: BorderRadius.circular(24)),
+            child: TabBar(controller: _controller(tabs.length), isScrollable: true, tabAlignment: TabAlignment.start,
+              indicatorSize: TabBarIndicatorSize.tab, dividerColor: Colors.transparent,
+              labelColor: accent, unselectedLabelColor: ClinicalOperationsStyle.muted(context),
+              indicator: BoxDecoration(color: ClinicalOperationsStyle.elevated(context), borderRadius: BorderRadius.circular(16)),
+              tabs: tabs.map((t) => Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [if (t.icon != null) ...[t.icon!, const SizedBox(width: 10)], Text(t.text ?? '')]))).toList(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Expanded(child: _loading ? const Center(child: CircularProgressIndicator()) : tabs.isEmpty
+            ? const Center(child: Text('Nenhuma aba liberada para seu usuário. Fale com o proprietário.'))
+            : TabBarView(controller: _controller(tabs.length), children: bodies)),
+        ]),
+      )),
     );
   }
 }

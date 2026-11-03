@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:universal_html/html.dart' as html;
 import 'dart:convert';
 import '../../services/clinic_capabilities.dart';
+import '../../services/care_workflow.dart';
 import '../../services/menu_access.dart';
 import '../../services/pending_counts.dart';
 import '../../services/session_manager.dart';
@@ -14,10 +15,15 @@ import '../../ui/app_theme.dart';
 
 // IMPORTS DAS TELAS
 import 'kpi_dashboard_screen.dart';
-import '../agenda/agenda_manager_screen.dart'; 
+import '../agenda/agenda_manager_screen.dart';
+import '../agenda/clinical_agenda_view.dart';
+import '../agenda/clinical_agenda_brand.dart';
 import '../financial/financial_report_screen.dart'; 
 import '../reports/reports_screen.dart'; 
 import '../patients/patient_list_screen.dart';
+import '../patients/patient_workspace.dart';
+import '../patients/clinical_patient_screen.dart';
+import 'clinical_user_footer.dart';
 import '../news/ortho_news_screen.dart'; 
 import '../clinics/clinic_management_screen.dart'; 
 import '../employees/employee_manager_screen.dart';
@@ -41,7 +47,10 @@ import '../../main.dart';
 import '../../utils/display.dart'; 
 
 class MainWebDashboard extends StatefulWidget {
-  const MainWebDashboard({super.key});
+  const MainWebDashboard({super.key, this.detail, this.detailClinicId, this.initialIndex = 1});
+  final Widget? detail;
+  final String? detailClinicId;
+  final int initialIndex;
 
   @override
   State<MainWebDashboard> createState() => _MainWebDashboardState();
@@ -50,6 +59,7 @@ class MainWebDashboard extends StatefulWidget {
 class _MainWebDashboardState extends State<MainWebDashboard> {
   // Tela inicial: Agenda (índice 1 em _screens).
   int _selectedIndex = 1;
+  bool _detailOpen = true;
   String? _userRole;
   String? _currentClinicId; 
   String? _currentClinicType; // <--- NOVO ESTADO: Tipo da clínica atual
@@ -57,6 +67,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     _fetchUserData();
     _currentClinicId = SessionManager().currentClinicId;
     _currentClinicType = SessionManager().clinicType;
@@ -244,7 +255,15 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
       onNavigate: _onMenuSelect,
     ),
     AgendaManagerScreen(key: ValueKey(_currentClinicId)),      // 1
-    PatientListScreen(key: ValueKey(_currentClinicId)),        // 2
+    clinicalAgendaEnabled
+        ? PatientWorkspace(
+            key: ValueKey(_currentClinicId),
+            listBuilder: (_, open) => PatientListScreen(onOpenPatient: open),
+            detailBuilder: (_, id, name, close) => ClinicalPatientScreen(
+              patientId: id, fallbackName: name, embedded: true, onBack: close,
+            ),
+          )
+        : PatientListScreen(key: ValueKey(_currentClinicId)),   // 2
     ClinicLabScreen(key: ValueKey(_currentClinicId)),          // 3
     FinancialReportScreen(key: ValueKey(_currentClinicId)),    // 4
     ReportsScreen(key: ValueKey(_currentClinicId)),            // 5
@@ -269,10 +288,18 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     const ExportScreen(), // 14
   ];
 
-  void _onMenuSelect(int index) {
+  Future<bool> _flushCareDrafts() async {
+    final saved = await CareDraftRegistry.flush();
+    if (!mounted) return false;
+    if (!saved) toast(context, 'Aguarde o rascunho salvar ou tente novamente antes de sair da ficha.', error: true);
+    return saved;
+  }
+
+  void _onMenuSelect(int index) async {
+    if (!await _flushCareDrafts() || !mounted) return;
     // Em setup, só Clínicas (8) é navegável (KPI e atalhos respeitam).
     if (_needsClinicSetup && index != 8) return;
-    setState(() => _selectedIndex = index);
+    setState(() { _selectedIndex = index; _detailOpen = false; });
     // Checa versão a cada troca de menu (navegação explícita, sem risco
     // de interromper digitação); o aviso aparece 1x por sessão.
     _checkAppVersion();
@@ -282,6 +309,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
   }
 
   Future<void> _logout() async {
+    if (!await _flushCareDrafts() || !mounted) return;
     SessionManager().clear();
     ThemeController().clearUser(); // volta ao tema do aparelho
     await FirebaseAuth.instance.signOut();
@@ -305,7 +333,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     }
   }
 
-  Widget _buildClinicSelector(bool isCompact) {
+  Widget _buildClinicSelector(bool isCompact, {bool clinical = false}) {
     if (!_canSwitchClinic) return const SizedBox.shrink();
 
     final user = FirebaseAuth.instance.currentUser;
@@ -348,7 +376,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         }
 
         // Uma só: nada para trocar.
-        if (clinics.length <= 1) return const SizedBox.shrink();
+        if (clinics.length <= 1 && !clinical) return const SizedBox.shrink();
 
         if (isCompact) {
           return IconButton(
@@ -364,9 +392,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
+            color: clinical ? ClinicalAgendaStyle.elevated.withValues(alpha: .35) : AppColors.surface,
+            borderRadius: BorderRadius.circular(clinical ? 14 : 8),
+            border: clinical ? null : Border.all(color: Colors.grey.shade300),
             boxShadow: [
               BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))
             ]
@@ -375,8 +403,18 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
             child: DropdownButton<String>(
               value: _currentClinicId,
               isExpanded: true,
+              itemHeight: clinical ? 60 : kMinInteractiveDimension,
+              selectedItemBuilder: clinical ? (context) => clinics.map((doc) => Row(children: [
+                Icon(Icons.apartment, color: ClinicalAgendaStyle.teal, size: 22),
+                const SizedBox(width: 12),
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('UNIDADE', style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 10, fontWeight: FontWeight.w600)),
+                  Text('${(doc.data() as Map<String, dynamic>)['name'] ?? 'Unidade'}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                ])),
+              ])).toList() : null,
               hint: const Text("Selecione a Clínica"),
-              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E88E5)),
+              icon: Icon(Icons.expand_more, color: clinical ? ClinicalAgendaStyle.muted : const Color(0xFF1E88E5)),
               items: clinics.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 return DropdownMenuItem<String>(
@@ -388,13 +426,15 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                   ),
                 );
               }).toList(),
-              onChanged: (newClinicId) {
+              onChanged: (newClinicId) async {
                 if (newClinicId != null) {
+                  if (!await _flushCareDrafts() || !mounted) return;
                   final selectedDoc = clinics.firstWhere((d) => d.id == newClinicId);
                   final data = selectedDoc.data() as Map<String, dynamic>;
                   final type = data['type'] ?? 'dental'; 
 
                   setState(() {
+                    _detailOpen = false;
                     _currentClinicId = newClinicId;
                     _currentClinicType = type; // <--- ATUALIZA TIPO PARA MUDAR O MENU
                     SessionManager().setClinic(newClinicId, data['name'], type);
@@ -408,6 +448,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
                     }
                   });
                   
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text("Acessando: ${data['name']} (${type.toUpperCase()})"), 
@@ -426,6 +467,11 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    if (clinicalAgendaEnabled) {
+      final contentTheme = Theme.of(context);
+      return Theme(data: ClinicalAgendaStyle.forContext(context),
+        child: Builder(builder: (context) => _buildClinicalAgendaShell(context, contentTheme)));
+    }
     // Layout responsivo mantido...
     final bgMenuColor = AppColors.surface;
     final bgContentColor = AppColors.background; 
@@ -479,6 +525,233 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildClinicalAgendaShell(BuildContext context, ThemeData contentTheme) {
+    _ensurePendingStreams();
+    final showingDetail = _detailOpen && widget.detail != null && widget.detailClinicId == SessionManager().currentClinicId && _canShow('pacientes');
+    final screen = Theme(data: contentTheme, child: showingDetail ? widget.detail! : _screens[_effectiveIndex]);
+    final mobile = MediaQuery.sizeOf(context).width < 768;
+    final entries = <(int, String, String, IconData)>[
+      (1, 'agenda', 'Agenda', Icons.calendar_today_outlined),
+      (2, 'pacientes', 'Pacientes', Icons.people_outline),
+      (0, 'dashboard', 'Dashboard', Icons.grid_view_outlined),
+      (12, 'atendimento', 'Atendimento', Icons.medical_services_outlined),
+      if (ClinicCapabilities.ofType(_currentClinicType).canShowTherapeuticFlow)
+        (11, 'fluxo', 'Fluxo Terapêutico', Icons.psychology_outlined),
+      if (ClinicCapabilities.ofType(_currentClinicType).canShowLab)
+        (3, 'laboratorio', 'Laboratório', Icons.science_outlined),
+      (5, 'relatorios', 'Relatórios', Icons.bar_chart_outlined),
+      (6, 'noticias', 'Notícias', Icons.newspaper_outlined),
+      (7, 'cobrancas', 'Cobranças', Icons.credit_card_outlined),
+      (8, 'clinicas', 'Clínicas', Icons.apartment_outlined),
+      (9, 'funcionarios', 'Funcionários', Icons.badge_outlined),
+      (10, 'gestao', 'Gestão', Icons.settings_outlined),
+      (13, 'master', 'Master', Icons.admin_panel_settings_outlined),
+      (14, 'exportar', 'Backup', Icons.download_outlined),
+    ].where((e) => _canShow(e.$2)).toList();
+    Widget brand() => ClinicalAgendaBrand(compact: mobile);
+    Widget identity() => ClinicalUserFooter(
+      name: _displayUserName(), subtitle: _displayUserSub(),
+      dark: ClinicalAgendaStyle.isDark, onLogout: _logout,
+      onTheme: () async {
+        final saved = await ThemeController().setDark(!ClinicalAgendaStyle.isDark);
+        if (!saved && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tema aplicado neste aparelho. Não foi possível sincronizar sua preferência agora.')));
+        }
+      },
+    );
+    Widget clinic() => _canSwitchClinic ? _buildClinicSelector(false, clinical: true) : Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: ClinicalAgendaStyle.elevated.withValues(alpha: .35), borderRadius: BorderRadius.circular(14)),
+      child: Row(children: [Icon(Icons.apartment, color: ClinicalAgendaStyle.teal), const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('UNIDADE', style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 10, fontWeight: FontWeight.w600)),
+          Text(SessionManager().currentClinicName ?? 'Unidade', maxLines: 1, overflow: TextOverflow.ellipsis),
+        ])),
+      ]));
+    Widget navigation({BuildContext? drawerContext}) => SafeArea(
+      child: Column(
+        children: [
+          Padding(padding: const EdgeInsets.all(20), child: SizedBox(height: 64, child: brand())),
+          clinic(),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'NAVEGAÇÃO CLÍNICA',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: ClinicalAgendaStyle.muted,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                for (final e in entries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      tileColor: e.$1 == _effectiveIndex ? ClinicalAgendaStyle.teal.withValues(alpha: .12) : null,
+                      iconColor: e.$1 == _effectiveIndex
+                          ? ClinicalAgendaStyle.accent
+                          : ClinicalAgendaStyle.muted,
+                      textColor: e.$1 == _effectiveIndex
+                          ? ClinicalAgendaStyle.accent
+                          : ClinicalAgendaStyle.text,
+                      leading: Icon(e.$4),
+                      title: Text(e.$3),
+                      trailing: e.$1 == 1 || e.$1 == 7
+                          ? StreamBuilder<int>(
+                              stream: e.$1 == 1
+                                  ? _remarcarStream
+                                  : _avisoStream,
+                              builder: (context, snapshot) =>
+                                  (snapshot.data ?? 0) > 0
+                                  ? Badge(label: Text('${snapshot.data}'))
+                                  : const SizedBox.shrink(),
+                            )
+                          : null,
+                      onTap: () {
+                        if (drawerContext != null) Navigator.pop(drawerContext);
+                        _onMenuSelect(e.$1);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: ClinicalAgendaStyle.elevated.withValues(alpha: .5), borderRadius: BorderRadius.circular(14)),
+            child: identity()),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+    final quick = entries.where((e) => [1, 2, 12, 5].contains(e.$1)).toList();
+    return Scaffold(
+      backgroundColor: ClinicalAgendaStyle.background,
+      drawer: mobile
+          ? Drawer(
+              backgroundColor: ClinicalAgendaStyle.surface,
+              child: Builder(builder: (ctx) => navigation(drawerContext: ctx)),
+            )
+          : null,
+      appBar: mobile
+          ? AppBar(
+              backgroundColor: ClinicalAgendaStyle.surface,
+              title: brand(),
+              toolbarHeight: 64,
+              centerTitle: false,
+            )
+          : null,
+      bottomNavigationBar: mobile
+          ? SafeArea(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: ClinicalAgendaStyle.surface,
+                  border: Border(
+                    top: BorderSide(color: ClinicalAgendaStyle.elevated),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    for (final e in quick)
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _onMenuSelect(e.$1),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  e.$4,
+                                  color: e.$1 == _effectiveIndex
+                                      ? ClinicalAgendaStyle.teal
+                                      : ClinicalAgendaStyle.muted,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  e.$3,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: e.$1 == _effectiveIndex
+                                        ? ClinicalAgendaStyle.teal
+                                        : ClinicalAgendaStyle.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            )
+          : null,
+      body: mobile
+          ? Column(
+              children: [
+                clinic(),
+                Expanded(child: screen),
+              ],
+            )
+          : Row(
+              children: [
+                SizedBox(
+                  width: MediaQuery.sizeOf(context).width < 1100 ? 220 : 288,
+                  child: ColoredBox(
+                    color: ClinicalAgendaStyle.surface,
+                    child: navigation(),
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.home_outlined,
+                              size: 20,
+                              color: ClinicalAgendaStyle.muted,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Clínica / ${MenuAccess.labels[MenuAccess.indexKey[_effectiveIndex]] ?? 'Visão Geral'}',
+                                style: TextStyle(
+                                  color: ClinicalAgendaStyle.muted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(child: screen),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 

@@ -81,6 +81,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans.ttf
+
   # Adicione estas linhas com cuidado na indentação (2 espaços antes do assets e 4 antes do traço)
   assets:
     - assets/

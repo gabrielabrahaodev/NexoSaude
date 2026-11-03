@@ -7,6 +7,7 @@ import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/session_manager.dart';
+import '../../services/agenda_professionals.dart';
 import '../../services/appointment_service.dart';
 import '../../services/patient_service.dart';
 import '../../services/portal_mirror.dart'; 
@@ -178,6 +179,12 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
         if (widget.editAppointmentId != null && doc.id == widget.editAppointmentId) continue;
 
         final data = doc.data();
+        final targetProfessional = agendaBookingProfessionalId(
+          role: SessionManager().userRole, userId: SessionManager().userId,
+          selectedId: widget.initialData?['dentistId']?.toString());
+        final occupiedProfessional = (data['dentistId'] ?? data['userId'])?.toString();
+        if (targetProfessional != null && occupiedProfessional != null &&
+            occupiedProfessional != targetProfessional) continue;
         String status = (data['status'] ?? '').toString().toLowerCase(); 
         
         if (status == 'cancelado') continue; 
@@ -541,13 +548,10 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                      toast(context, "Selecione um Paciente.");
                      return;
                   }
-                  String? finalDentistId;
-                  final userRole = SessionManager().userRole;
-                  if (userRole == 'dentista') {
-                    finalDentistId = FirebaseAuth.instance.currentUser?.uid;
-                  } else {
-                    finalDentistId = widget.initialData?['dentistId'];
-                  }
+                  final finalDentistId = agendaBookingProfessionalId(
+                    role: SessionManager().userRole,
+                    userId: SessionManager().userId ?? FirebaseAuth.instance.currentUser?.uid,
+                    selectedId: widget.initialData?['dentistId']?.toString());
                   _selectedTimes.sort();
                   String startTime = _selectedTimes.first;
                   DateTime finalDT = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 

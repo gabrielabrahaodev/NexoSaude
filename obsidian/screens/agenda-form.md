@@ -37,3 +37,8 @@ Novo agendamento, reagendar, checar choque de horário.
 - [[agenda-manager]] — grade que abre este form
 - [[create-patient]] — cadastro completo (o form tem cadastro rápido)
 - [[patient-list]] — busca alternativa de paciente
+
+
+## Seleção de profissional
+
+`agendaBookingProfessionalId` preserva a escolha da gestão e restringe dentistas/psicólogos ao próprio UID, incluindo aliases. A ocupação de horários respeita esse profissional, sem bloquear a agenda por uma consulta de outro membro. O `AgendaCellFactory` centraliza a abertura do formulário correto para a clínica.

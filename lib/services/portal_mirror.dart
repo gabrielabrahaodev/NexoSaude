@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import 'clinic_capabilities.dart';
+
 /// Lógica pura do espelho do portal (testada em
 /// `test/portal_mirror_test.dart`). Escrita no Firestore vive em
 /// `syncPortalMirror` (glue fino, sem teste) + rules A4.
@@ -10,18 +12,36 @@ import 'package:flutter/foundation.dart';
 const _tokenChars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-/// Quem tem agenda no portal: papéis clínicos + owner de clínica
-/// psicológica (psicólogo atuante). Puro e testado; usado pelo rebuild
-/// da janela (`ensureWindow`) e replicado em `migrate/slots-backfill.js`.
+/// Quem tem agenda no portal: profissionais compatíveis com o tipo da clínica.
+/// Owner só aparece como profissional atuante em clínica psicológica.
 bool isPortalProfessional({
   required String role,
   required String clinicType,
 }) {
-  final r = role.toLowerCase();
-  if (r.contains('dentist') || r == 'dentista' || r == 'psicologo') {
-    return true;
+  final normalized = ClinicCapabilities.normalizeRole(role);
+  if (clinicType == 'psychology') {
+    return normalized == 'psicologo' || normalized == 'owner';
   }
-  return clinicType == 'psychology' && r == 'owner';
+  return normalized == 'dentista';
+}
+
+/// IDs dos profissionais ativos usando o espelho público da clínica.
+/// Não lê users/{uid}: as Rules restringem a enumeração dessa coleção a
+/// superadmin; members/{uid} é o diretório mínimo autorizado para a equipe.
+List<String> portalProfessionalIdsFromMembers({
+  required Map<String, Map<String, dynamic>> members,
+  required String clinicType,
+}) {
+  final ids = members.entries
+      .where((entry) => entry.value['status'] == 'Ativo')
+      .where((entry) => isPortalProfessional(
+            role: '${entry.value['role'] ?? ''}',
+            clinicType: clinicType,
+          ))
+      .map((entry) => entry.key)
+      .toList()
+    ..sort();
+  return ids;
 }
 
 /// Token opaco de 32 chars (URL-safe). Quem tem o link, vê o espelho.
@@ -317,7 +337,7 @@ class PortalMirrorSync {
       final raw = mirror.data()?['propostasRecusadas'];
       if (raw is List) refused.addAll(raw.map((e) => '$e'));
     } catch (_) {}
-    await _db.collection('portal').doc(token).set(buildPortalMirror(
+    final mirrorData = buildPortalMirror(
       clinicId: '${pdata['clinicId'] ?? ''}',
       clinicName: clinicName,
       sessions: sessions,
@@ -326,7 +346,12 @@ class PortalMirrorSync {
       now: now,
       refusedIso: refused,
       debtsTruncated: debtsTruncated,
-    ), SetOptions(merge: true)); // merge: preserva campos do portal (statusSessao, pedidos, avisos)
+    );
+    // As Rules validam este vínculo para invalidar espelhos com token antigo.
+    mirrorData['patientId'] = patientId;
+    await _db.collection('portal').doc(token).set(
+        mirrorData,
+        SetOptions(merge: true)); // preserva statusSessao, pedidos e avisos
   }
 
   /// Delta: token do paciente (1 leitura) ou null.
@@ -523,10 +548,26 @@ class PortalMirrorSync {
   }
 
   static Future<void> _ensureWindowUnsafe(String clinicId) async {
+    var stage = 'inicialização da janela';
+    try {
+      await _buildWindowUnsafe(clinicId, (value) => stage = value);
+    } catch (e, stack) {
+      Error.throwWithStackTrace(
+        StateError('etapa "$stage", clinicId="$clinicId": $e'),
+        stack,
+      );
+    }
+  }
+
+  static Future<void> _buildWindowUnsafe(
+    String clinicId,
+    void Function(String) setStage,
+  ) async {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 14));
     // Throttle: 1 leitura; se a janela foi construída há < 6h, não faz nada.
+    setStage('ler portal_slots/$clinicId');
     final slotsRef = _db.collection('portal_slots').doc(clinicId);
     final old = await slotsRef.get();
     final builtAt = (old.data()?['windowBuiltAt'] as Timestamp?)?.toDate();
@@ -536,18 +577,20 @@ class PortalMirrorSync {
     }
     final grade = await clinicGrade(clinicId);
     final clinicType = await clinicTypeOf(clinicId);
-    final users = await _db
-        .collection('users')
-        .where('allowedClinics', arrayContains: clinicId)
+    setStage('listar clinics/$clinicId/members');
+    final members = await _db
+        .collection('clinics')
+        .doc(clinicId)
+        .collection('members')
         .get();
-    final dentists = users.docs
-        .where((d) => isPortalProfessional(
-              role: '${(d.data())['role'] ?? ''}',
-              clinicType: clinicType,
-            ))
-        .map((d) => d.id)
-        .toList();
-    if (dentists.isEmpty) return;
+    final professionals = portalProfessionalIdsFromMembers(
+      members: {
+        for (final doc in members.docs) doc.id: doc.data(),
+      },
+      clinicType: clinicType,
+    );
+    if (professionals.isEmpty) return;
+    setStage('consultar appointments da clínica $clinicId na janela de 14 dias');
     final appts = await _db
         .collection('appointments')
         .where('clinicId', isEqualTo: clinicId)
@@ -574,7 +617,7 @@ class PortalMirrorSync {
       }
     }
     final data = <String, dynamic>{};
-    for (final did in dentists) {
+    for (final did in professionals) {
       for (var i = 0; i < 14; i++) {
         final day = start.add(Duration(days: i));
         final key = '$did.${_dayKey(day)}';
@@ -592,6 +635,7 @@ class PortalMirrorSync {
         prune[k] = FieldValue.delete();
       }
     }
+    setStage('gravar portal_slots/$clinicId');
     await slotsRef.set(
         {...data, ...prune, 'windowBuiltAt': Timestamp.fromDate(now)},
         SetOptions(merge: true));

@@ -21,4 +21,49 @@ void main() {
           isNotNull);
     });
   });
+
+  group('requiresRemoteCloudinaryCleanup', () {
+    test('identifica URLs antigas do Cloudinary mesmo sem publicId', () {
+      expect(
+        requiresRemoteCloudinaryCleanup({
+          'url': 'https://res.cloudinary.com/example/image/upload/file.jpg',
+        }),
+        isTrue,
+      );
+    });
+
+    test('identifica metadados com publicId remoto', () {
+      expect(
+        requiresRemoteCloudinaryCleanup({
+          'url': 'https://files.example.test/document.pdf',
+          'publicId': 'patients/p1/documents/file',
+        }),
+        isTrue,
+      );
+    });
+
+    test('não bloqueia documentos sem binário remoto', () {
+      expect(
+        requiresRemoteCloudinaryCleanup({
+          'url': 'https://firebasestorage.googleapis.com/example',
+          'publicId': '',
+          'path': 'patients/p1/docs/file',
+          'resourceType': 'firebase_storage',
+        }),
+        isFalse,
+      );
+    });
+
+    test('identifica arquivo R2 privado e exige limpeza remota', () {
+      expect(
+        requiresRemoteCloudinaryCleanup({
+          'url': 'r2://clinicA/patientA/document.pdf',
+          'path': 'clinicA/patientA/document.pdf',
+          'publicId': 'clinicA/patientA/document.pdf',
+          'resourceType': 'r2',
+        }),
+        isTrue,
+      );
+    });
+  });
 }

@@ -1,3 +1,5 @@
+import '../agenda/clinical_agenda_view.dart';
+import 'clinical_patient_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:odonto_controle/models/financial_model.dart';
@@ -27,6 +29,7 @@ class PatientDetailsScreen extends StatefulWidget {
   final String? phone;
   final String? birth;
   final String? cpf;
+  final int? initialTab;
 
   const PatientDetailsScreen({
     super.key,
@@ -35,6 +38,7 @@ class PatientDetailsScreen extends StatefulWidget {
     this.phone,
     this.birth,
     this.cpf,
+    this.initialTab = 0,
   });
 
   @override
@@ -55,6 +59,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final caps = ClinicCapabilities.current();
+    if (clinicalAgendaEnabled) return ClinicalPatientScreen(patientId: widget.patientId, fallbackName: widget.patientName, initialTab: widget.initialTab);
 
     // Calcula número de tabs dinamicamente
     // Dental: 9 tabs | Psychology: 6 tabs (sem Orçamentos, Odontograma, Laboratório)
@@ -63,6 +68,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
     return DefaultTabController(
       length: tabCount,
+      initialIndex: (widget.initialTab ?? 0).clamp(0, tabCount - 1),
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -90,17 +96,18 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         ),
         body: Column(
           children: [
-            _HeaderSummaryRow(patientId: widget.patientId),
-            
-            PatientSmartContextCard(patientId: widget.patientId),
-
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            
             Expanded(
               child: TabBarView(
                 children: [
-                  PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
+                  Column(
+                    children: [
+                      PatientSmartContextCard(patientId: widget.patientId),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: PatientDetailsTab(patientName: widget.patientName, patientId: widget.patientId),
+                      ),
+                    ],
+                  ),
                   AnamnesisTab(patientId: widget.patientId),
                   if (caps.canShowBudgets)
                     BudgetsTab(patientName: widget.patientName, patientId: widget.patientId),
@@ -109,7 +116,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                   if (caps.canShowOdontogram) _buildVisualTab(),
                   if (caps.canShowLab) PatientLabTab(patientId: widget.patientId),
                   PatientDocsTab(patientId: widget.patientId),
-                  PatientFinancialTab(patientId: widget.patientId),
+                  Column(
+                    children: [
+                      _HeaderSummaryRow(patientId: widget.patientId),
+                      const Divider(height: 1),
+                      Expanded(child: PatientFinancialTab(patientId: widget.patientId)),
+                    ],
+                  ),
                 ],
               ),
             ),

@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart'; // Necessário para criar App Secundário
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../services/session_manager.dart';
+import '../../services/clinic_member_directory.dart';
 import '../../utils/display.dart';
 
 class EmployeeManagerScreen extends StatefulWidget {
@@ -51,62 +52,75 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
     }
   }
 
-  // --- LÓGICA CORE: CRIAR USUÁRIO SEM DESLOGAR ---
+  // --- CRIA CONTA AUTH + PERFIL + ESPELHOS DE MODO ATÔMICO ---
   Future<void> _registerEmployee() async {
-    if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty || _cpfController.text.isEmpty) {
+    if (_nameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty ||
+        _cpfController.text.trim().isEmpty) {
       toast(context, "Preencha todos os campos.");
       return;
     }
 
-    if (_selectedClinicId == null) {
+    final clinicId = _selectedClinicId;
+    if (clinicId == null || clinicId.isEmpty) {
       toast(context, "Erro: Nenhuma clínica selecionada/identificada.");
       return;
     }
 
     setState(() => _isLoading = true);
-
     FirebaseApp? tempApp;
+    User? createdAuthUser;
+    var provisioned = false;
     try {
-      // 1. Cria uma instância temporária do Firebase para não deslogar o Admin
+      // Usa uma instância temporária para não deslogar o proprietário.
       tempApp = await Firebase.initializeApp(
         name: 'TemporaryRegisterApp',
         options: Firebase.app().options,
       );
-
-      // 2. Cria o usuário na Autenticação usando o App Temporário
-      UserCredential userCredential = await FirebaseAuth.instanceFor(app: tempApp)
+      final credential = await FirebaseAuth.instanceFor(app: tempApp)
           .createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        password: _passwordController.text,
       );
+      createdAuthUser = credential.user;
 
-      // 3. Salva os dados no Firestore (Indexando Usuário + Clínica)
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-        'name': _nameController.text.trim(),
-        'cpf': _cpfController.text.trim(),
-        'email': _emailController.text.trim(),
-        'role': _selectedRole, // 'dentista' ou 'recepcionista'
-        'allowedClinics': [_selectedClinicId], // VINCULA À CLÍNICA ESPECÍFICA
-        'createdAt': FieldValue.serverTimestamp(),
-        'status': 'Ativo'
-      });
+      // Os três documentos Firestore são criados num único batch. Se o batch
+      // falhar, o usuário Auth ainda não foi provisionado no sistema.
+      await ClinicMemberDirectory.createUserForClinic(
+        uid: credential.user!.uid,
+        clinicId: clinicId,
+        profile: {
+          'name': _nameController.text.trim(),
+          'cpf': _cpfController.text.trim(),
+          'email': _emailController.text.trim(),
+          'role': _selectedRole,
+          'allowedClinics': [clinicId],
+          'createdAt': FieldValue.serverTimestamp(),
+          'status': 'Ativo',
+        },
+      );
+      provisioned = true;
 
-      // 4. Limpa e Sucesso
       if (mounted) {
-        Navigator.pop(context); // Fecha o modal
+        Navigator.pop(context);
         toast(context, "Funcionário cadastrado com sucesso!");
         _clearForm();
       }
-
     } on FirebaseAuthException catch (e) {
+      if (!provisioned && createdAuthUser != null) {
+        try { await createdAuthUser!.delete(); } catch (_) {}
+      }
       String msg = "Erro ao cadastrar";
       if (e.code == 'email-already-in-use') msg = "Este email já está em uso.";
       if (e.code == 'weak-password') msg = "A senha é muito fraca.";
       if (mounted) toast(context, msg, error: true);
     } catch (e) {
+      if (!provisioned && createdAuthUser != null) {
+        try { await createdAuthUser!.delete(); } catch (_) {}
+      }
       if (mounted) toast(context, "Erro: $e", error: true);
     } finally {
-      // 5. Destrói o app temporário para liberar memória
       await tempApp?.delete();
       if (mounted) setState(() => _isLoading = false);
     }
@@ -287,10 +301,33 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
       if (ok != true) return;
     }
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .update({'allowedClinics': clinicIds});
+      final db = FirebaseFirestore.instance;
+      final ownerUid = FirebaseAuth.instance.currentUser?.uid;
+      if (ownerUid == null) throw StateError('Sessão encerrada.');
+      final ownedSnap = await db.collection('clinics')
+          .where('ownerId', isEqualTo: ownerUid).get();
+      final ownedIds = ownedSnap.docs.map((d) => d.id).toSet();
+      final userRef = db.collection('users').doc(uid);
+      final userSnap = await userRef.get();
+      if (!userSnap.exists) throw StateError('Usuário não encontrado.');
+      final oldAllowed = ((userSnap.data() ?? {})['allowedClinics'] as List? ?? [])
+          .map((e) => '$e').toSet();
+      final external = oldAllowed.difference(ownedIds);
+      final selected = clinicIds.toSet().intersection(ownedIds);
+      final mergedAllowed = <String>{...external, ...selected}.toList();
+      await userRef.update({'allowedClinics': mergedAllowed});
+      for (final clinicId in ownedIds) {
+        final clinicRef = db.collection('clinics').doc(clinicId);
+        final memberRef = clinicRef.collection('members').doc(uid);
+        final privateMemberRef = clinicRef.collection('members_private').doc(uid);
+        if (selected.contains(clinicId)) {
+          await ClinicMemberDirectory.syncUserForClinic(
+              uid: uid, clinicId: clinicId);
+        } else {
+          try { await memberRef.delete(); } catch (_) {}
+          try { await privateMemberRef.delete(); } catch (_) {}
+        }
+      }
       if (mounted) toast(context, "Clínicas de $name atualizadas.", ok: true);
     } catch (e) {
       if (mounted) toast(context, "Falha ao salvar: $e", error: true);
@@ -548,9 +585,9 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
             // LISTA DE FUNCIONÁRIOS
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                // Busca usuários que tenham o ID desta clínica na lista 'allowedClinics'
-                stream: FirebaseFirestore.instance.collection('users')
-                    .where('allowedClinics', arrayContains: currentClinic)
+                // Diretório de equipe restrito à clínica atual.
+                stream: FirebaseFirestore.instance.collection('clinics')
+                    .doc(currentClinic).collection('members_private')
                     .orderBy('createdAt', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {

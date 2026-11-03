@@ -40,3 +40,5 @@ Cadastro operacional, taxa nova, parcela de máquina, tema, acesso ao menu.
 - [[operations-manager]] — shell que filtra as abas
 - [[operations]] — cadastros de apoio
 - [[employee-manager]] — quem o editor habilita
+
+- Procedimentos: busca por nome/categoria/repasse/flags, categorias reais, cartões adaptativos; moeda pt-BR. Campo active preservado na edição; salvar bloqueia duplo clique e troca de clínica, erros preservam formulário. Exclusão pede confirmação. Sem rótulo especializado/preventivo ou profissional nominal inventado.

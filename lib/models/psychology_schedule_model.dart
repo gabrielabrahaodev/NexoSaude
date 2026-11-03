@@ -18,6 +18,7 @@ class PsychologyScheduleModel {
   final String status;
   final DateTime createdAt;
   final String? notes;
+  final String? dentistId;
 
   PsychologyScheduleModel({
     required this.id,
@@ -35,6 +36,7 @@ class PsychologyScheduleModel {
     this.status = 'active',
     required this.createdAt,
     this.notes,
+    this.dentistId,
   });
 
   factory PsychologyScheduleModel.fromMap(String id, Map<String, dynamic> map) {
@@ -56,6 +58,7 @@ class PsychologyScheduleModel {
       status: map['status'] ?? 'active',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       notes: map['notes'],
+      dentistId: map['dentistId']?.toString(),
     );
   }
 
@@ -75,6 +78,7 @@ class PsychologyScheduleModel {
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
       'notes': notes,
+      if (dentistId != null) 'dentistId': dentistId,
     };
   }
 

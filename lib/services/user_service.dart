@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import 'clinic_capabilities.dart';
 import 'session_manager.dart';
+import 'clinic_member_directory.dart';
+import 'agenda_professionals.dart';
 
 /// Dentista padrão da próxima sessão (puro e testado): mantém o atual
 /// se ainda atende; senão o primeiro da lista; sem lista, o atual.
@@ -19,21 +21,27 @@ class UserService {
   final CollectionReference<Map<String, dynamic>> _users = 
       FirebaseFirestore.instance.collection('users');
       
-  final CollectionReference _clinics = FirebaseFirestore.instance.collection('clinics');
+  final CollectionReference<Map<String, dynamic>> _clinics = FirebaseFirestore.instance.collection('clinics');
 
-  Future<({String type, String? ownerId})> _getClinicInfo(
-      String clinicId) async {
+  Future<({String type})> _getClinicInfo(String clinicId) async {
     final doc = await _clinics.doc(clinicId).get();
-    if (!doc.exists) return (type: 'dental', ownerId: null);
-    final data = doc.data() as Map<String, dynamic>?;
-    return (
-      type: data?['type']?.toString() ?? 'dental',
-      ownerId: data?['ownerId']?.toString(),
-    );
+    if (!doc.exists) return (type: 'dental');
+    final data = doc.data();
+    return (type: data?['type']?.toString() ?? 'dental');
   }
 
   bool _matchesClinicType(String role, String clinicType) {
     return ClinicCapabilities.ofType(clinicType).matchesProfessionalRole(role);
+  }
+
+  /// Diretório público mínimo já adotado pela nova-audit. Alterações de
+  /// vínculo/status aparecem na agenda sem recarregar o aplicativo.
+  Stream<List<UserModel>> watchAgendaProfessionals(String clinicId) {
+    if (clinicId.isEmpty || clinicId == 'ALL') return Stream.value([]);
+    return _clinics.doc(clinicId).collection('members').snapshots().map((snapshot) =>
+      agendaProfessionalsFromMembers(snapshot.docs.map((doc) => {
+        ...doc.data(), 'uid': doc.id,
+      })));
   }
 
   // --- MÉTODO EXISTENTE (Mantido para compatibilidade) ---
@@ -43,21 +51,13 @@ class UserService {
       if (clinicId.isEmpty) return [];
 
       // Busca profissionais que têm acesso a esta clínica
-      final workersSnapshot = await _users
-          .where('allowedClinics', arrayContains: clinicId)
-          .get();
+      final workersSnapshot = await _clinics.doc(clinicId)
+          .collection('members').get();
 
       final professionals = workersSnapshot.docs
+          .where((doc) => doc.data()['status'] == 'Ativo')
           .map((doc) => UserModel.fromMap(doc.id, doc.data()))
           .toList();
-
-      // Adiciona o owner da clínica se não estiver na lista
-      if (info.ownerId != null && !professionals.any((p) => p.id == info.ownerId)) {
-        final ownerDoc = await _users.doc(info.ownerId!).get();
-        if (ownerDoc.exists) {
-          professionals.add(UserModel.fromMap(ownerDoc.id, ownerDoc.data()!));
-        }
-      }
 
       // Filtra por tipo de clínica
       return professionals.where((u) => _matchesClinicType(u.role, info.type)).toList();
@@ -79,32 +79,22 @@ class UserService {
     return _clinics.doc(clinicId).snapshots().asyncMap((clinicDoc) async {
       if (!clinicDoc.exists) return <Map<String, dynamic>>[];
 
-      final clinicData = clinicDoc.data() as Map<String, dynamic>?;
+      final clinicData = clinicDoc.data();
       final clinicType = clinicData?['type'] ?? 'dental';
-      final ownerId = clinicData?['ownerId'];
       
-      // 3. Query base por allowedClinics
-      Query<Map<String, dynamic>> query = _users
-          .where('allowedClinics', arrayContains: clinicId);
+      // 3. Lê somente a projeção pública mínima da clínica.
+      final snapshot = await _clinics.doc(clinicId).collection('members').get();
+      final users = snapshot.docs
+          .where((doc) => doc.data()['status'] == 'Ativo')
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          })
+          .toList();
 
-      final snapshot = await query.get();
-      List<Map<String, dynamic>> users = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-
-      // 4. Adiciona owner se não estiver na lista
-      if (ownerId != null && !users.any((u) => u['id'] == ownerId)) {
-        final ownerDoc = await _users.doc(ownerId).get();
-        if (ownerDoc.exists) {
-          final data = ownerDoc.data()!;
-          data['id'] = ownerDoc.id;
-          users.add(data);
-        }
-      }
-
-      // 5. Filtra por tipo de clínica
+      // 4. Só profissionais ativos; aliases legados são normalizados pela
+      // ClinicCapabilities, sem leitura dos perfis completos dos colegas.
       return users.where((user) {
         final role = (user['role'] ?? '').toString();
         return _matchesClinicType(role, clinicType);
@@ -116,8 +106,8 @@ class UserService {
   /// Inclui `menuAccess` (Map) quando existir.
   Stream<List<Map<String, dynamic>>> watchClinicUsers(String clinicId) {
     if (clinicId.isEmpty) return Stream.value([]);
-    return _users
-        .where('allowedClinics', arrayContains: clinicId)
+    return _clinics.doc(clinicId)
+        .collection('members_private')
         .snapshots()
         .map((snap) => snap.docs.map((doc) {
               final data = doc.data();
@@ -128,7 +118,10 @@ class UserService {
 
   /// Salva o mapa de acesso ao menu (`menuAccess`) do usuário.
   /// Regra Firestore: escrita em `users` só p/ owner.
-  Future<void> updateMenuAccess(String uid, Map<String, bool> access) {
-    return _users.doc(uid).update({'menuAccess': access});
+  Future<void> updateMenuAccess(String uid, Map<String, bool> access) async {
+    await _users.doc(uid).update({'menuAccess': access});
+    final clinicId = SessionManager().currentClinicId;
+    if (clinicId == null || clinicId.isEmpty || clinicId == 'ALL') return;
+    await ClinicMemberDirectory.syncUserForClinic(uid: uid, clinicId: clinicId);
   }
 }
