@@ -104,6 +104,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
               child: DropdownButton<String>(
                 key: const ValueKey('agenda-professional'),
                 value: selectedId,
+                isDense: true,
                 isExpanded: true,
                 menuMaxHeight: 360,
                 icon: enabled
