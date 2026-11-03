@@ -68,3 +68,5 @@ Pela lista do dashboard, a ficha usa `embedded: true` e callback `onBack`: retor
 ## Visibilidade dos resumos por aba — 31/10/2026
 
 Resumo de contexto (`PatientSmartContextCard`) somente em Cadastro. Os quatro indicadores de assiduidade/a receber/recebido/custo operacional (`_metrics`) somente em Pagamentos. As demais abas não montam esses blocos nem reservam o espaço deles. Identificação e navegação permanecem compartilhadas. A regra também vale para o layout anterior (`AGENDA_CLINICAL_DARK=false`), com contexto na primeira aba e resumo na última, sem depender dos índices específicos de odontologia/psicologia. Dados, cálculos e ações são preservados.
+
+- Prontuário (03/11/2026): visual ClinicalRecordsView com filtros e contagens reais por categoria, ordenação e cards de evolução/cancelamento/administrativo. Cancelamento legado mostra operador, nunca dentista responsável. Editar preserva autor/data, grava editedBy/editedAt; sem anexos/orçamentos ilustrativos. Detalhes e validação pendente em docs/design/patients/PRONTUARIO.md.
