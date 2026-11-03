@@ -1,3 +1,4 @@
+import 'procedure_tags.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/appointment_model.dart';
 import 'portal_mirror.dart';
@@ -64,8 +65,19 @@ class AppointmentService {
     // carimbar permitiria confirmar sem o link — reavaliação P1).
     var map = appointment.toMap();
     map.remove('portalToken');
-    final ref = _collection.doc();
-    await ref.set(map);
+    final ref = _collection.doc(appointment.id.isEmpty ? null : appointment.id);
+    final receipt = FirebaseFirestore.instance.collection('patients').doc(appointment.patientId).collection('clinical_data').doc('booking_${ref.id}');
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final exists = await tx.get(receipt);
+      if (exists.exists) {
+        if (exists.data()?['payloadKey'] != tagSnapshotKey(map)) throw StateError('Este agendamento já foi gravado. Reabra-o pela Agenda para editar.');
+        return;
+      }
+      if (appointment.clinicId != SessionManager().currentClinicId) throw StateError('Unidade alterada.');
+      if (appointment.procedureTagIds.isNotEmpty) await ProcedureTags.readForVisit(tx, FirebaseFirestore.instance, appointment.patientId, appointment.clinicId, appointment.procedureTagIds);
+      tx.set(ref, map);
+      tx.set(receipt, {'clinicId': appointment.clinicId, 'patientId': appointment.patientId, 'appointmentId': ref.id, 'payloadKey': tagSnapshotKey(map), 'createdAt': FieldValue.serverTimestamp()});
+    });
     // Espelho (delta, sem scan): a sessão entra com os dados em mãos.
     await PortalMirrorSync.upsertSession(
       patientId: appointment.patientId,
@@ -91,7 +103,13 @@ class AppointmentService {
     final old = (await _collection.doc(appointment.id).get()).data()
         as Map<String, dynamic>?;
     // Em update, removemos campos que não queremos sobrescrever acidentalmente, ou enviamos tudo
-    await _collection.doc(appointment.id).update(map);
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final current = await tx.get(_collection.doc(appointment.id));
+      final d = current.data();
+      if (d == null || d['clinicId'] != appointment.clinicId || d['patientId'] != appointment.patientId || appointment.clinicId != SessionManager().currentClinicId || d['status'] == 'Finalizado' || d['status'] == 'Cancelado') throw StateError('Agendamento alterado ou indisponível.');
+      if (appointment.procedureTagIds.isNotEmpty) await ProcedureTags.readForVisit(tx, FirebaseFirestore.instance, appointment.patientId, appointment.clinicId, appointment.procedureTagIds);
+      tx.update(_collection.doc(appointment.id), map);
+    });
     // Troca de data/dentista: libera o slot antigo, ocupa o novo.
     final oldDate = (old?['date'] as Timestamp?)?.toDate();
     final oldDentist = '${old?['dentistId'] ?? ''}';

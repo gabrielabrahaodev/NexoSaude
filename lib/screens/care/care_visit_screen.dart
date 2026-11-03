@@ -1,3 +1,4 @@
+import '../../widgets/patient_procedure_tags.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -65,6 +66,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   String _method = 'Pix';
   late String _status;
   late final bool _psychology;
+  late Map<String, bool> _tagDecisions;
   final List<String> _alerts = [];
   List<FinancialModel> _openCharges = [];
   List<UserModel> _nextDentists = [];
@@ -91,6 +93,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   void initState() {
     super.initState();
     _psychology = ClinicCapabilities.current().isPsychology;
+    _tagDecisions = {for (final id in _a.procedureTagIds) id: false};
     _status = _a.status;
     _nextDentistId = _a.dentistId;
     _detailsCtrl.addListener(_changed);
@@ -118,7 +121,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     if (_dirty && !_done && !_loadingDraft) {
       unawaited(
         _service
-            .saveDraft(_a, text: _detailsCtrl.text, markers: _markers.toList())
+            .saveDraft(_a, text: _detailsCtrl.text, markers: _markers.toList(), procedureTags: _tagDecisions)
             .catchError((Object error) {
               debugPrint('Falha no rascunho de atendimento: $error');
             }),
@@ -162,6 +165,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
       _status = '${data['status'] ?? _a.status}';
       if (draft is Map && !_done) {
         _detailsCtrl.text = '${draft['text'] ?? ''}';
+        if (draft['procedureTags'] is Map) _tagDecisions = Map<String, bool>.from(draft['procedureTags']);
         _markers.addAll(
           (draft['markers'] is List ? draft['markers'] as List : []).map(
             (v) => '$v',
@@ -211,7 +215,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
     _draftDone = done;
     var changedDuringSave = false;
     try {
-      await _service.saveDraft(_a, text: text, markers: markers);
+      await _service.saveDraft(_a, text: text, markers: markers, procedureTags: _tagDecisions);
       if (!mounted) return true;
       final unchanged =
           text == _detailsCtrl.text &&
@@ -286,6 +290,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
         description: _description,
         psychology: _psychology,
         finalize: finalize,
+        procedureTags: _psychology ? null : _tagDecisions,
       );
       if (!mounted) return;
       setState(() {
@@ -1166,7 +1171,7 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
             onStartPause: _startPause,
             onOpenRecord: () => _openPatient(PatientSection.record),
             onClose: widget.onClose == null ? null : _close,
-            billing: _billing(),
+            billing: Column(children: [if (!_psychology && !_done) PatientProcedureTags(patientId: _a.patientId, selected: _tagDecisions, finishing: true, onChanged: (v) { setState(() => _tagDecisions = v); _changed(); }), _billing()]),
             scheduling: _scheduling(),
             draftStatus: _draftStatus,
             saving: _saving || _loadingDraft,

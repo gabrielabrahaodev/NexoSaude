@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/procedure_model.dart';
 import 'session_manager.dart';
+import 'procedure_tags.dart';
 
 class ProcedureService {
   // CORREÇÃO: Tipagem forte para evitar erro de Object? vs Map
@@ -20,11 +21,14 @@ class ProcedureService {
   }
 
   Future<void> save(ProcedureModel model) async {
-    if (model.id.isEmpty) {
-      await _collection.add(model.toMap());
-    } else {
-      await _collection.doc(model.id).update(model.toMap());
-    }
+    if (model.clinicId != SessionManager().currentClinicId) throw StateError('Unidade alterada.');
+    final ref = model.id.isEmpty ? _collection.doc() : _collection.doc(model.id);
+    final batch = FirebaseFirestore.instance.batch();
+    batch.set(ref, model.toMap(), SetOptions(merge: true));
+    batch.set(ref.collection('tags').doc('definition'), {
+      ...procedureTagDefinition(model.toMap(), ref.id), 'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
   }
 
   Future<void> delete(String id) async {

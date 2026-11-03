@@ -747,4 +747,22 @@ describe('matriz reavaliação P0/P1', () => {
     });
   });
 
+  it('Tags de catálogo/paciente e histórico mantêm o escopo existente da clínica', async () => {
+    const db = ctx('staffA').firestore();
+    const batch = db.batch();
+    batch.set(db.doc('procedures/tag_proc'), {clinicId:A,name:'Procedimento'});
+    batch.set(db.doc('procedures/tag_proc/tags/definition'), {clinicId:A,procedureId:'tag_proc',name:'Procedimento'});
+    batch.set(db.doc('patients/p1/procedure_tags/budget_test_line_0'), {clinicId:A,patientId:'p1',budgetId:'test',status:'pending',name:'Procedimento'});
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(db.collection('patients/p1/procedure_tags').where('clinicId','==',A).get());
+    await assertFails(ctx('staffB').firestore().doc('patients/p1/procedure_tags/budget_test_line_0').get());
+    await assertFails(ctx('staffB').firestore().doc('procedures/tag_proc/tags/definition').get());
+    await assertFails(db.doc('patients/p2/procedure_tags/invalid').set({clinicId:A,patientId:'p1'}));
+    const invalid = db.batch();
+    invalid.update(db.doc('patients/p1/procedure_tags/budget_test_line_0'), {status:'completed'});
+    invalid.set(db.doc('patients/p2/clinical_data/tag_visit_invalid'), {clinicId:B});
+    await assertFails(invalid.commit());
+    assert.equal((await db.doc('patients/p1/procedure_tags/budget_test_line_0').get()).data().status,'pending');
+  });
+
 });

@@ -32,7 +32,7 @@ class _ClinicalRecordsViewState extends State<ClinicalRecordsView> {
   bool _matches(String filter, Map<String, dynamic> d) => switch (filter) {
     'Cancelamentos' => recordIsCancellation(d),
     'Evoluções' => !recordIsCancellation(d) && !recordIsAdministrative(d),
-    'Procedimentos' => !recordIsCancellation(d) && !recordIsAdministrative(d) && '${d['treatmentId'] ?? ''}'.isNotEmpty,
+    'Procedimentos' => !recordIsCancellation(d) && !recordIsAdministrative(d) && ('${d['treatmentId'] ?? ''}'.isNotEmpty || (d['procedureTags'] is List && (d['procedureTags'] as List).isNotEmpty)),
     _ => true,
   };
   @override
@@ -75,6 +75,10 @@ class _ClinicalRecordsViewState extends State<ClinicalRecordsView> {
             const SizedBox(height: 22),
             if (!cancel && !admin) ...[Text('CONDUTA & DIAGNÓSTICO:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: muted)), const SizedBox(height: 6)],
             SelectableText(description.isEmpty ? 'Descrição não informada.' : description, style: const TextStyle(fontSize: 13, height: 1.6)),
+            if (d['procedureTags'] is List) ...[
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 6, children: [for (final tag in (d['procedureTags'] as List).whereType<Map>()) Chip(label: Text('${tag['name'] ?? 'Procedimento'} • ${tag['completed'] == true ? 'Concluído' : 'Em andamento'}', style: const TextStyle(fontSize: 11)))]),
+            ],
             if (cancel) ...[const SizedBox(height: 12), Text('Registrado no prontuário por: $operator', style: TextStyle(color: muted, fontSize: 12))],
             if ('${d['treatmentId'] ?? ''}'.isNotEmpty && !cancel && !admin) ...[const SizedBox(height: 14), Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: .08), border: Border.all(color: color.withValues(alpha: .25)), borderRadius: BorderRadius.circular(8)), child: Text('Procedimento: $title', style: TextStyle(color: color, fontSize: 12)))],
           ]),
