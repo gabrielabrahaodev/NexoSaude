@@ -44,3 +44,9 @@ Sem Functions, o portal lê espelhos: `portal/{token}` (3 sessões + top-3 atras
 - Profissionais do espelho (`isPortalProfessional`, testado): papéis clínicos + owner em clínica psicológica (psicólogo atuante).
 
 Ver [[portal-page]], [[remarcar-dialog]], [[atendimento]].
+
+## Conferência de saldo e isolamento — 03/11/2026
+
+Na variante clínica, `buildPortalMirror` remove sessões canceladas da lista de próximas e considera dívidas com valor em aberto: o total somado usa `amount - paidAmount`, excluindo cobranças canceladas/substituídas e quitadas. Conferir especialmente registros legados com `amount` integral e `paidAmount` parcial, e registros recentes representados por saldo remanescente + filhas. Evitar somar novamente o valor pago ou exibir Pix integral de cobrança parcialmente recebida. Esse cálculo puro não comprova a publicação do espelho nem o fluxo real do Pix.
+
+A fonte de autorização e revogação está em `firestore.rules` e no token atual do paciente. O espelho é **consultivo**; confirmação/remarcação e slots devem ser revalidados no dado vivo. Exigir testes do emulador e do navegador antes da liberação; ver [[auditoria-codigo-2026-11-03]] e [[financial]].

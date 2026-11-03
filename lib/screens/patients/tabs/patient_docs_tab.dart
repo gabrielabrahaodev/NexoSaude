@@ -1,3 +1,4 @@
+import '../clinical_patient_view.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -47,7 +48,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
     } else {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'png', 'pdf', 'doc', 'docx'],
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
         withData: true,
       );
 
@@ -95,7 +96,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                     onChanged: (val) => setStateDialog(() => category = val!),
                   ),
                   const SizedBox(height: 10),
-                  Text("Tamanho aprox: ${(size / 1024).toStringAsFixed(0)} KB", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text("Tamanho aprox: ${(size / 1024).toStringAsFixed(0)} KB", style: TextStyle(color: PatientVisualStyle.textSecondary, fontSize: 12)),
                 ],
               ),
               actions: [
@@ -126,24 +127,13 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
         file: fileMobile,
         bytes: fileBytes,
         fileName: name,
+        clinicId: clinicId,
+        patientId: widget.patientId,
+        category: category,
+        uploaderName: 'Usuario',
       );
 
       if (uploaded == null) throw Exception("Falha no upload para nuvem.");
-
-      String ext = ".${name.split('.').last}";
-      if (!name.contains('.')) ext = ".pdf";
-
-      await _docService.saveMetadata(
-        clinicId: clinicId,
-        patientId: widget.patientId,
-        url: uploaded.url,
-        title: name,
-        category: category,
-        ext: ext,
-        uploaderName: "Usuario",
-        publicId: uploaded.publicId,
-        resourceType: uploaded.resourceType,
-      );
 
       if (mounted) toast(context, "Upload concluído!");
     } catch (e) {
@@ -153,47 +143,82 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
     }
   }
 
-  void _openFile(String url, String fileType) async {
-    // Se for imagem, abre no visualizador interno
-    if (fileType == 'image') {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
-        backgroundColor: Colors.black,
-        body: PhotoView(imageProvider: NetworkImage(url)),
-      )));
-    } else {
-      // Se for PDF ou DOC, abre no navegador/app externo
-      final tab = openBlankTab();
-      final ok = await openLinkSafe(tab, url);
-      if (!ok && mounted) {
-        toast(context, "Não foi possível abrir o arquivo.");
+  Future<void> _openFile(PatientDocumentModel doc) async {
+    try {
+      final clinicId = SessionManager().currentClinicId;
+      if (clinicId == null || clinicId.isEmpty) {
+        throw StateError('Selecione a clínica antes de abrir o documento.');
       }
+      final url = await _docService.resolveDocumentUrl(
+        clinicId: clinicId,
+        patientId: widget.patientId,
+        document: doc,
+      );
+      // R2 é privado: gera URL temporária somente após autenticar e validar a clínica.
+      if (doc.fileType == 'image') {
+        if (!mounted) return;
+        Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+          appBar: AppBar(backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
+          backgroundColor: Colors.black,
+          body: PhotoView(imageProvider: NetworkImage(url)),
+        )));
+      } else {
+        final tab = openBlankTab();
+        final ok = await openLinkSafe(tab, url);
+        if (!ok && mounted) toast(context, 'Não foi possível abrir o arquivo.');
+      }
+    } catch (e) {
+      if (mounted) toast(context, 'Não foi possível abrir o documento: $e', error: true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: PatientVisualStyle.background,
       floatingActionButton: FloatingActionButton(
-        onPressed: _isUploading ? null : () {
-          showModalBottomSheet(context: context, builder: (ctx) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(leading: const Icon(Icons.camera_alt), title: const Text("Tirar Foto"), onTap: () { Navigator.pop(ctx); _pickFile(true); }),
-              ListTile(leading: const Icon(Icons.attach_file), title: const Text("Buscar Arquivo"), onTap: () { Navigator.pop(ctx); _pickFile(false); }),
-            ],
-          ));
-        },
-        child: _isUploading 
-          ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2) 
-          : const Icon(Icons.add),
+        onPressed: DocumentService.isPrivateStorageConfigured
+            ? () => _pickFile(false)
+            : null,
+        tooltip: DocumentService.isPrivateStorageConfigured
+            ? 'Adicionar documento privado'
+            : 'Configure o Worker privado para liberar envios',
+        child: Icon(
+          DocumentService.isPrivateStorageConfigured
+              ? Icons.upload_file
+              : Icons.lock_outline,
+        ),
       ),
       body: Column(
         children: [
+          if (!DocumentService.isPrivateStorageConfigured)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: PatientVisualStyle.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: PatientVisualStyle.textSecondary.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lock_outline, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'O armazenamento privado ainda não foi configurado neste build. Os documentos existentes continuam disponíveis; configure PRIVATE_FILES_API_URL para habilitar novos envios.',
+                      style: TextStyle(color: PatientVisualStyle.textSecondary, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Filtros (Chips)
           Container(
-            color: AppColors.surface,
+            color: PatientVisualStyle.surface,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: SingleChildScrollView(
@@ -208,9 +233,9 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                       label: Text(cat),
                       selected: isSel,
                       onSelected: (val) => setState(() => _selectedCategory = cat),
-                      backgroundColor: AppColors.surface,
+                      backgroundColor: PatientVisualStyle.surface,
                       selectedColor: Colors.blue[100],
-                      labelStyle: TextStyle(color: isSel ? Colors.blue[900] : AppColors.textPrimary),
+                      labelStyle: TextStyle(color: isSel ? Colors.blue[900] : PatientVisualStyle.textPrimary),
                       checkmarkColor: Colors.blue[900],
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSel ? Colors.blue : Colors.transparent)),
                     ),
@@ -324,8 +349,8 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(4)),
-              child: Text(doc.category, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+              decoration: BoxDecoration(color: PatientVisualStyle.surface, borderRadius: BorderRadius.circular(4)),
+              child: Text(doc.category, style: TextStyle(fontSize: 10, color: PatientVisualStyle.textSecondary)),
             ),
             const SizedBox(width: 8),
             Text(formatDateTimeFull(doc.uploadedAt), style: const TextStyle(fontSize: 11)),
@@ -334,7 +359,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.grey),
           onSelected: (value) {
-            if (value == 'open') _openFile(doc.url, doc.fileType);
+            if (value == 'open') _openFile(doc);
             if (value == 'delete') _confirmDelete(doc);
           },
           itemBuilder: (ctx) => [
@@ -342,7 +367,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
             const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 8), Text("Excluir", style: TextStyle(color: Colors.red))])),
           ],
         ),
-        onTap: () => _openFile(doc.url, doc.fileType),
+        onTap: () => _openFile(doc),
       ),
     );
   }
@@ -358,13 +383,24 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await _docService.deleteDocument(
-                widget.patientId,
-                doc.id,
-                clinicId: SessionManager().currentClinicId,
-                publicId: doc.publicId,
-                resourceType: doc.resourceType,
-              );
+              try {
+                await _docService.deleteDocument(
+                  widget.patientId,
+                  doc.id,
+                  clinicId: SessionManager().currentClinicId,
+                  publicId: doc.publicId,
+                  resourceType: doc.resourceType,
+                );
+                if (mounted) toast(context, 'Documento excluído.', ok: true);
+              } catch (e) {
+                if (mounted) {
+                  toast(
+                    context,
+                    'Não foi possível excluir o arquivo remoto. A referência foi preservada: $e',
+                    error: true,
+                  );
+                }
+              }
             },
             child: const Text("Excluir", style: TextStyle(color: Colors.red))
           )

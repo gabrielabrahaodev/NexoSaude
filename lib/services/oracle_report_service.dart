@@ -2,22 +2,24 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'session_manager.dart';
 import '../models/financial_model.dart';
+import '../utils/display.dart' show parseBRL;
 
 // --- MODELOS AUXILIARES ---
 class TransactionItem {
   final String id;
-  final String title; 
+  final String title;
   final double amount;
-  final DateTime date; 
+  final DateTime date;
   final DateTime dueDate;
   final double paidAmount;
   final bool isIncome;
   final bool isPaid;
   final String category;
-  
-  final String? patientId; 
-  final String paymentMethod; 
 
+  final String? patientId;
+  final String paymentMethod;
+
+  final Map<String, dynamic> details;
   double runningBalance;
 
   TransactionItem({
@@ -30,9 +32,10 @@ class TransactionItem {
     required this.isIncome,
     required this.isPaid,
     required this.category,
-    this.patientId,      
-    this.paymentMethod = 'Dinheiro', 
+    this.patientId,
+    this.paymentMethod = 'Dinheiro',
     this.runningBalance = 0.0,
+    this.details = const {},
   });
 }
 
@@ -49,19 +52,28 @@ bool isOverdueTx(TransactionItem t, DateTime now) {
 
 /// Aplica o filtro (puro e testado).
 List<TransactionItem> flowFilter(
-    List<TransactionItem> items, FlowFilter f, DateTime now) {
+  List<TransactionItem> items,
+  FlowFilter f,
+  DateTime now,
+) {
   switch (f) {
     case FlowFilter.todos:
       return List.of(items);
     case FlowFilter.recebido:
-      return [for (final t in items) if (t.isPaid) t];
+      return [
+        for (final t in items)
+          if (t.isPaid) t,
+      ];
     case FlowFilter.aReceber:
       return [
         for (final t in items)
-          if (!t.isPaid && !isOverdueTx(t, now)) t
+          if (!t.isPaid && !isOverdueTx(t, now)) t,
       ];
     case FlowFilter.inadimplente:
-      return [for (final t in items) if (isOverdueTx(t, now)) t];
+      return [
+        for (final t in items)
+          if (isOverdueTx(t, now)) t,
+      ];
   }
 }
 
@@ -86,20 +98,67 @@ class OracleReportSnapshot {
   double get totalExpense => totalExpenses;
 }
 
+class ReportDocument {
+  const ReportDocument(this.id, this.data);
+  final String id;
+  final Map<String, dynamic> data;
+}
+
+DateTime? reportDate(dynamic value) => value is Timestamp
+    ? value.toDate()
+    : value is DateTime
+    ? value
+    : value is String
+    ? DateTime.tryParse(value)
+    : null;
+bool reportCanceled(Map<String, dynamic> data) =>
+    '${data['status'] ?? ''}'.toLowerCase().contains('cancel') ||
+    FinancialModel.isReplaced('${data['status'] ?? ''}');
+bool reportCard(Map<String, dynamic> data) {
+  final method = '${data['paymentMethod'] ?? ''}'.toLowerCase();
+  return !method.contains('déb') &&
+      !method.contains('deb') &&
+      (method.contains('cart') ||
+          method.contains('crédit') ||
+          method.contains('credit'));
+}
+
+bool reportAnticipated(Map<String, dynamic> data) =>
+    '${data['status'] ?? ''}'.toLowerCase().contains('anticipat') ||
+    '${data['status'] ?? ''}'.toLowerCase().contains('antecipad');
+bool reportCanAnticipate(Map<String, dynamic> data, DateTime now) {
+  final date = reportDate(data['dueDate']) ?? reportDate(data['date']);
+  return (data['type'] ?? 'income') == 'income' &&
+      reportCard(data) &&
+      !reportCanceled(data) &&
+      !reportAnticipated(data) &&
+      date != null &&
+      !date.isBefore(DateTime(now.year, now.month, now.day)) &&
+      !date.isAfter(DateTime(now.year + 1, now.month, now.day)) &&
+      parseBRL(data['amount']) > 0;
+}
+
 class OracleReportService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Stream<OracleReportSnapshot> getMonthOverview(DateTime month) {
     final String? clinicId = SessionManager().currentClinicId;
-    
+
     if (clinicId == null) {
-      return Stream.value(OracleReportSnapshot(
-        totalRevenue: 0, totalExpenses: 0, netProfit: 0, profitMargin: 0, projectedBalance: 0, transactions: []
-      ));
+      return Stream.value(
+        OracleReportSnapshot(
+          totalRevenue: 0,
+          totalExpenses: 0,
+          netProfit: 0,
+          profitMargin: 0,
+          projectedBalance: 0,
+          transactions: [],
+        ),
+      );
     }
 
     DateTime start = DateTime(month.year, month.month, 1);
-    DateTime end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+    DateTime end = DateTime(month.year, month.month + 1, 1);
 
     // Economia de cota: união de queries mensais por campo de data em vez
     // de baixar a collection inteira. Exato porque toda data efetiva usada
@@ -109,57 +168,148 @@ class OracleReportService {
       return _db
           .collection(collection)
           .where('clinicId', isEqualTo: clinicId)
-          .where(field,
-              isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-          .where(field, isLessThanOrEqualTo: Timestamp.fromDate(end))
+          .where(field, isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where(field, isLessThan: Timestamp.fromDate(end))
           .snapshots();
     }
 
-    const dateFields = ['dueDate', 'paymentDate', 'paidDate', 'date'];
-    final incomeStreams =
-        dateFields.map((f) => bounded('financial', f)).toList();
-    final expenseStreams =
-        dateFields.map((f) => bounded('expenses', f)).toList();
+    const dateFields = [
+      'dueDate',
+      'paymentDate',
+      'paidDate',
+      'date',
+      'createdAt',
+    ];
+    final incomeStreams = dateFields
+        .where((f) => f != 'createdAt')
+        .map((f) => bounded('financial', f))
+        .toList();
+    final expenseStreams = dateFields
+        .map((f) => bounded('expenses', f))
+        .toList();
 
-    return StreamCombiner.combineDocs([...incomeStreams, ...expenseStreams])
-        .map((lists) => _processDocs(
-              lists.sublist(0, 4).expand((l) => l).toList(),
-              lists.sublist(4).expand((l) => l).toList(),
-              start,
-              end,
-            ));
+    return StreamCombiner.combineDocs([
+      ...incomeStreams,
+      ...expenseStreams,
+    ]).map(
+      (lists) => _processDocs(
+        lists.sublist(0, 4).expand((l) => l).toList(),
+        lists.sublist(4).expand((l) => l).toList(),
+        start,
+        end,
+      ),
+    );
   }
 
-  OracleReportSnapshot _processDocs(List<QueryDocumentSnapshot> incomes,
-      List<QueryDocumentSnapshot> expenses, DateTime start, DateTime end) {
+  Stream<List<ReportDocument>> getCardReceivables() {
+    final clinic = SessionManager().currentClinicId;
+    if (clinic == null) return Stream.value([]);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final horizon = DateTime(now.year + 1, now.month, now.day);
+    final streams = ['dueDate', 'date']
+        .map(
+          (field) => SessionManager()
+              .applyFilter(_db.collection('financial'))
+              .where(field, isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+              .where(field, isLessThanOrEqualTo: Timestamp.fromDate(horizon))
+              .snapshots(),
+        )
+        .toList();
+    return StreamCombiner.combineDocs(streams).map((lists) {
+      final docs = <String, ReportDocument>{};
+      for (final d in lists.expand((l) => l)) {
+        final data = d.data() as Map<String, dynamic>;
+        final effective =
+            reportDate(data['dueDate']) ?? reportDate(data['date']);
+        if (effective != null &&
+            !effective.isBefore(today) &&
+            !effective.isAfter(horizon) &&
+            (data['type'] ?? 'income') == 'income' &&
+            reportCard(data) &&
+            !reportCanceled(data)) {
+          docs[d.id] = ReportDocument(d.id, data);
+        }
+      }
+      return docs.values.toList()..sort(
+        (a, b) => (reportDate(a.data['dueDate']) ?? reportDate(a.data['date'])!)
+            .compareTo(
+              reportDate(b.data['dueDate']) ?? reportDate(b.data['date'])!,
+            ),
+      );
+    });
+  }
+
+  OracleReportSnapshot _processDocs(
+    List<QueryDocumentSnapshot> incomes,
+    List<QueryDocumentSnapshot> expenses,
+    DateTime start,
+    DateTime end,
+  ) => calculateMonth(
+    DateTime(start.year, start.month),
+    [
+      for (final d in incomes)
+        ReportDocument(d.id, d.data() as Map<String, dynamic>),
+    ],
+    [
+      for (final d in expenses)
+        ReportDocument(d.id, d.data() as Map<String, dynamic>),
+    ],
+  );
+
+  /// Same cash/receivables basis used by the existing Livro Caixa, now shared by DRE.
+  static OracleReportSnapshot calculateMonth(
+    DateTime month,
+    List<ReportDocument> incomes,
+    List<ReportDocument> expenses,
+  ) {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(
+      month.year,
+      month.month + 1,
+      1,
+    ).subtract(const Duration(microseconds: 1));
     Map<String, TransactionItem> uniqueItems = {};
 
     // --- PROCESSAR RECEITAS (O REGIME DE CAIXA) ---
     for (var doc in incomes) {
-      final data = doc.data() as Map<String, dynamic>;
-      
+      final data = doc.data;
+
       String id = doc.id;
+      if (reportCanceled(data)) continue;
+      if ((data['type'] ?? 'income') != 'income') continue;
       String patientName = data['patientName'] ?? 'Receita Avulsa';
-      double amount = (data['amount'] ?? 0).toDouble();
+      double amount = parseBRL(data['amount']);
       // Definição única de "pago" (+ flag crua legada).
-      bool isPaid = FinancialModel.isPaidOf(
+      bool isPaid =
+          FinancialModel.isPaidOf(
             status: data['status']?.toString() ?? '',
             paidAmount: data['paidAmount'],
             amount: data['amount'],
           ) ||
           data['isPaid'] == true;
       String status = (data['status'] ?? '').toString().toLowerCase().trim();
-      String method = data['paymentMethod'] ?? 'Dinheiro'; 
+      String method = data['paymentMethod'] ?? 'Dinheiro';
 
-      bool isCreditCard = method.toLowerCase().contains('cart') || method.toLowerCase().contains('credit');
-      bool isAnticipated = status.contains('anticipat') || status.contains('antecipad');
-      bool isCanceled = status.contains('cancel') || status.contains('substitu');
+      bool isCreditCard = reportCard(data);
+      bool isAnticipated =
+          status.contains('anticipat') || status.contains('antecipad');
+      bool isCanceled =
+          status.contains('cancel') || status.contains('substitu');
 
       if (isCanceled) continue; // Expulsa cancelados e substituídos
 
-      DateTime date = (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
-      DateTime dueDate = (data['dueDate'] as Timestamp?)?.toDate() ?? date;
-      DateTime? paidDate = (data['paidDate'] as Timestamp?)?.toDate() ?? (data['paymentDate'] as Timestamp?)?.toDate();
+      DateTime? storedDate =
+          reportDate(data['date']) ??
+          reportDate(data['createdAt']) ??
+          reportDate(data['dueDate']) ??
+          reportDate(data['paidDate']) ??
+          reportDate(data['paymentDate']);
+      if (storedDate == null) continue;
+      DateTime date = storedDate;
+      DateTime dueDate = reportDate(data['dueDate']) ?? date;
+      DateTime? paidDate =
+          reportDate(data['paidDate']) ?? reportDate(data['paymentDate']);
 
       DateTime effectiveDate;
 
@@ -182,36 +332,47 @@ class OracleReportService {
 
       // Se a data efetiva cair no mês que estamos a olhar, entra no Livro!
       if (_isInMonth(effectiveDate, start, end)) {
-        uniqueItems[id] = TransactionItem(
+        uniqueItems['income:$id'] = TransactionItem(
           id: id,
           title: patientName,
           amount: amount,
           date: effectiveDate,
           dueDate: dueDate,
-          paidAmount: (data['paidAmount'] as num?)?.toDouble() ?? 0.0,
+          paidAmount: parseBRL(data['paidAmount']),
           isIncome: true,
           isPaid: isPaid,
           category: "Receita",
-          patientId: data['patientId'], 
+          patientId: data['patientId'],
           paymentMethod: method,
+          details: Map.unmodifiable(data),
         );
       }
     }
 
     // --- PROCESSAR DESPESAS ---
     for (var doc in expenses) {
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data;
       String id = doc.id;
-      String description = data['description'] ?? 'Despesa';
-      double amount = (data['amount'] ?? 0).toDouble();
-      String status = (data['status'] ?? '').toString().toLowerCase().trim();
-      
-      DateTime dueDate = (data['dueDate'] as Timestamp?)?.toDate() ?? (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
-      DateTime? paidDate = (data['paidDate'] as Timestamp?)?.toDate() ?? (data['paymentDate'] as Timestamp?)?.toDate();
-      
+      if (reportCanceled(data)) continue;
+      String description =
+          (data['description']?.toString().trim().isNotEmpty ?? false)
+          ? data['description'].toString()
+          : (data['title'] ?? 'Despesa').toString();
+      double amount = parseBRL(data['amount']);
+      final dueDate =
+          reportDate(data['dueDate']) ??
+          reportDate(data['date']) ??
+          reportDate(data['createdAt']) ??
+          reportDate(data['paidDate']) ??
+          reportDate(data['paymentDate']);
+      if (dueDate == null) continue;
+      DateTime? paidDate =
+          reportDate(data['paidDate']) ?? reportDate(data['paymentDate']);
+
       String category = data['category'] ?? 'Geral';
       String method = data['paymentMethod'] ?? 'Boleto/Outros';
-      bool expIsPaid = FinancialModel.isPaidOf(
+      bool expIsPaid =
+          FinancialModel.isPaidOf(
             status: data['status']?.toString() ?? '',
             paidAmount: data['paidAmount'],
             amount: data['amount'],
@@ -221,17 +382,18 @@ class OracleReportService {
       DateTime effectiveDate = expIsPaid ? (paidDate ?? dueDate) : dueDate;
 
       if (_isInMonth(effectiveDate, start, end)) {
-        uniqueItems[id] = TransactionItem(
+        uniqueItems['expense:$id'] = TransactionItem(
           id: id,
           title: description,
           amount: amount,
           date: effectiveDate,
           dueDate: dueDate,
-          paidAmount: (data['paidAmount'] as num?)?.toDouble() ?? 0.0,
+          paidAmount: parseBRL(data['paidAmount']),
           isIncome: false,
-          isPaid: expIsPaid, 
+          isPaid: expIsPaid,
           category: category,
           paymentMethod: method,
+          details: Map.unmodifiable(data),
         );
       }
     }
@@ -246,12 +408,21 @@ class OracleReportService {
 
     for (var item in items) {
       if (item.isPaid) {
-        if (item.isIncome) revenue += item.amount; else expense += item.amount;
+        if (item.isIncome) {
+          revenue += item.amount;
+        } else {
+          expense += item.amount;
+        }
       }
       // Projetado usa o SALDO (desconta parciais de pendentes).
-      final projected =
-          item.isPaid ? item.amount : (item.amount - item.paidAmount);
-      if (item.isIncome) balance += projected; else balance -= projected;
+      final projected = item.isPaid
+          ? item.amount
+          : (item.amount - item.paidAmount);
+      if (item.isIncome) {
+        balance += projected;
+      } else {
+        balance -= projected;
+      }
       item.runningBalance = balance;
     }
 
@@ -265,31 +436,50 @@ class OracleReportService {
     );
   }
 
-  bool _isInMonth(DateTime date, DateTime start, DateTime end) {
-    return date.isAfter(start.subtract(const Duration(seconds: 1))) && 
-           date.isBefore(end.add(const Duration(seconds: 1)));
+  static bool _isInMonth(DateTime date, DateTime start, DateTime end) {
+    return !date.isBefore(start) && !date.isAfter(end);
   }
 }
 
 class StreamCombiner {
-  static Stream<List<QuerySnapshot>> combine2(Stream<QuerySnapshot> s1, Stream<QuerySnapshot> s2) {
-    StreamController<List<QuerySnapshot>> controller = StreamController<List<QuerySnapshot>>();
+  static Stream<List<QuerySnapshot>> combine2(
+    Stream<QuerySnapshot> s1,
+    Stream<QuerySnapshot> s2,
+  ) {
+    StreamController<List<QuerySnapshot>> controller =
+        StreamController<List<QuerySnapshot>>();
     List<QuerySnapshot?> values = [null, null];
     Set<int> filled = {};
-    void emit() { if (filled.length == 2) controller.add(List<QuerySnapshot>.from(values)); }
-    void onError(Object e) { if (!controller.isClosed) controller.addError(e); }
-    s1.listen((d) { values[0] = d; filled.add(0); emit(); }, onError: onError);
-    s2.listen((d) { values[1] = d; filled.add(1); emit(); }, onError: onError);
+    void emit() {
+      if (filled.length == 2) controller.add(List<QuerySnapshot>.from(values));
+    }
+
+    void onError(Object e) {
+      if (!controller.isClosed) controller.addError(e);
+    }
+
+    s1.listen((d) {
+      values[0] = d;
+      filled.add(0);
+      emit();
+    }, onError: onError);
+    s2.listen((d) {
+      values[1] = d;
+      filled.add(1);
+      emit();
+    }, onError: onError);
     return controller.stream;
   }
 
   /// Junta N streams emitindo a lista das últimas listas de docs.
   static Stream<List<List<QueryDocumentSnapshot>>> combineDocs(
-      List<Stream<QuerySnapshot>> streams) {
-    final controller =
-        StreamController<List<List<QueryDocumentSnapshot>>>();
-    final values =
-        List<List<QueryDocumentSnapshot>>.generate(streams.length, (_) => []);
+    List<Stream<QuerySnapshot>> streams,
+  ) {
+    final controller = StreamController<List<List<QueryDocumentSnapshot>>>();
+    final values = List<List<QueryDocumentSnapshot>>.generate(
+      streams.length,
+      (_) => [],
+    );
     final filled = <int>{};
     var closed = false;
     void emit() {
@@ -302,16 +492,23 @@ class StreamCombiner {
       if (!closed) controller.addError(e);
     }
 
+    final subscriptions = <StreamSubscription<QuerySnapshot>>[];
     for (var i = 0; i < streams.length; i++) {
-      streams[i].listen((snap) {
-        values[i] = snap.docs;
-        filled.add(i);
-        emit();
-      }, onError: onError, onDone: () {});
+      subscriptions.add(
+        streams[i].listen(
+          (snap) {
+            values[i] = snap.docs;
+            filled.add(i);
+            emit();
+          },
+          onError: onError,
+          onDone: () {},
+        ),
+      );
     }
-    controller.onCancel = () {
+    controller.onCancel = () async {
       closed = true;
-      controller.close();
+      await Future.wait(subscriptions.map((s) => s.cancel()));
     };
     return controller.stream;
   }

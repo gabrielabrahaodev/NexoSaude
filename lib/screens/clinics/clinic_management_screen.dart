@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/session_manager.dart';
 import '../../services/clinic_delete_service.dart';
+import '../../services/clinic_member_directory.dart';
 import '../../utils/display.dart';
 import '../dashboard/main_web_dashboard.dart'; 
 
@@ -16,6 +17,21 @@ class ClinicManagementScreen extends StatefulWidget {
 }
 
 class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
+  Future<List<DocumentSnapshot<Map<String, dynamic>>>> _loadClinicDocuments() async {
+    final db = FirebaseFirestore.instance;
+    if (_isOwner) {
+      final snap = await db.collection('clinics')
+          .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+          .orderBy('createdAt', descending: true).get();
+      return snap.docs;
+    }
+    // Security Rules não filtram resultados: lê cada ID que já está no perfil,
+    // em vez de uma query whereIn dinâmica que pode ser impossível de provar.
+    final docs = await Future.wait(_myClinicIds.map((id) => db
+        .collection('clinics').doc(id).get()));
+    return docs.where((doc) => doc.exists).toList();
+  }
+
   bool _isOwner = false;
   List<String> _myClinicIds = [];
   bool _loadingRole = true;
@@ -89,8 +105,6 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                       items: const [
                         DropdownMenuItem(value: 'dental', child: Text("Odontológica (Padrão)")),
                         DropdownMenuItem(value: 'psychology', child: Text("Psicológica")),
-                        DropdownMenuItem(value: 'physiotherapy', child: Text("Fisioterapêutica")),
-                        DropdownMenuItem(value: 'yoga', child: Text("Estúdio de Ioga")),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -149,13 +163,37 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
     }
 
     try {
-      DocumentReference newClinicRef = await FirebaseFirestore.instance.collection('clinics').add({
+      // A unidade herda a expiração da primeira clínica vinculada. Sem
+      // trialEndsAt legado, o suporte precisa regularizar o backfill primeiro.
+      if (_myClinicIds.isEmpty) {
+        throw StateError('Nenhuma clínica vinculada para herdar o trial.');
+      }
+      final source = await FirebaseFirestore.instance
+          .collection('clinics')
+          .doc(_myClinicIds.first)
+          .get();
+      final sourceData = source.data();
+      final trialEndsAt = sourceData?['trialEndsAt'];
+      if (sourceData == null ||
+          sourceData['ownerId'] != user.uid ||
+          trialEndsAt is! Timestamp ||
+          sourceData['blockedByAdmin'] == true ||
+          !trialEndsAt.toDate().isAfter(DateTime.now())) {
+        throw StateError(
+            'O trial da clínica atual precisa ser regularizado/ativo antes de criar outra unidade.');
+      }
+
+      final newClinicRef =
+          FirebaseFirestore.instance.collection('clinics').doc();
+      await newClinicRef.set({
         'name': name,
         'phone': phone,
         'address': address,
-        'type': type, // Salva no banco: 'dental', 'psychology', etc.
-        'ownerId': user.uid, 
+        'type': type,
+        'ownerId': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
+        'trialEndsAt': trialEndsAt,
+        'blockedByAdmin': false,
       });
 
       // Vínculo próprio via team-manage (leitura + set, não arrayUnion):
@@ -171,6 +209,8 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
           'allowedClinics': [...mine, newClinicRef.id]
         });
       }
+      await ClinicMemberDirectory.syncUserForClinic(
+          uid: user.uid, clinicId: newClinicRef.id);
       // Projeção pública p/ avaliação online (só nome + WhatsApp).
       await FirebaseFirestore.instance
           .collection('public_clinics')
@@ -206,28 +246,29 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
   bool _deleting = false;
 
   Future<Map<String, int>> _clinicCounts(String clinicId) async {
-    Future<int> count(String collection, {bool array = false}) async {
+    Future<int> count(String collection) async {
       try {
-        final q = array
-            ? FirebaseFirestore.instance
-                .collection(collection)
-                .where('allowedClinics', arrayContains: clinicId)
-            : FirebaseFirestore.instance
-                .collection(collection)
-                .where('clinicId', isEqualTo: clinicId);
-        final c = await q.count().get();
+        final c = await FirebaseFirestore.instance
+            .collection(collection)
+            .where('clinicId', isEqualTo: clinicId).count().get();
         return c.count ?? 0;
       } catch (_) {
         return 0;
       }
     }
-
+    Future<int> countMembers() async {
+      try {
+        final c = await FirebaseFirestore.instance
+            .collection('clinics').doc(clinicId).collection('members')
+            .count().get();
+        return c.count ?? 0;
+      } catch (_) {
+        return 0;
+      }
+    }
     final entries = await Future.wait([
-      count('patients'),
-      count('appointments'),
-      count('financial'),
-      count('budgets'),
-      count('users', array: true),
+      count('patients'), count('appointments'), count('financial'),
+      count('budgets'), countMembers(),
     ]);
     return {
       'Pacientes': entries[0],
@@ -419,23 +460,13 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                       ? const Center(
                           child: Text("Nenhuma clínica liberada.",
                               style: TextStyle(color: Colors.grey)))
-                      : StreamBuilder<QuerySnapshot>(
-                      stream: _isOwner
-                          ? FirebaseFirestore.instance
-                              .collection('clinics')
-                              .where('ownerId', isEqualTo: user?.uid)
-                              .orderBy('createdAt', descending: true)
-                              .snapshots()
-                          : FirebaseFirestore.instance
-                              .collection('clinics')
-                              .where(FieldPath.documentId,
-                                  whereIn: _myClinicIds)
-                              .snapshots(),
+                      : FutureBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
+                      future: _loadClinicDocuments(),
                       builder: (context, snapshot) {
                   if (snapshot.hasError) return const Center(child: Text("Erro ao carregar dados."));
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-                  final docs = snapshot.data!.docs;
+                  final docs = snapshot.data!;
 
                   if (docs.isEmpty) {
                     return Center(
@@ -459,7 +490,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                     ),
                     itemCount: docs.length,
                     itemBuilder: (context, index) {
-                      var data = docs[index].data() as Map<String, dynamic>;
+                      final data = docs[index].data() ?? <String, dynamic>{};
                       
                       // Ícone dinâmico baseado no tipo
                       IconData typeIcon = Icons.store;

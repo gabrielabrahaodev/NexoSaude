@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'clinic_trial_policy.dart';
+import 'document_service.dart';
 
 /// Uma etapa da exclusão de clínica em cascata.
 ///
@@ -70,10 +72,15 @@ class ClinicDeleteStep {
       case ClinicDeleteStep.kDoc:
       case ClinicDeleteStep.kSubcollection:
         final p = collection;
-        if (p == 'clinics/$clinicId' || p == 'portal_slots/$clinicId') {
+        if (p == 'clinics/$clinicId' ||
+            p == 'portal_slots/$clinicId' ||
+            p == 'public_clinics/$clinicId') {
           return true;
         }
-        if (p.startsWith('clinics/$clinicId/settings/')) return true;
+        if (p.startsWith('clinics/$clinicId/settings/') ||
+            p == 'clinics/$clinicId/members' ||
+            p == 'clinics/$clinicId/members_private' ||
+            p == 'public_clinics/$clinicId/leads') return true;
         // Pacientes e derivados: só ids comprovados da clínica.
         final m = RegExp(r'^(?:patients|anamnesis)/([^/]+)').firstMatch(p);
         if (m != null) return patientIds.contains(m.group(1));
@@ -106,6 +113,9 @@ List<ClinicDeleteStep> clinicDeletePlan(
       'inventory',
     ])
       ClinicDeleteStep.query(c, clinicId),
+    // Leads e projeção da avaliação pública não devem sobreviver à cascata.
+    ClinicDeleteStep.subcollection('public_clinics/$clinicId/leads'),
+    ClinicDeleteStep.doc('public_clinics/$clinicId'),
     // Portal por token (nunca por list — ver kPortalTokens).
     ClinicDeleteStep.portalTokens(clinicId),
     for (final pid in patientIds)
@@ -118,8 +128,15 @@ List<ClinicDeleteStep> clinicDeletePlan(
     ClinicDeleteStep.subcollection(
         'clinics/$clinicId/settings/fees/profiles'),
     ClinicDeleteStep.doc('clinics/$clinicId/settings/fees'),
+    // Segredo Cloudinary legado fica em subcoleção do documento
+    // integrations; o DELETE do pai não remove os descendentes no Firestore.
+    ClinicDeleteStep.subcollection(
+        'clinics/$clinicId/settings/integrations/cloudinary'),
     ClinicDeleteStep.doc('clinics/$clinicId/settings/integrations'),
     ClinicDeleteStep.doc('portal_slots/$clinicId'),
+    // Ambos os diretórios são removidos antes do documento da clínica.
+    ClinicDeleteStep.subcollection('clinics/$clinicId/members'),
+    ClinicDeleteStep.subcollection('clinics/$clinicId/members_private'),
     ClinicDeleteStep.doc('clinics/$clinicId'),
     // Staff: remove o vínculo; o doc do usuário (e o login) é mantido.
     ClinicDeleteStep.arrayRemove('users', 'allowedClinics', clinicId),
@@ -127,6 +144,25 @@ List<ClinicDeleteStep> clinicDeletePlan(
 }
 
 /// Executor (owner; regras exigem `isOwner()` nos deletes operacionais).
+/// Retorna o motivo de bloqueio da cascata pelo navegador, sem executar
+/// operações remotas. Trial ausente ou inválido falha fechado, exceto para os
+/// dois IDs de clínicas de teste explicitamente mantidos em clinic_trial_policy.
+String? clinicDeleteBlockReason(
+  Map<String, dynamic> clinicData, {
+  String clinicId = '',
+  DateTime? now,
+}) {
+  final trialInvalidOrExpired = clinicTrialExpiredOrInvalid(
+    clinicId,
+    clinicData['trialEndsAt'],
+    now: now,
+  );
+  if (clinicData['blockedByAdmin'] == true || trialInvalidOrExpired) {
+    return 'A clínica está bloqueada, expirada ou sem uma data de trial válida. A cascata pelo navegador foi interrompida antes das exclusões. Use migrate/delete-clinic.js em DRY-RUN, revise o relatório e só então confirme a operação administrativa.';
+  }
+  return null;
+}
+
 class ClinicDeleteService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -141,6 +177,20 @@ class ClinicDeleteService {
     if (clinicId.isEmpty) throw ArgumentError('clinicId vazio');
     var stage = 'início';
     try {
+      // Não comece a cascata em clínica bloqueada/expirada: as Rules vão
+      // negar as consultas operacionais e uma cascata em lotes pode ficar parcial.
+      stage = 'verificar estado da clínica';
+      final clinicSnap = await _db.collection('clinics').doc(clinicId).get();
+      final clinicData = clinicSnap.data();
+      if (clinicData == null) {
+        throw StateError('Clínica não encontrada.');
+      }
+      final deleteBlockReason = clinicDeleteBlockReason(
+        clinicData,
+        clinicId: clinicId,
+      );
+      if (deleteBlockReason != null) throw StateError(deleteBlockReason);
+
       // 1. Pacientes comprovados da clínica (base do resto do plano).
       stage = 'localizar pacientes';
       onStage?.call('Localizando pacientes...');
@@ -149,6 +199,27 @@ class ClinicDeleteService {
         .where('clinicId', isEqualTo: clinicId)
         .get();
     final patientIds = [for (final d in pats.docs) d.id];
+
+    // Protege binários remotos: não apague metadata antes do binário. A verificação
+    // é somente leitura e antecede qualquer batch.
+    stage = 'verificar documentos remotos legados';
+    final remoteDocPaths = <String>[];
+    for (final patient in pats.docs) {
+      final docSnap = await patient.reference.collection('docs').get();
+      for (final fileDoc in docSnap.docs) {
+        if (requiresRemoteStorageCleanup(fileDoc.data())) {
+          remoteDocPaths.add('patients/${patient.id}/docs/${fileDoc.id}');
+        }
+      }
+    }
+    if (remoteDocPaths.isNotEmpty) {
+      throw StateError(
+        'Exclusão cancelada antes de qualquer escrita: existem '
+        '${remoteDocPaths.length} arquivo(s) remotos (Cloudinary legado ou R2). '
+        'Apague-os pelo fluxo autenticado correto, confira a metadata e repita a exclusão.',
+      );
+    }
+
     // Tokens dos espelhos (delete direto por id; list é negado pela regra).
     final portalTokens = <String>{};
     for (final d in pats.docs) {
@@ -165,25 +236,46 @@ class ClinicDeleteService {
     onStage?.call('Mapeando dados...');
     final toDelete = <DocumentReference>[];
     final arrayTargets = <DocumentReference>[];
+    // Vínculos conhecidos por tenant; nunca enumere users globalmente.
+    final linkedUserIds = <String>{};
     for (final step in plan) {
       switch (step.kind) {
         case ClinicDeleteStep.kQuery:
-        case ClinicDeleteStep.kArrayRemove:
           stage =
               'ler ${step.collection} (${step.field}=${step.value})';
-          final snap = step.kind == ClinicDeleteStep.kQuery
-              ? await _db
-                  .collection(step.collection)
-                  .where(step.field!, isEqualTo: step.value)
-                  .get()
-              : await _db
-                  .collection(step.collection)
-                  .where(step.field!, arrayContains: step.value)
-                  .get();
-          (step.kind == ClinicDeleteStep.kQuery
-                  ? toDelete
-                  : arrayTargets)
-              .addAll(snap.docs.map((d) => d.reference));
+          final snap = await _db
+              .collection(step.collection)
+              .where(step.field!, isEqualTo: step.value)
+              .get();
+          toDelete.addAll(snap.docs.map((d) => d.reference));
+          break;
+        case ClinicDeleteStep.kArrayRemove:
+          // As Rules negam listagem global de users. Descobre-se a equipe
+          // exclusivamente pelas projeções privadas/públicas da própria clínica.
+          stage = 'localizar equipe em clinics/${clinicId}/members';
+          final publicMembers = await _db
+              .collection('clinics')
+              .doc(clinicId)
+              .collection('members')
+              .get();
+          final privateMembers = await _db
+              .collection('clinics')
+              .doc(clinicId)
+              .collection('members_private')
+              .get();
+          linkedUserIds
+            ..addAll(publicMembers.docs.map((d) => d.id))
+            ..addAll(privateMembers.docs.map((d) => d.id));
+          for (final uid in linkedUserIds) {
+            stage = 'verificar vínculo users/$uid';
+            final userRef = _db.collection('users').doc(uid);
+            final userSnap = await userRef.get();
+            if (!userSnap.exists) continue;
+            final allowed = (userSnap.data()?['allowedClinics'] as List? ?? [])
+                .map((value) => '$value')
+                .toSet();
+            if (allowed.contains(clinicId)) arrayTargets.add(userRef);
+          }
           break;
         case ClinicDeleteStep.kDoc:
           toDelete.add(_db.doc(step.path));

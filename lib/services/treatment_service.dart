@@ -48,6 +48,11 @@ class TreatmentService {
     
     List<Map<String, dynamic>> planItems = budget.items.map((item) {
       return {
+        for (final key in [
+          'region', 'teeth', 'tooth', 'toothNumber', 'quantity',
+          'unitPrice', 'discountAmount', 'discountPercent',
+        ])
+          if (item.containsKey(key)) key: item[key],
         'procedureId': item['id'],
         'name': item['name'],
         'price': item['price'],

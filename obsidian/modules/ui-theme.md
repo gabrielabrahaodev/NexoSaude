@@ -42,3 +42,10 @@ Nova tela, card, lista kanban, atalho de ação.
 - [[main-dashboard]] — shell que aplica o tema
 - [[agenda-manager]] — células com tipo adaptativo
 - [[care-day]] — cards translúcidos + ficha em modal
+
+
+## Temas claro e escuro — PR #2
+
+A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua fica abaixo de Sair no rodapé do menu lateral (desktop e drawer mobile); usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.
+
+`AGENDA_CLINICAL_DARK` continua sendo a flag da nova apresentação, não uma imposição do modo escuro. Os temas locais registram dependência do tema herdado (`forContext`) para atualizar telas já montadas sem recriar seus estados.

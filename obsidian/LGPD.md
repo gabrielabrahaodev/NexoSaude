@@ -80,3 +80,11 @@ gera JSON/CSV em texto puro — ali vale ZIP com senha (sugestão 3).
 - [[specs/2026-09-19-modo-atendimento-portal-design]] §4.4 (abuso, privacidade)
 - [[screens/patient-details]] (máquina de estados do aceite)
 - [[Requisitos]] §16 / RN-71
+
+## Ressalvas de evidência — revisão de código 03/11/2026
+
+- Os itens históricos de 05/10 e 16/10 acima descrevem snapshots diferentes. **Não use a lista antiga de exceções de Rules ou a conclusão sobre anamnese como diagnóstico atual de todas as branches.** Consulte `firestore.rules` no commit exato e teste a matriz de autorização.
+- Em `master`/`producao` no GitHub (SHA `5fb7aaf`) o serviço de documentos ainda usa Cloudinary; em `feat/agenda-clinical-dark` (SHA `771e300`) o R2/Worker existe no código, mas fica **opt-in e desativado por padrão no deploy**. Isso não comprova que o Worker foi publicado, nem altera automaticamente contratos com suboperadores.
+- O prontuário da variante permite editar/excluir registros clínicos; confirmar base legal, rastreabilidade, retenção, controle de acesso e trilha de auditoria/assinatura. Uma edição que preserva a data original e grava `editedAt` não substitui auditoria imutável.
+- Exclusões de paciente/clínica usam vários lotes, não uma transação única; arquivos remotos exigem preflight. Procedimentos de acesso, exclusão e backup precisam de ensaio e de protocolo operacional antes de emprego com dados de saúde reais.
+- A revisão de 03/11 é **estática**: não verifica Rules/publicação ao vivo, contratos, conformidade jurídica, nem executa a suíte. Detalhes em [[auditoria-codigo-2026-11-03]].

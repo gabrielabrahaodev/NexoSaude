@@ -43,13 +43,17 @@ class LabOrderModel {
   final String description;
   final String procedureName;
   final double price;
-  
+  final String? relatedExpenseId;
+  final DateTime? costDueDate;
+  final String? workType;
+  final bool? hasCost;
+
   // Datas importantes
   final DateTime createdAt;
   final DateTime? sentDate;
   final DateTime? returnDate;
-  final DateTime? deliveredDate; 
-  final DateTime? deliveryDate;  
+  final DateTime? deliveredDate;
+  final DateTime? deliveryDate;
 
   final String status;
   final String? relatedFinancialId;
@@ -68,6 +72,10 @@ class LabOrderModel {
     required this.description,
     this.procedureName = '',
     this.price = 0.0,
+    this.relatedExpenseId,
+    this.costDueDate,
+    this.workType,
+    this.hasCost,
     required this.createdAt,
     this.sentDate,
     this.returnDate,
@@ -91,11 +99,21 @@ class LabOrderModel {
       'description': description,
       'procedureName': procedureName,
       'price': price,
+      'relatedExpenseId': relatedExpenseId,
+      'costDueDate': costDueDate == null
+          ? null
+          : Timestamp.fromDate(costDueDate!),
+      'workType': workType,
+      'hasCost': hasCost,
       'createdAt': Timestamp.fromDate(createdAt),
       'sentDate': sentDate != null ? Timestamp.fromDate(sentDate!) : null,
       'returnDate': returnDate != null ? Timestamp.fromDate(returnDate!) : null,
-      'deliveredDate': deliveredDate != null ? Timestamp.fromDate(deliveredDate!) : null,
-      'deliveryDate': deliveryDate != null ? Timestamp.fromDate(deliveryDate!) : null,
+      'deliveredDate': deliveredDate != null
+          ? Timestamp.fromDate(deliveredDate!)
+          : null,
+      'deliveryDate': deliveryDate != null
+          ? Timestamp.fromDate(deliveryDate!)
+          : null,
       'status': status,
       'relatedFinancialId': relatedFinancialId,
       'interactions': interactions.map((i) => i.toMap()).toList(),
@@ -126,14 +144,27 @@ class LabOrderModel {
       relatedPlanId: map['relatedPlanId'],
       description: map['description'] ?? '',
       procedureName: map['procedureName'] ?? map['description'] ?? 'Pedido Lab',
-      price: (map['price'] ?? map['cost'] ?? 0).toDouble(),
-      
+      price:
+          num.tryParse('${map['price'] ?? map['cost'] ?? 0}')?.toDouble() ?? 0,
+      relatedExpenseId: map['relatedExpenseId']?.toString(),
+      costDueDate: (map['costDueDate'] as Timestamp?)?.toDate(),
+      workType: map['workType']?.toString(),
+      hasCost: map['hasCost'] is bool ? map['hasCost'] as bool : null,
+
       createdAt: created, // Usa a data corrigida
-      
-      sentDate: map['sentDate'] != null ? (map['sentDate'] as Timestamp).toDate() : null,
-      returnDate: map['returnDate'] != null ? (map['returnDate'] as Timestamp).toDate() : null,
-      deliveredDate: map['deliveredDate'] != null ? (map['deliveredDate'] as Timestamp).toDate() : null,
-      deliveryDate: map['deliveryDate'] != null ? (map['deliveryDate'] as Timestamp).toDate() : null,
+
+      sentDate: map['sentDate'] != null
+          ? (map['sentDate'] as Timestamp).toDate()
+          : null,
+      returnDate: map['returnDate'] != null
+          ? (map['returnDate'] as Timestamp).toDate()
+          : null,
+      deliveredDate: map['deliveredDate'] != null
+          ? (map['deliveredDate'] as Timestamp).toDate()
+          : null,
+      deliveryDate: map['deliveryDate'] != null
+          ? (map['deliveryDate'] as Timestamp).toDate()
+          : null,
       status: map['status'] ?? 'Solicitado',
       relatedFinancialId: map['relatedFinancialId'],
       interactions: (map['interactions'] as List<dynamic>? ?? [])

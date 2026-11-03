@@ -25,11 +25,12 @@ bool needsConfirmation(AppointmentModel a) =>
 List<String> attendanceTemplates(String? clinicType) {
   if (clinicType == 'psychology') {
     return const [
-      'Sessão realizada — paciente colaborativo, sem intercorrências.',
-      'Sessão realizada — trabalhadas estratégias de manejo acordadas.',
-      'Sessão realizada — paciente instável; retorno antecipado sugerido.',
-      'Primeira sessão — anamnese psicológica e plano terapêutico inicial.',
-      'Sessão de manutenção — quadro estável, sem ajustes.',
+      'Humor estável',
+      'Reestruturação cognitiva aplicada',
+      'Manejo de pensamentos automáticos disfuncionais',
+      'Tarefa de casa verificada',
+      'Redução de sintomas ansiosos relatada',
+      'Sessão realizada sem intercorrências.',
     ];
   }
   return const [

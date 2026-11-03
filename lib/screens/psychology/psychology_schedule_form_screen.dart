@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/session_manager.dart';
+import '../../services/agenda_professionals.dart';
 import '../../services/portal_mirror.dart';
 import '../../models/psychology_schedule_model.dart';
 import '../../models/appointment_model.dart';
@@ -16,6 +17,7 @@ class PsychologyScheduleFormScreen extends StatefulWidget {
   final DateTime? preSelectedDate;
   final String? preSelectedDayOfWeek;
   final String? preSelectedTime;
+  final String? preSelectedProfessionalId;
   
   const PsychologyScheduleFormScreen({
     super.key, 
@@ -24,6 +26,7 @@ class PsychologyScheduleFormScreen extends StatefulWidget {
     this.preSelectedDate,
     this.preSelectedDayOfWeek,
     this.preSelectedTime,
+    this.preSelectedProfessionalId,
   });
   
   @override
@@ -57,7 +60,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
   bool _isActive = true;
   bool _isCancelling = false;
 
-  final _daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  final _daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   final _timeSlots = _generateDefaultTimeSlots();
   
   // Flags para saber se campos vieram pré-preenchidos (travados)
@@ -123,9 +126,18 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
     final clinicId = SessionManager().currentClinicId;
     if (clinicId == null) return;
 
+    final professionalId = agendaBookingProfessionalId(
+      role: SessionManager().userRole, userId: SessionManager().userId,
+      selectedId: widget.preSelectedProfessionalId ?? widget.initialData?['dentistId']?.toString());
+    // Edições legadas podem continuar sem vínculo; criação pela agenda exige seleção.
+    if (widget.editScheduleId == null && (professionalId ?? '').isEmpty) {
+      toast(context, 'Abra o horário na agenda e selecione o profissional responsável.');
+      return;
+    }
     final schedule = PsychologyScheduleModel(
       id: widget.editScheduleId ?? '',
       clinicId: clinicId,
+      dentistId: professionalId,
       patientId: _selectedPatientId!,
       patientName: _selectedPatientName!,
       scheduleType: _scheduleType,
@@ -316,6 +328,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
             : 'Sessão Avulsa Psicologia',
         clinicId: clinicId,
         durationMinutes: 60,
+        dentistId: schedule.dentistId,
         scheduleId: scheduleId,
         planId: planRef.id,
         monthlyPeriod: monthKey,

@@ -1,3 +1,4 @@
+import '../screens/patients/clinical_patient_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../ui/app_theme.dart';
@@ -93,8 +94,9 @@ PatientContext combinePatientContext({
 
 class PatientSmartContextCard extends StatefulWidget {
   final String patientId;
+  final bool clinical;
 
-  const PatientSmartContextCard({super.key, required this.patientId});
+  const PatientSmartContextCard({super.key, required this.patientId, this.clinical = false});
 
   @override
   State<PatientSmartContextCard> createState() =>
@@ -105,7 +107,7 @@ class _PatientSmartContextCardState extends State<PatientSmartContextCard> {
   // Carregado UMA vez por inserção: trocar de aba e voltar não refaz as
   // 3 leituras nem remonta o card em pedacinhos (o `future:` inline
   // anterior recriava a cada rebuild).
-  late final Future<PatientContext> _future;
+  late Future<PatientContext> _future;
 
   @override
   void initState() {
@@ -181,6 +183,7 @@ class _PatientSmartContextCardState extends State<PatientSmartContextCard> {
           return const SizedBox();
         }
         final ctx = snapshot.data!;
+        if (widget.clinical) return ClinicalPatientContextBanner(summary: ctx.summary, alerts: ctx.alerts, onRefresh: () => setState(() => _future = _loadContext()));
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),

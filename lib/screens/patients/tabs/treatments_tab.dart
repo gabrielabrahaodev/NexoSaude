@@ -1,3 +1,7 @@
+import '../../../models/treatment_teeth.dart';
+import '../../../services/clinic_capabilities.dart';
+import '../clinical_patient_view.dart';
+import '../../agenda/clinical_agenda_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../ui/app_theme.dart';
@@ -10,11 +14,19 @@ import '../../../utils/display.dart';
 class TreatmentsTab extends StatefulWidget {
   final String patientName;
   final String patientId;
+  final bool embedded;
+  final String? initialPlanId;
+  final VoidCallback? onPayments;
+  final VoidCallback? onOdontogram;
 
   const TreatmentsTab({
     super.key,
     required this.patientName,
     required this.patientId,
+    this.embedded = false,
+    this.initialPlanId,
+    this.onPayments,
+    this.onOdontogram,
   });
 
   @override
@@ -99,7 +111,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         
         if (snapshot.data!.docs.isEmpty) {
-          return Center(
+          return SizedBox(height: 120,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -111,6 +123,9 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
           );
         }
 
+        final planDocs = List<QueryDocumentSnapshot>.from(snapshot.data!.docs);
+        final focusIndex = planDocs.indexWhere((d) => d.id == widget.initialPlanId);
+        if (focusIndex > 0) planDocs.insert(0, planDocs.removeAt(focusIndex));
         return StreamBuilder<Map<String, dynamic>>(
           stream: _oracle.getPatientFinancialHealth(widget.patientId),
           builder: (context, finSnap) {
@@ -120,10 +135,12 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                 : [];
 
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: snapshot.data!.docs.length,
+              shrinkWrap: widget.embedded,
+              physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
+              padding: EdgeInsets.all(widget.embedded ? 0 : 16),
+              itemCount: planDocs.length,
               itemBuilder: (context, index) {
-                final doc = snapshot.data!.docs[index];
+                final doc = planDocs[index];
                 final data = doc.data() as Map<String, dynamic>;
                 final String planId = doc.id;
                 
@@ -140,8 +157,10 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                 }
                 // ----------------------------------------------
 
-                final startDate = (data['startDate'] as Timestamp).toDate();
-                final double planTotal = (data['totalValue'] ?? 0.0).toDouble();
+                final rawDate = data['startDate'];
+                final knownStartDate = rawDate is Timestamp ? rawDate.toDate() : DateTime.tryParse('$rawDate');
+                final startDate = knownStartDate ?? DateTime.now();
+                final double planTotal = parseBRL(data['totalValue']);
 
                 // 1. Filtra Receitas deste Plano
                 final planReceivables = fullTimeline.whereType<FinancialModel>().where((f) => f.planId == planId).toList();
@@ -179,6 +198,20 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                 int paidInstallments = installmentsList.where((f) => f.isPaid).length;
                 String installmentStatus = totalInstallments > 0 ? "$paidInstallments/$totalInstallments Pagas" : "";
 
+                if (clinicalAgendaEnabled) return ClinicalTreatmentCard(
+                  start: knownStartDate == null ? 'data não informada' : formatDateFull(knownStartDate), active: status == 'active', items: items,
+                  total: planTotal, paid: localPaid, margin: localPercent, installments: installmentStatus,
+                  onFinancial: () => _showLocalFinancialSummary(context, localPaid, localLabCost, localCommCost, planTotal),
+                  onPayments: widget.onPayments ?? () => DefaultTabController.maybeOf(context)?.animateTo(ClinicCapabilities.current().isPsychology ? 5 : 8),
+                  onLinkedTeeth: () {
+                    final teeth = treatmentLinkedTeeth(data);
+                    showDialog(context: context, builder: (ctx) => AlertDialog(title: const Text('Dentes vinculados'), content: teeth.isEmpty ? const Text('Nenhum dente vinculado a este tratamento.') : Wrap(spacing: 8, runSpacing: 8, children: teeth.map((id) => Chip(label: Text('Dente $id'))).toList()), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fechar')), if (widget.onOdontogram != null) TextButton(onPressed: () { Navigator.pop(ctx); widget.onOdontogram!(); }, child: const Text('Abrir odontograma'))]));
+                  },
+                  onClose: () async {
+                    final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(title: const Text('Encerrar tratamento?'), content: const Text('Concluir este plano de tratamento?'), actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')), TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Confirmar'))]));
+                    if (confirm == true) await _treatService.closePlan(doc.id);
+                  },
+                );
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
                   elevation: 4, 
@@ -188,7 +221,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                       Container(
                         padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
                         decoration: BoxDecoration(
-                          color: status == 'active' ? AppColors.surface : AppColors.background,
+                          color: status == 'active' ? PatientVisualStyle.surface : PatientVisualStyle.background,
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           border: Border(bottom: BorderSide(color: Colors.grey[200]!))
                         ),
@@ -198,7 +231,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Iniciado em ${formatDateShortYear(startDate)}", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                Text("Iniciado em ${formatDateShortYear(startDate)}", style: TextStyle(color: PatientVisualStyle.textSecondary, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text(status == 'active' ? "EM ANDAMENTO" : "CONCLUÍDO", style: TextStyle(fontWeight: FontWeight.bold, color: status == 'active' ? AppColors.primary : Colors.grey)),
                               ],
@@ -252,7 +285,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Progresso Financeiro", style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                Text("Progresso Financeiro", style: TextStyle(fontSize: 12, color: PatientVisualStyle.textSecondary)),
                                 if (totalInstallments > 0)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

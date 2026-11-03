@@ -29,3 +29,6 @@ Adicionar nova aba operacional.
 
 - [[operations]] — cadastros de apoio
 - [[operations-tabs]] — as 5 abas e seções
+
+## Clinical Precision — 02/11/2026
+Cabeçalho Gestão Operacional com clínica ativa, cinco abas horizontais por permissão e tema local claro/escuro. Sem telemetria/sincronização ilustrativa. Mantém TabController e ordem original, não cria rota paralela. Procedimentos usa ClinicalProceduresView, filtro local por categoria e busca, cartões, criação/edição existentes e confirmação de exclusão. Roteiro: docs/design/operations/TESTE.md. Outras abas mantêm as funções existentes com superfícies herdadas.

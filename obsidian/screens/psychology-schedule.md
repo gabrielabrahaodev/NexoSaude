@@ -42,3 +42,8 @@ Botão no modo edição (contrato ativo): dialog de escopo → futuras não fina
 - [[psychology-kanban]] — acompanha os contratos
 - [[psychology-packages]] — billing e regras do pacote
 - [[agenda-manager]] — células que abrem este form
+
+
+## Profissional vindo da agenda
+
+O `AgendaCellFactory` passa `preSelectedProfessionalId`; o form grava `dentistId` no contrato (`PsychologyScheduleModel`) e nas sessões (`AppointmentModel`). Dono/recepção usam o profissional selecionado; profissional logado usa o próprio UID. Edições de contratos legados não atribuem responsável automaticamente e não regeneram sessões. Domingo é aceito quando aberto pela faixa semanal.
