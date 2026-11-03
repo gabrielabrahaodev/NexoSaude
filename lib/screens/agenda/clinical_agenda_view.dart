@@ -178,7 +178,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
               child: constraints.maxWidth >= 1000
                 ? Row(children: [modes, const SizedBox(width: 16), Expanded(child: widget.professionalSelector), const SizedBox(width: 20), SizedBox(width: 290, child: weekNavigation), const SizedBox(width: 12), SizedBox(width: 200, child: search)])
                 : Column(children: [
-                    Row(children: [modes, const Spacer()]),
+                    Row(children: [Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: modes))]),
                     const SizedBox(height: 8),
                     widget.professionalSelector,
                     weekNavigation,

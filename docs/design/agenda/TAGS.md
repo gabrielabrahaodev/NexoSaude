@@ -34,3 +34,5 @@ Substituir ID_DA_CLINICA pelo ID Firestore, não pelo nome. Manifestos em tag-mi
 
 ## Validação
 Dois testes Node de migração aprovados; checagem de sintaxe Node e parser Dart aprovados. Testes Flutter para snapshots/serialização/calendário e teste de Rules de isolamento/rollback acrescentados, ainda não executados: SDK Flutter/emulador ausentes no ambiente. Parser não substitui compilação, teste visual nem execução autenticada. Conferir Gestão (novo/editar), aprovação duplicada, dois orçamentos iguais, troca de paciente/unidade, erro de leitura, oito Tags, salvamento de agendamento, conclusão parcial por Tag, remoção de vínculo, falta/atestado e recibos/histórico nos dois temas antes de merge/deploy. Nenhuma migração foi executada nos dados do usuário.
+
+O CI remoto também identificou regressões de layout anteriores a este fluxo: altura fixa dos cards do Dashboard, resumo de vencimento estreito e seletor de modos da Agenda em 320px. Ajustados para altura natural/quebra de linha/encaixe à largura. Teste de busca de Procedimentos agora verifica o Text do resultado, excluindo EditableText do próprio filtro.

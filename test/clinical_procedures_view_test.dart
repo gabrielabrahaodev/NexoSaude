@@ -23,7 +23,7 @@ void main() {
         expect(created, 1);
         await tester.enterText(find.byType(TextField), 'Raspagem');
         await tester.pumpAndSettle();
-        expect(find.text('Raspagem'), findsOneWidget);
+        expect(find.byWidgetPredicate((w) => w is Text && w.data == 'Raspagem'), findsOneWidget);
         expect(find.text('Restauração'), findsNothing);
         final edit = find.byTooltip('Editar Raspagem');
         await tester.ensureVisible(edit);
