@@ -48,3 +48,9 @@ Novo agendamento, reagendar, checar choque de horário.
 `ClinicalBookingView` concentra a apresentação: paciente, procedimento, Tags, calendário mensal e horários no mesmo cartão, observações e rodapé fixo. Espaçamento compacto em desktop, com ajuste adicional abaixo de 1040px de altura; telas pequenas mantêm rolagem. Tags extensas têm rolagem interna. Modo claro e escuro usam a mesma estrutura.
 
 O teste de geometria cobre 1920×1000 e 1920×1080, nos dois temas e em mês com seis semanas. O WhatsApp permanece manual; sala, especialidade e número de prontuário só aparecem quando disponíveis no sistema. Disponibilidade e persistência continuam no AgendaFormScreen.
+
+## Ocupação dos horários
+
+O formulário acompanha os agendamentos da unidade/profissional em tempo real, incluindo a duração integral e sobreposições parciais (ex.: 09:15–10:00 ocupa 09:00 e 09:30). Cancelados liberam o horário; na edição apenas o próprio agendamento é excluído. Legados sem profissional bloqueiam conservadoramente. Ocupados aparecem em vermelho, com texto e tooltip, e não podem ser selecionados. A seleção inicial não tem exceção para ocupação.
+
+Antes de salvar há nova consulta ao servidor; se algum horário tiver sido ocupado, a seleção conflitante é removida e é solicitado outro horário. Falha de consulta bloqueia salvar. Isso reduz conflitos, mas não é um lock transacional entre dois operadores gravando exatamente ao mesmo tempo. Nenhuma alteração de Rules ou coleção foi necessária.

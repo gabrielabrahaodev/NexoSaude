@@ -29,6 +29,10 @@ void main() {
         await t.tap(find.byKey(const ValueKey('booking-confirm'))); expect(saved,1);
         await t.tap(find.text('Novo')); expect(newPatient,1);
         await t.tap(find.text('Alterar paciente')); expect(changed,1);
+        final occupied = find.byKey(const ValueKey('booking-slot-09:00'));
+        expect(t.widget<OutlinedButton>(occupied).onPressed,isNull);
+        expect(find.descendant(of:occupied,matching:find.text('Ocupado')),findsOneWidget);
+        expect(t.widget<OutlinedButton>(find.byKey(const ValueKey('booking-slot-10:00'))).onPressed,isNotNull);
         await t.tap(find.text('10:00')); expect(selectedTime,'10:00');
         await t.tap(find.byType(Checkbox)); expect(fit,true);
         expect(t.takeException(),isNull);

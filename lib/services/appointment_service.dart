@@ -1,3 +1,4 @@
+import 'agenda_availability.dart';
 import 'procedure_tags.dart';
 import 'session_manager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -27,38 +28,32 @@ class AppointmentService {
             .toList());
   }
 
-  // NOVO: Verifica disponibilidade (Para o Formulário)
-  // Com dentistId, considera só os slots DESSE profissional.
+  Query<Map<String, dynamic>> _availabilityQuery(String clinicId, DateTime day) {
+    final start = DateTime(day.year, day.month, day.day);
+    return _collection.where('clinicId', isEqualTo: clinicId)
+        // Includes overnight visits that began on the previous day.
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime(day.year, day.month, day.day - 1)))
+        .where('date', isLessThan: Timestamp.fromDate(DateTime(start.year, start.month, start.day + 1)));
+  }
+
+  List<String> _busy(QuerySnapshot<Map<String, dynamic>> snapshot,
+      String clinicId, DateTime day, String? dentistId, String? excludeId) =>
+      busyAgendaSlots(snapshot.docs.map((d) => AppointmentModel.fromMap(d.id, d.data())),
+          clinicId: clinicId, day: day, dentistId: dentistId, excludeId: excludeId);
+
+  /// Fresh server check before writing; offline/cache data cannot clear a slot.
   Future<List<String>> getBusySlots(String clinicId, DateTime date,
       {String? excludeId, String? dentistId}) async {
-    DateTime startOfDay = DateTime(date.year, date.month, date.day, 0, 0);
-    DateTime endOfDay = DateTime(date.year, date.month, date.day, 23, 59);
-
-    var snapshot = await _collection
-        .where('clinicId', isEqualTo: clinicId)
-        .where('date', isGreaterThanOrEqualTo: startOfDay)
-        .where('date', isLessThan: endOfDay)
-        .get();
-
-    List<String> busy = [];
-    for (var doc in snapshot.docs) {
-      if (excludeId != null && doc.id == excludeId) continue;
-      if ('${doc['status']}'.toLowerCase() == 'cancelado') continue;
-      if (dentistId != null &&
-          dentistId.isNotEmpty &&
-          '${doc['dentistId'] ?? ''}' != dentistId) continue;
-
-      DateTime d = (doc['date'] as Timestamp).toDate();
-      int duration = doc['durationMinutes'] ?? 30;
-      int slotsOccupied = (duration / 30).ceil();
-
-      for (int i = 0; i < slotsOccupied; i++) {
-        DateTime slotTime = d.add(Duration(minutes: 30 * i));
-        busy.add("${slotTime.hour.toString().padLeft(2,'0')}:${slotTime.minute.toString().padLeft(2,'0')}");
-      }
-    }
-    return busy;
+    final snapshot = await _availabilityQuery(clinicId, date)
+        .get(const GetOptions(source: Source.server));
+    return _busy(snapshot, clinicId, date, dentistId, excludeId);
   }
+
+  Stream<List<String>> watchBusySlots(String clinicId, DateTime date,
+      {String? excludeId, String? dentistId}) =>
+      _availabilityQuery(clinicId, date).snapshots(includeMetadataChanges: true)
+          .where((s) => !s.metadata.isFromCache)
+          .map((s) => _busy(s, clinicId, date, dentistId, excludeId));
 
   Future<void> add(AppointmentModel appointment) async {
     // Convertemos o model para mapa, removendo o ID que será gerado.

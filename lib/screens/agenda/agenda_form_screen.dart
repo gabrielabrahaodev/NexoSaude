@@ -79,7 +79,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   List<String> _selectedTimes = [];
 
   // Lista de horários forçados (clicados na tela anterior)
-  List<String> _forcedAvailableTimes = [];
+  StreamSubscription<List<String>>? _availabilitySubscription;
 
   // Aceite LGPD no cadastro rápido (default desmarcado).
   bool _lgpdQuickConsent = false;
@@ -135,6 +135,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _availabilitySubscription?.cancel();
     _procedureCtrl.dispose();
     _notesCtrl.dispose();
     _nameNewCtrl.dispose();
@@ -178,8 +179,6 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
             // Só adiciona se o horário existir na grade
             if (_timeSlots.contains(timeStr)) {
                _selectedTimes.add(timeStr);
-               // IMPORTANTE: Adiciona este horário à lista de proteção
-               _forcedAvailableTimes.add(timeStr);
             }
          }
       }
@@ -206,63 +205,32 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   }
 
   // --- LÓGICA DE VERIFICAÇÃO DE DISPONIBILIDADE ---
-  Future<void> _checkAvailability() async {
-    final clinicId = SessionManager().currentClinicId;
-    if (clinicId == null) return;
+  String? get _bookingProfessional => agendaBookingProfessionalId(
+      role: SessionManager().userRole, userId: SessionManager().userId,
+      selectedId: widget.initialData?['dentistId']?.toString());
 
+  void _applyBusySlots(List<String> busy) {
+    _occupiedSlots = busy;
+    _selectedTimes.removeWhere(busy.contains);
+  }
+
+  Future<void> _checkAvailability() async {
     final version = ++_availabilityVersion;
     setState(() { _isLoadingSlots = true; _slotsError = null; });
-
-    try {
-      // Define intervalo exato do dia (00:00:00 até 23:59:59)
-      DateTime startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 0, 0, 0);
-      DateTime endOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59, 59);
-
-      final snapshot = await FirebaseFirestore.instance.collection('appointments')
-          .where('clinicId', isEqualTo: clinicId)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
-          .get();
-
-      List<String> busyList = [];
-
-      for (var doc in snapshot.docs) {
-        if (widget.editAppointmentId != null && doc.id == widget.editAppointmentId) continue;
-
-        final data = doc.data();
-        final targetProfessional = agendaBookingProfessionalId(
-          role: SessionManager().userRole, userId: SessionManager().userId,
-          selectedId: widget.initialData?['dentistId']?.toString());
-        final occupiedProfessional = (data['dentistId'] ?? data['userId'])?.toString();
-        if (targetProfessional != null && occupiedProfessional != null &&
-            occupiedProfessional != targetProfessional) continue;
-        String status = (data['status'] ?? '').toString().toLowerCase();
-
-        if (status == 'cancelado') continue;
-
-        DateTime apptDate = (data['date'] as Timestamp).toDate();
-        int duration = data['durationMinutes'] ?? 30;
-        int slotsOccupied = (duration / 30).ceil();
-
-        for (int i = 0; i < slotsOccupied; i++) {
-          DateTime slotTime = apptDate.add(Duration(minutes: 30 * i));
-          String timeStr = "${slotTime.hour.toString().padLeft(2,'0')}:${slotTime.minute.toString().padLeft(2,'0')}";
-          busyList.add(timeStr);
-        }
-      }
-
-      if (!mounted || version != _availabilityVersion) return;
-      setState(() {
-        _occupiedSlots = busyList;
-        // Se houver horários selecionados que agora estão ocupados (e não são forçados), remove
-        _selectedTimes.removeWhere((t) => busyList.contains(t) && !_forcedAvailableTimes.contains(t));
-      });
-
-    } catch (e) {
-      if (mounted && version == _availabilityVersion) setState(() => _slotsError = 'Não foi possível conferir os horários. Tente outra data ou reabra a tela.');
-    } finally {
-      if (mounted && version == _availabilityVersion) setState(() => _isLoadingSlots = false);
+    await _availabilitySubscription?.cancel();
+    if (!mounted || version != _availabilityVersion) return;
+    if (SessionManager().currentClinicId != _openedClinic || _bookingProfessional == null) {
+      setState(() { _isLoadingSlots = false; _slotsError = 'Selecione um profissional na Agenda e reabra o formulário.'; });
+      return;
     }
+    _availabilitySubscription = _apptService.watchBusySlots(_openedClinic, _selectedDate,
+      excludeId: widget.editAppointmentId, dentistId: _bookingProfessional).listen((busy) {
+        if (!mounted || version != _availabilityVersion || SessionManager().currentClinicId != _openedClinic) return;
+        setState(() { _applyBusySlots(busy); _isLoadingSlots = false; _slotsError = null; });
+      }, onError: (Object error) {
+        if (!mounted || version != _availabilityVersion) return;
+        setState(() { _isLoadingSlots = false; _slotsError = 'Não foi possível conferir os horários. Tente outra data ou reabra a tela.'; });
+      });
   }
 
   void _showNewPatientModal() {
@@ -410,6 +378,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   }
 
   Future<void> _saveBooking() async {
+    if (_saving || _isLoadingSlots || _slotsError != null || _selectedTimes.isEmpty) return;
     final clinicId = SessionManager().currentClinicId;
     final isEditing = widget.editAppointmentId != null;
                   if (clinicId == null || clinicId != _openedClinic) return;
@@ -428,6 +397,16 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     userId: SessionManager().userId ?? FirebaseAuth.instance.currentUser?.uid,
                     selectedId: widget.initialData?['dentistId']?.toString());
                   if (finalDentistId == null) { setState(() => _saving = false); toast(context, 'Selecione um profissional na Agenda antes de agendar.'); return; }
+                  final chosenTimes = _selectedTimes.toList();
+                  final busy = await _apptService.getBusySlots(clinicId, _selectedDate,
+                      excludeId: widget.editAppointmentId, dentistId: finalDentistId);
+                  if (!mounted) return;
+                  if (SessionManager().currentClinicId != _openedClinic) throw StateError('Unidade alterada. Reabra a Agenda.');
+                  if (chosenTimes.any(busy.contains) || chosenTimes.any((t) => !_selectedTimes.contains(t))) {
+                    setState(() { _applyBusySlots(busy); _saving = false; });
+                    toast(context, 'Este horário foi ocupado. Selecione outro horário livre.', error: true);
+                    return;
+                  }
                   _selectedTimes.sort();
                   String startTime = _selectedTimes.first;
                   DateTime finalDT = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
@@ -496,7 +475,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
       times: _timeSlots, selectedTimes: _selectedTimes, occupiedTimes: _occupiedSlots,
       loading: _isLoadingSlots, error: _slotsError, saving: _saving, fitIn: _fitIn,
       onFitIn: (v) => setState(() => _fitIn = v),
-      onDate: (d) { setState(() { _selectedDate = d; _selectedTimes.clear(); _occupiedSlots = []; _forcedAvailableTimes.clear(); }); _checkAvailability(); },
+      onDate: (d) { setState(() { _selectedDate = d; _selectedTimes.clear(); _occupiedSlots = []; }); _checkAvailability(); },
       onTime: (time) => setState(() { if (_selectedTimes.contains(time)) { _selectedTimes.remove(time); } else { _selectedTimes.add(time); } }),
       onCancel: () => Navigator.pop(context),
       onSave: !_saving && !_isLoadingSlots && _slotsError == null && _selectedTimes.isNotEmpty && _procedureCtrl.text.trim().isNotEmpty && _selectedPatientId != null ? _saveBooking : null,
