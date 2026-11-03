@@ -43,4 +43,4 @@ Cadastro operacional, taxa nova, parcela de máquina, tema, acesso ao menu.
 
 - Procedimentos: busca por nome/categoria/repasse/flags, categorias reais, cartões adaptativos; moeda pt-BR. Campo active preservado na edição; salvar bloqueia duplo clique e troca de clínica, erros preservam formulário. Exclusão pede confirmação. Sem rótulo especializado/preventivo ou profissional nominal inventado.
 
-- Gestão salva definição reutilizável em procedures/{id}/tags/definition no mesmo batch do procedimento. Paciente recebe instâncias separadas quando aprova orçamento; edições do catálogo não reescrevem tratamentos contratados. Ver docs/design/agenda/TAGS.md.
+- Gestão salva definição reutilizável em procedures/{id}/tags/definition na mesma transação do procedimento. Paciente recebe instâncias separadas quando aprova orçamento; edições do catálogo não reescrevem tratamentos contratados. Ver docs/design/agenda/TAGS.md.
