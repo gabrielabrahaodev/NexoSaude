@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -18,8 +17,8 @@ import '../../utils/display.dart';
 import '../../widgets/patient_procedure_tags.dart';
 import '../patients/clinical_patient_view.dart';
 import '../../utils/report_export.dart' show reportMoney;
-import '../../widgets/clinical_booking_calendar.dart';
-import 'clinical_agenda_view.dart';
+import 'clinical_booking_view.dart';
+import '../../models/patient_list_entry.dart' show patientMaskedCpf;
 
 class AgendaFormScreen extends StatefulWidget {
   final String? editAppointmentId;
@@ -46,6 +45,15 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   final Map<String, Map<String, dynamic>> _catalog = {};
   final Map<String, Future<Map<String, dynamic>>> _risk = {};
   String? _professionalName;
+  TextEditingController? _patientSearchController;
+  Future<void> _loadPatientContext() async {
+    final id = _selectedPatientId;
+    if (id == null) return;
+    try {
+      final doc = await FirebaseFirestore.instance.collection('patients').doc(id).get();
+      if (mounted && _selectedPatientId == id && doc.data()?['clinicId'] == _openedClinic) setState(() => _patientDetails = doc.data());
+    } catch (_) {}
+  }
   Future<void> _loadProfessional() async {
     final id = widget.initialData?['dentistId']?.toString() ?? SessionManager().userId;
     if (id == null) return;
@@ -182,6 +190,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
     }
 
     // Inicia verificação após setup inicial
+    _loadPatientContext();
     _checkAvailability();
   }
 
@@ -400,196 +409,9 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    bool isEditing = widget.editAppointmentId != null;
+  Future<void> _saveBooking() async {
     final clinicId = SessionManager().currentClinicId;
-
-    return Theme(data: PatientVisualStyle.forContext(context), child: Scaffold(
-      backgroundColor: PatientVisualStyle.background,
-      appBar: AppBar(title: Text(isEditing ? 'Alterar Agendamento' : 'Novo Agendamento', style: const TextStyle(fontWeight: FontWeight.w700)), actions: [Padding(padding: const EdgeInsets.all(12), child: SizedBox(width: MediaQuery.sizeOf(context).width < 700 ? 120 : 300, child: Text('${SessionManager().currentClinicName ?? 'Unidade ativa'}${_professionalName == null ? '' : ' • $_professionalName'}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))))]),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1220), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. PACIENTE
-            const Text("1. Paciente", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: isEditing
-                    ? Container(
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.borderSoft),
-                        ),
-                        child: Text(_selectedPatientName ?? "", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary))
-                      )
-                      : Autocomplete<Map<String, dynamic>>(
-                        displayStringForOption: (option) => option['name'],
-                        optionsBuilder: (textEditingValue) =>
-                            _searchPatients(textEditingValue, clinicId),
-                        onSelected: (selection) => setState(() {
-                          _selectedPatientName = selection['name'];
-                          _selectedPatientId = selection['id'];
-                          _patientDetails = selection;
-                          _tags = {};
-                        }),
-                        fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
-                          if (_selectedPatientName != null && controller.text.isEmpty) {
-                            controller.text = _selectedPatientName!;
-                          }
-                          return TextField(
-                            controller: controller,
-                            focusNode: focusNode,
-                            onEditingComplete: onEditingComplete,
-                            onChanged: (v) { if (_selectedPatientName != v && _selectedPatientId != null) setState(() { _selectedPatientId = null; _patientDetails = null; _tags = {}; }); },
-                            decoration: const InputDecoration(
-                              hintText: "Digite o nome...",
-                              border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.search)
-                            ),
-                          );
-                        },
-                      ),
-                ),
-                if (!isEditing) ...[
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _showNewPatientModal,
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primarySoft, foregroundColor: AppColors.primary),
-                      child: const Icon(Icons.person_add),
-                    ),
-                  )
-                ]
-              ],
-            ),
-
-            if (_patientDetails != null) Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text('WhatsApp: ${_patientDetails?['phone'] ?? 'Não informado'}', style: TextStyle(color: PatientVisualStyle.textSecondary))),
-            if (_selectedPatientId != null)
-              FutureBuilder<Map<String, dynamic>>(
-                future: _risk.putIfAbsent(_selectedPatientId!, () => _patientService.getPatientRiskProfile(_selectedPatientId!)),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!['level'] != 'red') return const SizedBox();
-
-                  return Container(
-                    margin: const EdgeInsets.only(top: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.3))
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.warning_amber_rounded, color: Colors.red),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("ALERTA DE ALTO RISCO", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
-                              Text("Este paciente faltou/cancelou ${snapshot.data!['missed']} vezes recentemente.", style: const TextStyle(fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              ),
-
-            const SizedBox(height: 20),
-
-            const Text("2. Procedimento", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _procedureCtrl,
-              onChanged: (val) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: "Descrição",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.medical_services_outlined),
-              ).copyWith(suffixIcon: IconButton(tooltip: 'Tabela de Procedimentos', onPressed: _chooseProcedure, icon: const Icon(Icons.swap_horiz))),
-            ),
-
-            const SizedBox(height: 20),
-
-            if (_selectedPatientId != null) ...[
-              PatientProcedureTags(key: ValueKey(_selectedPatientId), patientId: _selectedPatientId!, selected: _tags, onChanged: (v) => setState(() => _tags = v)),
-              const SizedBox(height: 24),
-            ],
-            const Text("3. Data e Horários Disponíveis", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(DateFormat("EEEE, d 'de' MMMM", 'pt_BR').format(_selectedDate), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                if (_isLoadingSlots)
-                  const SizedBox(
-                    width: 16, height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2)
-                  )
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            ClinicalBookingCalendar(selected: _selectedDate, onChanged: (d) {
-              setState(() { _selectedDate = d; _selectedTimes.clear(); _occupiedSlots = []; _forcedAvailableTimes.clear(); });
-              _checkAvailability();
-            }),
-            if (_slotsError != null) Text(_slotsError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            const SizedBox(height: 10),
-
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _timeSlots.map((time) {
-                bool isOccupied = _occupiedSlots.contains(time);
-                bool isSelected = _selectedTimes.contains(time);
-
-                return ChoiceChip(
-                  label: Text(time),
-                  selected: isSelected,
-                  selectedColor: PatientVisualStyle.accent,
-                  disabledColor: AppColors.borderSoft,
-                  labelStyle: TextStyle(
-                    color: isOccupied ? PatientVisualStyle.textSecondary : isSelected ? ClinicalAgendaStyle.onAccent : PatientVisualStyle.textPrimary
-                  ),
-                  onSelected: (isOccupied || _isLoadingSlots || _slotsError != null) ? null : (selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedTimes.add(time);
-                      } else {
-                        _selectedTimes.remove(time);
-                      }
-                    });
-                  }
-                );
-              }).toList()
-            ),
-
-            const SizedBox(height: 24),
-            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Paciente de Encaixe / Urgência'), subtitle: const Text('Sinaliza a recepção; não cria uma vaga em horário ocupado.'), value: _fitIn, onChanged: (v) => setState(() => _fitIn = v)),
-            TextField(controller: _notesCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Observações Clínicas ou Recomendações Pré-Atendimento (opcional)')),
-            const SizedBox(height: 24),
-
-          ],
-        ))),
-      ),
-      bottomNavigationBar: SafeArea(child: Container(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), color: PatientVisualStyle.surface, child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: PatientVisualStyle.accent, foregroundColor: ClinicalAgendaStyle.onAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                onPressed: (!_saving && !_isLoadingSlots && _slotsError == null && _selectedTimes.isNotEmpty && _procedureCtrl.text.isNotEmpty) ? () async {
+    final isEditing = widget.editAppointmentId != null;
                   if (clinicId == null || clinicId != _openedClinic) return;
                   if (_selectedPatientId == null) {
                      toast(context, "Selecione um Paciente.");
@@ -631,10 +453,53 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                   }
                   if (mounted) Navigator.pop(context);
                   } catch (e) { if (mounted) { setState(() => _saving = false); toast(context, 'Não foi possível salvar: $e'); } }
-                } : null,
-                child: Text(_saving ? 'Salvando…' : '✓ Confirmar Agendamento (${_selectedTimes.length * 30} min)')
-              )
-            ))),
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.editAppointmentId != null;
+    final clinicId = SessionManager().currentClinicId;
+    final compact = MediaQuery.sizeOf(context).width >= 1000;
+    final procedure = _catalog.values.where((d) => d['name'] == _procedureCtrl.text).firstOrNull;
+    final patientField = isEditing
+      ? Align(alignment: Alignment.centerLeft, child: Text(_selectedPatientName ?? '', style: const TextStyle(fontWeight: FontWeight.w600)))
+      : Autocomplete<Map<String, dynamic>>(
+          displayStringForOption: (option) => '${option['name']}',
+          optionsBuilder: (value) => _searchPatients(value, clinicId),
+          onSelected: (selection) => setState(() { _selectedPatientName = selection['name']; _selectedPatientId = selection['id']; _patientDetails = selection; _tags = {}; }),
+          fieldViewBuilder: (context, controller, focus, onComplete) {
+            _patientSearchController = controller;
+            if (_selectedPatientName != null && controller.text.isEmpty) controller.text = _selectedPatientName!;
+            return TextField(controller: controller, focusNode: focus, onEditingComplete: onComplete,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              onChanged: (value) { if (value != _selectedPatientName && _selectedPatientId != null) setState(() { _selectedPatientId = null; _patientDetails = null; _tags = {}; }); },
+              decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10), hintText: 'Busque o paciente pelo nome...', prefixIcon: Icon(Icons.search, size: 18), border: OutlineInputBorder()));
+          });
+    final risk = _selectedPatientId == null ? null : FutureBuilder<Map<String, dynamic>>(
+      future: _risk.putIfAbsent(_selectedPatientId!, () => _patientService.getPatientRiskProfile(_selectedPatientId!)),
+      builder: (context, snapshot) => snapshot.data?['level'] != 'red' ? const SizedBox.shrink() : Padding(padding: const EdgeInsets.only(top: 6), child: Text('Atenção ao histórico: ${snapshot.data?['missed']} falta(s)/cancelamento(s) recentes.', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12))),
+    );
+    final cpf = patientMaskedCpf('${_patientDetails?['cpf'] ?? ''}');
+    final record = '${_patientDetails?['recordNumber'] ?? _patientDetails?['prontuario'] ?? _patientDetails?['medicalRecordNumber'] ?? ''}';
+    return Theme(data: PatientVisualStyle.forContext(context), child: ClinicalBookingView(
+      title: isEditing ? 'Alterar Agendamento' : 'Novo Agendamento',
+      clinic: SessionManager().currentClinicName ?? 'Unidade ativa', professional: _professionalName,
+      patientField: patientField, recordNumber: record,
+      patientSummary: _selectedPatientId == null ? null : 'CPF: ${cpf.isEmpty ? 'Não informado' : cpf}  •  WhatsApp: ${_patientDetails?['phone'] ?? 'Não informado'}',
+      onNewPatient: isEditing ? null : _showNewPatientModal,
+      onChangePatient: isEditing ? null : () => setState(() { _selectedPatientName = null; _selectedPatientId = null; _patientDetails = null; _tags = {}; _patientSearchController?.clear(); }),
+      procedureField: TextField(controller: _procedureCtrl, onChanged: (_) => setState(() {}), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700), decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, hintText: 'Selecione ou descreva o procedimento')),
+      procedureCategory: procedure?['category']?.toString(), procedurePrice: procedure == null ? null : parseBRL(procedure['price']),
+      onProcedure: _chooseProcedure,
+      tags: _selectedPatientId == null ? const Padding(padding: EdgeInsets.all(12), child: Text('Selecione o paciente para vincular as Tags do plano.', style: TextStyle(fontSize: 12))) : PatientProcedureTags(key: ValueKey(_selectedPatientId), patientId: _selectedPatientId!, selected: _tags, compact: compact, onChanged: (v) => setState(() => _tags = v)),
+      risk: risk, notesController: _notesCtrl, selectedDate: _selectedDate,
+      times: _timeSlots, selectedTimes: _selectedTimes, occupiedTimes: _occupiedSlots,
+      loading: _isLoadingSlots, error: _slotsError, saving: _saving, fitIn: _fitIn,
+      onFitIn: (v) => setState(() => _fitIn = v),
+      onDate: (d) { setState(() { _selectedDate = d; _selectedTimes.clear(); _occupiedSlots = []; _forcedAvailableTimes.clear(); }); _checkAvailability(); },
+      onTime: (time) => setState(() { if (_selectedTimes.contains(time)) { _selectedTimes.remove(time); } else { _selectedTimes.add(time); } }),
+      onCancel: () => Navigator.pop(context),
+      onSave: !_saving && !_isLoadingSlots && _slotsError == null && _selectedTimes.isNotEmpty && _procedureCtrl.text.trim().isNotEmpty && _selectedPatientId != null ? _saveBooking : null,
     ));
   }
 }

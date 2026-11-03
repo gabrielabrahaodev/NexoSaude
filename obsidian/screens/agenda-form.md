@@ -42,3 +42,9 @@ Novo agendamento, reagendar, checar choque de horário.
 ## Seleção de profissional
 
 `agendaBookingProfessionalId` preserva a escolha da gestão e restringe dentistas/psicólogos ao próprio UID, incluindo aliases. A ocupação de horários respeita esse profissional, sem bloquear a agenda por uma consulta de outro membro. O `AgendaCellFactory` centraliza a abertura do formulário correto para a clínica.
+
+## Formulário desktop 1080p
+
+`ClinicalBookingView` concentra a apresentação: paciente, procedimento, Tags, calendário mensal e horários no mesmo cartão, observações e rodapé fixo. Espaçamento compacto em desktop, com ajuste adicional abaixo de 1040px de altura; telas pequenas mantêm rolagem. Tags extensas têm rolagem interna. Modo claro e escuro usam a mesma estrutura.
+
+O teste de geometria cobre 1920×1000 e 1920×1080, nos dois temas e em mês com seis semanas. O WhatsApp permanece manual; sala, especialidade e número de prontuário só aparecem quando disponíveis no sistema. Disponibilidade e persistência continuam no AgendaFormScreen.
