@@ -36,3 +36,8 @@ Substituir ID_DA_CLINICA pelo ID Firestore, não pelo nome. Manifestos em tag-mi
 Validação do código em `dd5c2bd`: CI 41730955804 aprovado, com análise Flutter sem erros (195 avisos/informações remanescentes), 511 testes Flutter, 40 testes de Rules e 31 testes de segurança web aprovados. Dois testes Node da migração também passaram localmente; parser Dart, sintaxe Node e diff --check aprovados. Build web release e revisão visual autenticada permanecem pendentes; sem SDK local. Conferir Gestão (novo/editar), dois orçamentos iguais, troca de paciente/unidade, erro de leitura, oito Tags, conclusão parcial, remoção, falta/atestado e histórico com contas de teste antes de publicar. Nenhuma migração ou deploy foi executado nos dados do usuário.
 
 O CI remoto também identificou regressões de layout anteriores a este fluxo: altura fixa dos cards do Dashboard, resumo de vencimento estreito e seletor de modos da Agenda em 320px. Ajustados para altura natural/quebra de linha/encaixe à largura. Teste de busca de Procedimentos agora verifica o Text do resultado, excluindo EditableText do próprio filtro.
+
+
+## Auditoria de integridade em andamento
+
+Consulte `docs/design/agenda/AUDITORIA-INTEGRIDADE.md`. Exclusões de contratos/histórico estão bloqueadas conservadoramente. Catálogo usa desativação lógica. Locks transacionais, reconciliação do portal e invariantes completas das Rules continuam pendentes. Não publicar esta revisão isoladamente.

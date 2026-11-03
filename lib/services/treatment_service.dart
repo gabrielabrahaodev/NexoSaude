@@ -126,21 +126,8 @@ class TreatmentService {
   }
 
   // Adicione este método à sua classe existente
+  @Deprecated('Use approveBudgetWithFinancials para gerar plano e Tags atomicamente')
   Future<String> createFromBudget(BudgetModel budget) async {
-    final clinicId = SessionManager().currentClinicId;
-    
-    DocumentReference ref = await _plans.add({
-      'clinicId': clinicId,
-      'patientId': budget.patientId,
-      'patientName': budget.patientName,
-      'originBudgetId': budget.id,
-      'status': 'active', // Em andamento
-      'startDate': FieldValue.serverTimestamp(),
-      'totalValue': budget.total,
-      'items': budget.items, // Lista de procedimentos
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    return ref.id;
+    throw UnsupportedError('Use a aprovação de orçamento para gerar plano e Tags.');
   }
 }

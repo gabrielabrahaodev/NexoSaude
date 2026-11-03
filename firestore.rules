@@ -903,8 +903,25 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // 3. SUBCOLEÇÕES (Odontograma, Prontuário dentro de Paciente)
     // ---------------------------------------------------------
+    match /patients/{patientId}/procedure_tags/{tagId} {
+      allow read: if isAuthenticated() && patientClinicOk(patientId);
+      allow create: if isAuthenticated() && patientClinicOk(patientId) &&
+          request.resource.data.patientId == patientId &&
+          request.resource.data.clinicId == get(/databases/$(database)/documents/patients/$(patientId)).data.clinicId &&
+          request.resource.data.status == 'pending';
+      allow update: if isAuthenticated() && patientClinicOk(patientId) &&
+          resource.data.status in ['pending', 'in_progress'] &&
+          request.resource.data.status in ['in_progress', 'completed'] &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'sessionCount', 'lastAppointmentId', 'lastAttendedAt',
+            'lastProfessionalId', 'lastOperatorId', 'updatedAt', 'completedAt'
+          ]) && request.resource.data.sessionCount == resource.data.sessionCount + 1 &&
+          request.resource.data.lastOperatorId == request.auth.uid;
+      // Contracted Tags are retained along with their clinical history.
+      allow delete: if false;
+    }
     match /patients/{patientId}/{subcollection}/{docId} {
-       allow read, write: if
+       allow read, write: if subcollection != 'procedure_tags' &&
           isAuthenticated() &&
           exists(/databases/$(database)/documents/patients/$(patientId)) &&
           patientClinicOk(patientId);

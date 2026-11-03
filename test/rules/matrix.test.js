@@ -747,6 +747,20 @@ describe('matriz reavaliação P0/P1', () => {
     });
   });
 
+  it('Tags impedem adulteração de contrato, reabertura e exclusão direta', async () => {
+    const db = ctx('staffA').firestore();
+    const ref = db.doc('patients/p1/procedure_tags/immutable_tag');
+    await assertSucceeds(ref.set({clinicId:A, patientId:'p1', budgetId:'contract',
+      status:'pending', sessionCount:0, lineSnapshot:{price:100}}));
+    await assertFails(ref.update({budgetId:'other'}));
+    await assertFails(ref.update({clinicId:B}));
+    await assertFails(ref.update({lineSnapshot:{price:0}}));
+    await assertFails(ref.update({status:'completed',sessionCount:10,lastOperatorId:'staffA'}));
+    await assertFails(ref.delete());
+    await assertFails(db.doc('patients/p1/procedure_tags/foreign').set({clinicId:B,patientId:'p1',status:'pending'}));
+    await assertFails(ref.update({status:'completed'}));
+  });
+
   it('Tags de catálogo/paciente e histórico mantêm o escopo existente da clínica', async () => {
     const db = ctx('staffA').firestore();
     const batch = db.batch();

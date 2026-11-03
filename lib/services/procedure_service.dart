@@ -39,6 +39,18 @@ class ProcedureService {
   }
 
   Future<void> delete(String id) async {
-    await _collection.doc(id).delete();
+    final ref = _collection.doc(id);
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final current = await tx.get(ref);
+      if (current.data()?['clinicId'] != SessionManager().currentClinicId) {
+        throw StateError('Procedimento fora da unidade ativa.');
+      }
+      // Preserve identifiers and contracted snapshots, hide from new bookings.
+      tx.update(ref, {'active': false});
+      tx.set(ref.collection('tags').doc('definition'), {
+        ...procedureTagDefinition({...current.data()!, 'active': false}, id),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
   }
 }
