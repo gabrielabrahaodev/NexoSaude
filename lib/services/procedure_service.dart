@@ -23,12 +23,19 @@ class ProcedureService {
   Future<void> save(ProcedureModel model) async {
     if (model.clinicId != SessionManager().currentClinicId) throw StateError('Unidade alterada.');
     final ref = model.id.isEmpty ? _collection.doc() : _collection.doc(model.id);
-    final batch = FirebaseFirestore.instance.batch();
-    batch.set(ref, model.toMap(), SetOptions(merge: true));
-    batch.set(ref.collection('tags').doc('definition'), {
-      ...procedureTagDefinition(model.toMap(), ref.id), 'updatedAt': FieldValue.serverTimestamp(),
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      Map<String, dynamic> original = {};
+      if (model.id.isNotEmpty) {
+        final current = await tx.get(ref);
+        if (current.data()?['clinicId'] != model.clinicId) throw StateError('Procedimento indisponível nesta unidade.');
+        original = current.data()!;
+      }
+      final data = {...original, ...model.toMap()};
+      tx.set(ref, data);
+      tx.set(ref.collection('tags').doc('definition'), {
+        ...procedureTagDefinition(data, ref.id), 'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
-    await batch.commit();
   }
 
   Future<void> delete(String id) async {
