@@ -13,6 +13,10 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 ## Como usar
 
+> [!warning] Versões e publicação
+> Este vault contém descrições de funcionalidades existentes em `feat/agenda-clinical-dark` que **não devem ser presumidas como implantadas**. Em 03/11/2026, `master` e `producao` apontavam para `5fb7aaf`; `feat/agenda-clinical-dark` para `771e300`. Consulte [[auditoria-codigo-2026-11-03]] para diferenças, riscos e validação. O deploy ativo do Firebase não foi auditado nesta rodada.
+
+
 - Vai mexer numa tela? Leia `screens/<tela>.md` primeiro.
 - Vai mexer numa regra de negócio? Leia `modules/<dominio>.md` primeiro.
 - Arquivos citam paths reais, collections Firestore e gotchas; links entre notas conectam o grafo.
@@ -33,6 +37,8 @@ Conhecimento do projeto: cada arquivo cobre **um módulo** (`modules/`), **uma t
 
 - [[2026-09-19-modo-atendimento-portal-design]] — Modo Atendimento + Portal (decisão b).
 - [[2026-09-19-landing-master-assinatura-design]] — Landing + master + assinatura (trial e cobrança por usuário).
+- [[auditoria-codigo-2026-11-03]] — auditoria estática cruzada, diferenças de branch, riscos e pendências antes de merge.
+- [[remodelagem-plano-testes]] — plano histórico e checklist de regressão; resultados devem ser reexecutados no SHA alvo.
 
 ## Mapas
 
