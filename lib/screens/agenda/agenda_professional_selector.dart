@@ -111,37 +111,24 @@ class AgendaProfessionalSelector extends StatelessWidget {
                     ? const Icon(Icons.expand_more)
                     : const SizedBox.shrink(),
                 onChanged: enabled ? onChanged : null,
-                selectedItemBuilder: (context) => professionals
-                    .map(
-                      (u) => Align(
-                        alignment: Alignment.centerLeft,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              u.name.isEmpty ? 'Profissional' : u.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              '${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: ClinicalAgendaStyle.muted,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
+                selectedItemBuilder: (context) => professionals.map((u) =>
+                  Tooltip(
+                    message: '${u.name.isEmpty ? 'Profissional' : u.name} • ${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
+                    child: Row(children: [
+                      Expanded(flex: 3, child: Text(
+                        u.name.isEmpty ? 'Profissional' : u.name,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      )),
+                      const SizedBox(width: 8),
+                      Flexible(flex: 2, child: Text(
+                        '${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 11),
+                      )),
+                    ]),
+                  ),
+                ).toList(),
                 items: professionals
                     .map(
                       (u) => DropdownMenuItem(

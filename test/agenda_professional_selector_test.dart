@@ -16,6 +16,19 @@ void main() {
     UserModel(id: 'd', name: 'Bruno', email: '', role: 'dentista'),
     UserModel(id: 'p', name: 'Clara', email: '', role: 'psicologo'),
   ];
+  testWidgets('seletor denso comporta nome e contagem em 32px', (tester) async {
+    await tester.pumpWidget(MaterialApp(theme: ClinicalAgendaStyle.theme,
+      home: Scaffold(body: Align(alignment: Alignment.topLeft, child: SizedBox(
+        width: 420, height: 32,
+        child: AgendaProfessionalSelector(professionals: users, selectedId: 'd',
+          onChanged: (_) {}, onRetry: () {}, appointmentCount: 4),
+      ))),
+    ));
+    await tester.pump();
+    expect(find.text('Bruno'), findsOneWidget);
+    expect(find.text('Dentista • 4 consultas'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [320.0, 390.0, 768.0]) {
     testWidgets('seletor funcional e marca sem overflow em $width', (
       tester,
