@@ -49,9 +49,9 @@ KPI usa `onNavigate`: avisos → 7 (Cobranças), agenda → 1. Setup (`_onMenuSe
 - □ sheet do evento: Confirmar, WhatsApp, Finalizar→evolução, Editar, Cancelar (motivo), Desbloquear, Decidir remarcação
 - □ Gestão da agenda: bloquear intervalos, Liberar Dia
 
-**Pacientes (2):** → Ficha (`PatientDetailsScreen`) · → Novo Paciente (`CreatePatientScreen`) · long-press exclui (cascata do paciente).
+**Pacientes (2):** no layout clássico → Ficha por navegação (`PatientDetailsScreen`); na variante clínica → `PatientWorkspace` abre `ClinicalPatientScreen(embedded: true)` dentro da área principal do mesmo dashboard, preservando busca/lista. Novo Paciente e exclusão em cascata seguem os serviços existentes.
 
-**Ficha do Paciente (detalhe, sem rota própria — via push/deep-link):**
+**Ficha do Paciente (detalhe clássico por push/deep-link; variante clínica também embutida):**
 - Abas internas (sem navegação): Cadastro · Anamnese · Tratamentos · Prontuário · Documentação · Pagamentos · Orçamentos
 - Saídas: □ wizard de recebimento · □ dialogs (estorno/cancelar/editar/recriar) · □ modal da família · □ wizard de aprovação de orçamento · ← Voltar (pilha)
 
@@ -71,7 +71,7 @@ KPI usa `onNavigate`: avisos → 7 (Cobranças), agenda → 1. Setup (`_onMenuSe
 
 ## Camada deep-link (sem menu)
 
-`openPatient(patientId, name)` → Ficha, usado por: sheet da Agenda, Cobranças (ícone), Meu dia. A Ficha nunca está no menu — sempre por push.
+`openPatient(patientId, name)` → Ficha, usado por: sheet da Agenda, Cobranças (ícone), Meu dia. A Ficha não é item independente do menu. **Exceção da variante clínica:** clique na lista de Pacientes usa `PatientWorkspace`/`ClinicalPatientScreen(embedded: true)`, sem nova rota ou segundo dashboard; deep-links externos preservam seu fluxo de navegação.
 
 ## Páginas web externas (fora do app)
 
@@ -83,3 +83,7 @@ KPI usa `onNavigate`: avisos → 7 (Cobranças), agenda → 1. Setup (`_onMenuSe
 - Diálogos de confirmação antes de: excluir (clínica/orçamento/paciente), estornar, cancelar família, confirmar presença em massa.
 - Plano Spark: sem Functions — tudo é clique no app ou script `migrate/` com Admin SDK.
 - Deploy só via `deploy.bat` da branch `producao`.
+
+## Nota de versão — 03/11/2026
+
+Este fluxo reúne caminhos históricos de `master` e caminhos adicionais presentes em `feat/agenda-clinical-dark`. Não tratar a alternativa visual como produção sem verificar o SHA publicado. Na agenda, o diálogo de cancelamento atualiza o agendamento e **depois** tenta criar `clinical_records`; o método de cancelamento do serviço não cria esse registro. Ver [[auditoria-codigo-2026-11-03]] para diferenças de branch e testes pendentes.
