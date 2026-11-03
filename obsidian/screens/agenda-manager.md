@@ -64,3 +64,8 @@ Ver/editar/cancelar/finalizar atendimento; célula vazia cria; long-press exclui
 ## Temas claro e escuro — PR #2
 
 A apresentação clínica respeita `ThemeController`/`AppColors.isDark`, incluindo Agenda, Atendimento, menu e ficha do paciente. O seletor de sol/lua fica abaixo de Sair no rodapé do menu lateral (desktop e drawer mobile); usa a mesma preferência de Gestão → Configurações → Aparência e sincroniza por usuário. Superfícies, textos, campos, destaques e botões têm cores para ambos os modos. Trocar o tema não troca a aba nem recria o formulário ou a leitura do paciente. O logo original é preservado.
+
+## Atualização visual — 03/11/2026
+Referência screen(10).png/code(7).html/DESIGN(7).md: barra compacta com Dia/Semana, Mês (abre calendário para escolher uma data e entrar no dia), profissional real, período/anterior/próxima/Hoje e busca local por paciente/procedimento. Cabeçalhos redundantes removidos; cartões compactos com faixa de status e tipografia ampliada. Grade de segunda a sábado, expandida para domingo quando há agendamentos; domingo também acessível na faixa diária/calendário. Mantém horário ampliado dinamicamente, durações e faixas de encaixe, bloqueios/cancelamentos, cache e ações originais. Claro/escuro e mobile diário preservados. Busca só filtra exibição, sem modificar registros ou contagem do seletor. Logo/menu/identidade no rodapé aprovados preservados; não adiciona sino/perfil duplicados do mockup.
+
+Validação: diff --check aprovado; testes de regressão existentes preservados, novos cenários para busca/calendário/domingos adicionados. Flutter/build/renderização não executados nesta revisão por SDK ausente. Conferir em 390/768/1200/1600 px com conta autorizada antes de publicar.

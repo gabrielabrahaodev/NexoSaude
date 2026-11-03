@@ -99,6 +99,8 @@ class ClinicalAgendaView extends StatefulWidget {
 class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   late int _day;
   bool _daily = false;
+  String _search = '';
+  int get _visibleDays => widget.appointments.any((a) => a.date.weekday == DateTime.sunday) ? 7 : 6;
   static const _names = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
   static const _rowHeight = 64.0;
   static const _startMinute = 510;
@@ -119,6 +121,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   List<AppointmentModel> _events(int day) =>
       widget.appointments.where((a) => _sameDay(a.date, _dayDate(day))).toList()
         ..sort((a, b) => a.date.compareTo(b.date));
+  bool _matches(AppointmentModel a) => '${a.patientName} ${a.procedure}'.toLowerCase().contains(_search.toLowerCase().trim());
   bool _blocked(AppointmentModel a) =>
       a.status == 'Bloqueado' || a.patientId == 'BLOCKED_SLOT';
   int _minute(AppointmentModel a) => a.date.hour * 60 + a.date.minute;
@@ -133,15 +136,6 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
         : ClinicalAgendaStyle.blue;
   }
 
-  Widget _panel(Widget child) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: ClinicalAgendaStyle.surface,
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: child,
-  );
-
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
@@ -149,161 +143,48 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       final mobile = MediaQuery.sizeOf(context).width < 768;
       final daily = mobile || _daily;
       final end = widget.weekStart.add(const Duration(days: 6));
-      final now = DateTime.now();
-      final currentWeek =
-          !now.isBefore(widget.weekStart) &&
-          now.isBefore(end.add(const Duration(days: 1)));
-      final weekNavigation = Row(
-        children: [
-          IconButton(
-            tooltip: 'Semana anterior',
-            onPressed: () => widget.onChangeWeek(-7),
-            icon: const Icon(Icons.chevron_left),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  currentWeek ? 'SEMANA ATUAL' : 'SEMANA',
-                  style: TextStyle(
-                    color: ClinicalAgendaStyle.muted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  '${_date(widget.weekStart)} — ${_date(end)}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Próxima semana',
-            onPressed: () => widget.onChangeWeek(7),
-            icon: const Icon(Icons.chevron_right),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() => _day = DateTime.now().weekday - 1);
-              widget.onToday();
-            },
-            child: const Text('Hoje'),
-          ),
-        ],
-      );
+      final weekNavigation = Row(children: [
+        IconButton(tooltip: 'Semana anterior', onPressed: () => widget.onChangeWeek(-7), icon: const Icon(Icons.chevron_left)),
+        Icon(Icons.calendar_today_outlined, color: ClinicalAgendaStyle.teal, size: 16),
+        const SizedBox(width: 6),
+        Expanded(child: Text('${_date(widget.weekStart)} — ${_date(end)}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
+        IconButton(tooltip: 'Próxima semana', onPressed: () => widget.onChangeWeek(7), icon: const Icon(Icons.chevron_right)),
+        TextButton(onPressed: () { setState(() => _day = DateTime.now().weekday - 1); widget.onToday(); }, child: const Text('Hoje')),
+      ]);
+      final modes = Row(mainAxisSize: MainAxisSize.min, children: [
+        SegmentedButton<bool>(
+          style: SegmentedButton.styleFrom(selectedBackgroundColor: ClinicalAgendaStyle.teal, selectedForegroundColor: ClinicalAgendaStyle.onAccent, side: BorderSide.none, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), visualDensity: VisualDensity.compact),
+          showSelectedIcon: false,
+          segments: const [ButtonSegment(value: true, label: Text('Dia')), ButtonSegment(value: false, label: Text('Semana'))],
+          selected: {daily}, onSelectionChanged: (v) => setState(() => _daily = v.first),
+        ),
+        TextButton(onPressed: () async {
+          final selected = await showDatePicker(context: context, initialDate: _dayDate(_day), firstDate: DateTime(2000), lastDate: DateTime(2100), helpText: 'Escolher data da agenda');
+          if (selected == null || !mounted) return;
+          final monday = selected.subtract(Duration(days: selected.weekday - 1));
+          final offset = DateTime.utc(monday.year, monday.month, monday.day).difference(DateTime.utc(widget.weekStart.year, widget.weekStart.month, widget.weekStart.day)).inDays;
+          setState(() { _day = selected.weekday - 1; _daily = true; });
+          widget.onChangeWeek(offset);
+          widget.onSelectedDay?.call(selected);
+        }, child: const Text('Mês')),
+      ]);
+      final search = TextField(onChanged: (v) => setState(() => _search = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 18), hintText: 'Buscar paciente ou procedimento…', isDense: true));
       return Padding(
         padding: EdgeInsets.fromLTRB(mobile ? 12 : 24, 12, mobile ? 12 : 24, 0),
         child: Column(
           children: [
-            if (!mobile) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: ClinicalAgendaStyle.surface,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.circle,
-                      color: ClinicalAgendaStyle.teal,
-                      size: 7,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        constraints.maxWidth >= 850
-                            ? 'MODO DE EXIBIÇÃO    Desktop (${daily ? 'Visualização Diária' : 'Visualização Semanal Completa'})'
-                            : 'MODO DE EXIBIÇÃO',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ClinicalAgendaStyle.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    SegmentedButton<bool>(
-                      style: SegmentedButton.styleFrom(
-                        selectedBackgroundColor: ClinicalAgendaStyle.teal,
-                        selectedForegroundColor: ClinicalAgendaStyle.onAccent,
-                        side: BorderSide.none,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: true, label: Text('Dia')),
-                        ButtonSegment(value: false, label: Text('Semana')),
-                      ],
-                      selected: {_daily},
-                      onSelectionChanged: (v) =>
-                          setState(() => _daily = v.first),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            _panel(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!mobile) ...[
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: ClinicalAgendaStyle.elevated.withValues(
-                              alpha: .3,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.calendar_month_outlined,
-                            color: ClinicalAgendaStyle.teal,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          daily ? 'Agenda Diária' : 'Agenda Semanal',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  constraints.maxWidth >= 700
-                      ? Row(
-                          children: [
-                            Expanded(child: widget.professionalSelector),
-                            const SizedBox(width: 24),
-                            SizedBox(width: 320, child: weekNavigation),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            widget.professionalSelector,
-                            const SizedBox(height: 8),
-                            weekNavigation,
-                          ],
-                        ),
-                ],
-              ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(color: ClinicalAgendaStyle.surface, borderRadius: BorderRadius.circular(18)),
+              child: constraints.maxWidth >= 1000
+                ? Row(children: [modes, const SizedBox(width: 16), Expanded(child: widget.professionalSelector), const SizedBox(width: 20), SizedBox(width: 290, child: weekNavigation), const SizedBox(width: 12), SizedBox(width: 200, child: search)])
+                : Column(children: [
+                    Row(children: [modes, const Spacer()]),
+                    const SizedBox(height: 8),
+                    widget.professionalSelector,
+                    weekNavigation,
+                    search,
+                  ]),
             ),
             const SizedBox(height: 12),
             if (daily) ...[
@@ -424,7 +305,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       label: '${a.patientName}, ${_time(_minute(a))}, ${a.status}',
       child: Material(
         color: compact
-            ? ClinicalAgendaStyle.surface
+            ? ClinicalAgendaStyle.elevated.withValues(alpha: .45)
             : ClinicalAgendaStyle.elevated,
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
@@ -446,14 +327,14 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontSize: 16,
                         ),
                       ),
                       Text(
                         _blocked(a) ? (a.notes ?? a.procedure) : a.procedure,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 10, color: color),
+                        style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
                       ),
                     ],
                   )
@@ -511,7 +392,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
     final rows = <Widget>[];
     for (var minute = _startMinute; minute < _endMinute; minute += 30) {
       final starts = events
-          .where((a) => _minute(a) >= minute && _minute(a) < minute + 30)
+          .where((a) => _matches(a) && _minute(a) >= minute && _minute(a) < minute + 30)
           .toList();
       final occupied = events.any(
         (a) =>
@@ -519,7 +400,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
             _minute(a) < minute + 30 &&
             _minute(a) + a.durationMinutes > minute,
       );
-      if (starts.isEmpty && occupied) continue;
+      if (starts.isEmpty && (occupied || _search.trim().isNotEmpty)) continue;
       rows.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -589,7 +470,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   Widget _weeklyGrid() => LayoutBuilder(
     builder: (context, constraints) {
       final width = constraints.maxWidth;
-      final col = (width - 56) / 7;
+      final col = (width - 80) / _visibleDays;
       // A janela se expande para preservar eventos fora do expediente padrão.
       final start = widget.appointments.fold<int>(
         _startMinute,
@@ -604,7 +485,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       return Column(
         children: [
           Container(
-            height: 64,
+            height: 76,
             decoration: BoxDecoration(
               color: ClinicalAgendaStyle.elevated,
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -612,10 +493,10 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
             child: Row(
               children: [
                 SizedBox(
-                  width: 56,
+                  width: 80,
                   child: Icon(Icons.schedule, color: ClinicalAgendaStyle.muted),
                 ),
-                for (var i = 0; i < 7; i++)
+                for (var i = 0; i < _visibleDays; i++)
                   Expanded(
                     child: InkWell(
                       onTap: () => setState(() {
@@ -691,7 +572,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               SizedBox(
-                                width: 56,
+                                width: 80,
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: 8),
                                   child: Text(
@@ -704,10 +585,10 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                                   ),
                                 ),
                               ),
-                              for (var d = 0; d < 7; d++)
+                              for (var d = 0; d < _visibleDays; d++)
                                 Expanded(
                                   child: InkWell(
-                                    onTap: () => widget.onEmptySlot(
+                                    onTap: _search.trim().isNotEmpty ? null : () => widget.onEmptySlot(
                                       _dayDate(d),
                                       _time(start + s * 30),
                                     ),
@@ -718,7 +599,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                           ),
                         ),
                       ),
-                    for (var d = 0; d < 7; d++)
+                    for (var d = 0; d < _visibleDays; d++)
                       ..._positionedEvents(d, start, col),
                   ],
                 ),
@@ -731,7 +612,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   );
 
   List<Widget> _positionedEvents(int day, int start, double col) {
-    final events = _events(day);
+    final events = _events(day).where(_matches).toList();
     // Cada componente de sobreposição usa faixas estáveis; encaixes não se cobrem.
     final result = <Widget>[];
     var index = 0;
@@ -748,7 +629,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
         result.add(
           Positioned(
             top: (_minute(a) - start) / 30 * _rowHeight + 2,
-            left: 56 + day * col + lane * col / group.length + 2,
+            left: 80 + day * col + lane * col / group.length + 2,
             width: math.max(1, col / group.length - 4),
             height: math.max(48, a.durationMinutes / 30 * _rowHeight - 4),
             child: Tooltip(

@@ -85,7 +85,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
         .map((p) => p.characters.first)
         .join();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
         color: ClinicalAgendaStyle.elevated.withValues(alpha: .35),
         borderRadius: BorderRadius.circular(14),
@@ -93,6 +93,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
+            radius: 14,
             backgroundColor: ClinicalAgendaStyle.blue,
             foregroundColor: ClinicalAgendaStyle.onBlue,
             child: Text(initials.isEmpty ? '?' : initials),
@@ -122,7 +123,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 17,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
