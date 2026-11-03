@@ -25,7 +25,9 @@ void main() {
       expect(find.text('Ana'), findsNothing);
       await tester.tap(find.text('SEG'));
       await tester.pump();
-      expect(find.text('+ Disponível'), findsNothing);
+      expect(find.text('+ Disponível'), findsWidgets);
+      expect(find.text('09:00'), findsNothing);
+      expect(find.text('09:30'), findsNothing);
       await tester.tap(find.text('Mês'));
       await tester.pumpAndSettle();
       expect(find.byType(DatePickerDialog), findsOneWidget);

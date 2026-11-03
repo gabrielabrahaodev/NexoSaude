@@ -400,7 +400,8 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
             _minute(a) < minute + 30 &&
             _minute(a) + a.durationMinutes > minute,
       );
-      if (starts.isEmpty && (occupied || _search.trim().isNotEmpty)) continue;
+      // Search filters appointment cards, never the actual free intervals.
+      if (starts.isEmpty && occupied) continue;
       rows.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
