@@ -23,7 +23,7 @@ description: Abas da ficha do paciente — cadastro, anamnese, orçamentos, trat
 - **odontogram_screen**: `patients/{id}/clinical_data/odontogram` (`teeth` + `lastUpdate`); `scale` depreciado.
 - **patient_lab_tab**: `lab_orders` do paciente; catch vazio.
 - **patient_docs_tab**: `DocumentService.getDocs` por categoria; `if` sem chaves.
-- **patient_financial_tab**: extrato + taxas do perfil + gera `financial`/`expenses`/`lab_orders`; filtros de valor mín/máx, procedimento (título/categoria) e ordenação (registro, vencimento ↑↓; nulos por último); totais sempre na lista cheia; tem `dead_code` e casts desnecessários — limpar ao tocar.
+- **patient_financial_tab**: extrato + taxas do perfil + fluxo de lançamentos financeiros; criação de pedido de laboratório e respectiva despesa pertencem ao `LabService`, não ao recebimento; filtros de valor mín/máx, procedimento (título/categoria) e ordenação (registro, vencimento ↑↓; nulos por último); totais sempre na lista cheia; tem `dead_code` e casts desnecessários — limpar ao tocar.
 
 ## Quando usar
 
