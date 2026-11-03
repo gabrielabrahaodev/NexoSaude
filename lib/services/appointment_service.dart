@@ -1,10 +1,11 @@
 import 'procedure_tags.dart';
+import 'session_manager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/appointment_model.dart';
 import 'portal_mirror.dart';
 
 class AppointmentService {
-  final CollectionReference _collection = FirebaseFirestore.instance.collection('appointments');
+  final CollectionReference<Map<String, dynamic>> _collection = FirebaseFirestore.instance.collection('appointments');
 
   /// Repete na próxima semana: +7 dias, mesmo horário (puro e testado).
   static DateTime repeatNextWeek(DateTime from) =>
