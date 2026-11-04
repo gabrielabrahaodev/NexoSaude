@@ -43,8 +43,7 @@ List<BudgetDeleteQuery> budgetChildQueries({
   return out;
 }
 
-/// Executor: orçamento pendente apaga só o doc; aprovado apaga em cadeia
-/// (tratamentos, pagamentos, custos, filhas) + limpa o espelho.
+/// Pending budgets are deleted atomically; approved contracts are retained.
 class BudgetDeleteService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
