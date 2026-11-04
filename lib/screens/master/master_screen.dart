@@ -126,17 +126,6 @@ class _MasterScreenState extends State<MasterScreen> {
     }
   }
 
-  Future<void> _dismissNotice(String id) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('platform_debits')
-          .doc(id)
-          .update({'avisoPagamento': FieldValue.delete()});
-    } catch (e) {
-      if (mounted) toast(context, "Falha: $e", error: true);
-    }
-  }
-
   // --- NOVO OWNER (bootstrap: user + clínica + trial 7d) ---
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
@@ -186,7 +175,7 @@ class _MasterScreenState extends State<MasterScreen> {
                     decoration: const InputDecoration(
                         labelText: "Nome da clínica")),
                 DropdownButtonFormField<String>(
-                  value: _clinicType,
+                  initialValue: _clinicType,
                   decoration:
                       const InputDecoration(labelText: "Tipo"),
                   items: const [

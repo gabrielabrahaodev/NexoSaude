@@ -196,7 +196,7 @@ class _HeaderSummaryRow extends StatelessWidget {
                     }
                   }
                 }
-                return _buildSummaryItem("A RECEBER", "${formatBRL(pendente)}", Colors.orange);
+                return _buildSummaryItem("A RECEBER", formatBRL(pendente), Colors.orange);
               },
             ),
           ),
@@ -214,7 +214,7 @@ class _HeaderSummaryRow extends StatelessWidget {
                     if (item.isPaid) recebido += item.amount;
                   }
                 }
-                return _buildSummaryItem("RECEBIDO", "${formatBRL(recebido)}", Colors.green);
+                return _buildSummaryItem("RECEBIDO", formatBRL(recebido), Colors.green);
               },
             ),
           ),
@@ -241,7 +241,7 @@ class _HeaderSummaryRow extends StatelessWidget {
                   }
                 }
                 return _buildSummaryItem("CUSTO OPERACIONAL",
-                    "${formatBRL(custo)}", Colors.orange);
+                    formatBRL(custo), Colors.orange);
               },
             ),
           ),

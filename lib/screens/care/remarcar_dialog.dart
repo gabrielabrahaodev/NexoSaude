@@ -41,9 +41,11 @@ Future<void> showRemarcarDialog(
                         try {
                           tab?.close();
                         } catch (_) {}
+                        if (!context.mounted) return;
                         toast(context,
                             "Recusado. Telefone não cadastrado p/ avisar.");
                       } else {
+                        if (!context.mounted) return;
                         await openWhatsAppSafe(context, tab,
                             phone: phone, message: text);
                       }
@@ -52,6 +54,7 @@ Future<void> showRemarcarDialog(
                         tab?.close();
                       } catch (_) {}
                       if (ctx.mounted) Navigator.pop(ctx);
+                      if (!context.mounted) return;
                       toast(context, "Falha ao recusar: $e",
                           error: true);
                     }
@@ -68,12 +71,14 @@ Future<void> showRemarcarDialog(
                         await RemarcacaoService.approve(appt);
                     if (ctx.mounted) Navigator.pop(ctx);
                     if (msg == null) {
+                      if (!context.mounted) return;
                       toast(context, "Agendamento aceito e confirmado.",
                           ok: true);
                       if (context.mounted) {
                         await _askConfirmWhatsApp(context, appt);
                       }
                     } else {
+                      if (!context.mounted) return;
                       toast(context, msg, error: true);
                     }
                   },
@@ -129,9 +134,11 @@ Future<void> _askConfirmWhatsApp(
       try {
         blankTab?.close();
       } catch (_) {}
+      if (!context.mounted) return;
       toast(context, "Aceito. Telefone não cadastrado p/ avisar.");
       return;
     }
+    if (!context.mounted) return;
     await openWhatsAppSafe(
       context,
       blankTab,
@@ -148,6 +155,7 @@ Future<void> _askConfirmWhatsApp(
     try {
       blankTab?.close();
     } catch (_) {}
+    if (!context.mounted) return;
     toast(context, "Falha ao abrir WhatsApp: $e", error: true);
   }
 }

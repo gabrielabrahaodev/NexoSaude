@@ -33,10 +33,10 @@ class PatientFinancialOracle {
       final payables = payablesSnap.docs.map((d) => ExpenseModel.fromMap(d.id, d.data())).toList();
 
       // --- LÓGICA DE CÁLCULO MANTIDA ---
-      double totalContracted = receivables.fold(0, (sum, item) => sum + item.amount);
-      double totalPaid = receivables.where((i) => i.isPaid).fold(0, (sum, item) => sum + item.amount);
+      double totalContracted = receivables.fold(0, (subtotal, item) => subtotal + item.amount);
+      double totalPaid = receivables.where((i) => i.isPaid).fold(0, (subtotal, item) => subtotal + item.amount);
       double totalPending = totalContracted - totalPaid;
-      double totalCost = payables.fold(0, (sum, item) => sum + item.amount);
+      double totalCost = payables.fold(0, (subtotal, item) => subtotal + item.amount);
       
       double marginValue = totalContracted - totalCost;
       double marginPercent = totalContracted == 0 ? 0 : (marginValue / totalContracted) * 100;

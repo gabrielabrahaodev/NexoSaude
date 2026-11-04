@@ -41,7 +41,7 @@ class PatientService {
       int missed = 0;
 
       for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         // Falta com atestado não conta como falta (docs antigos sem o campo caem em false).
         final bool excused =
             '${data['hasMedicalCertificate']}'.toLowerCase() == 'true';
@@ -144,7 +144,7 @@ class PatientService {
     // Não remova o paciente nem seus metadados se ainda houver binários
     // no Cloudinary: isso perderia o caminho necessário para a exclusão
     // remota posterior. Este preflight ocorre antes do primeiro commit.
-    final remoteDocs = docsMeta.where(requiresRemoteCloudinaryCleanup).length;
+    final remoteDocs = docsMeta.where(requiresRemoteStorageCleanup).length;
     if (remoteDocs > 0) {
       throw StateError(
         'Exclusão cancelada antes de qualquer escrita: existem $remoteDocs '
@@ -159,7 +159,7 @@ class PatientService {
     // Portal: revoga o link junto (espelho por token, fora da cascata).
     try {
       final pdata =
-          (await patientRef.get()).data() as Map<String, dynamic>?;
+          (await patientRef.get()).data();
       final token = '${pdata?['portalToken'] ?? ''}';
       if (token.isNotEmpty) {
         deletes.add(db.collection('portal').doc(token));

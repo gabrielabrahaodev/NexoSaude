@@ -56,8 +56,9 @@ void main() {
                         onWhatsApp: () {},
                         onChanged: () => setState(() {}),
                         onChannel: (c) => setState(() {
-                          if (!draft.reminderChannels.add(c))
+                          if (!draft.reminderChannels.add(c)) {
                             draft.reminderChannels.remove(c);
+                          }
                         }),
                         portal: const Text('Ações reais do portal'),
                         consentSummary: 'Sem aceite registrado',

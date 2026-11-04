@@ -472,6 +472,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       initialTime: const TimeOfDay(hour: 12, minute: 0),
                     );
                     if (s == null || !mounted) return;
+                    if (!context.mounted) return;
                     final e = await showTimePicker(
                       context: context,
                       initialTime: const TimeOfDay(hour: 14, minute: 0),
@@ -525,6 +526,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     // Token no link: a regra exige o vínculo (anônimo sem token é negado).
     String link = "https://nexosaude.web.app/confirmar.html?id=${appt.id}&t=$portalToken";
     String message = "Olá ${appt.patientName}, por favor confirme sua consulta para o dia ${formatDateAs(appt.date)} clicando neste link: $link";
+    if (!mounted) return;
     final ok = await openWhatsAppSafe(context, blankTab,
         phone: phoneRaw ?? '', message: message);
     if (!ok && mounted) {
@@ -549,32 +551,30 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   Text("Paciente: ${appt.patientName}", style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 15),
                   const Text("Quem solicitou o cancelamento?", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-                  Row(
+                  RadioGroup<String>(groupValue: cancellationSource, onChanged: (val) { if (val != null) setStateModal(() => cancellationSource = val); }, child: Row(
                     children: [
                       Expanded(
                         child: RadioListTile<String>(
                           title: const Text("Paciente", style: TextStyle(fontSize: 14)),
                           value: 'Paciente',
-                          groupValue: cancellationSource,
                           contentPadding: EdgeInsets.zero,
                           visualDensity: VisualDensity.compact,
                           activeColor: Colors.red,
-                          onChanged: (val) => setStateModal(() => cancellationSource = val!),
+
                         ),
                       ),
                       Expanded(
                         child: RadioListTile<String>(
                           title: const Text("Clínica/Dr(a)", style: TextStyle(fontSize: 14)),
                           value: 'Clínica',
-                          groupValue: cancellationSource,
                           contentPadding: EdgeInsets.zero,
                           visualDensity: VisualDensity.compact,
                           activeColor: Colors.red,
-                          onChanged: (val) => setStateModal(() => cancellationSource = val!),
+
                         ),
                       ),
                     ],
-                  ),
+                  )),
                   const SizedBox(height: 10),
                   const Text("Motivo do Cancelamento:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
                   TextField(
@@ -621,7 +621,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       'date': DateTime.now(),
                     });
                     if (mounted) {
+                      if (!ctx.mounted) return;
                       Navigator.pop(ctx);
+                      if (!context.mounted) return;
                       toast(context, "Agendamento cancelado com sucesso.");
                     }
                   },
@@ -653,6 +655,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 : "Tornar este horário disponível novamente"),
             onTap: () async {
               await FirebaseFirestore.instance.collection('appointments').doc(appt.id).delete();
+              if (!ctx.mounted) return;
               Navigator.pop(ctx);
             },
           )
@@ -830,7 +833,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     // Presença mudou: próxima abertura recalcula o risco.
                     _riskFutures.invalidate(appt.patientId);
                     if (mounted) {
+                      if (!context.mounted) return;
                       Navigator.pop(context);
+                      if (!context.mounted) return;
                       toast(context, "Presença confirmada com sucesso!");
                     }
                   },
@@ -1027,35 +1032,30 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       Text("Paciente: ${appt.patientName}", style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 15),
                       const Text("Situação:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-                      Row(
+                      RadioGroup<bool>(groupValue: isAbsent, onChanged: (val) { if (val != null) setStateModal(() { isAbsent = val; if (!isAbsent) hasCertificate = false; }); }, child: Row(
                         children: [
                           Expanded(
                             child: RadioListTile<bool>(
                               title: const Text("Realizado", style: TextStyle(fontSize: 13)),
                               value: false,
-                              groupValue: isAbsent,
                               activeColor: Colors.green,
                               contentPadding: EdgeInsets.zero,
                               visualDensity: VisualDensity.compact,
-                              onChanged: initiallyAbsent ? null : (val) => setStateModal(() {
-                                isAbsent = val!;
-                                if (!isAbsent) hasCertificate = false;
-                              }),
+                              enabled: !initiallyAbsent,
                             ),
                           ),
                           Expanded(
                             child: RadioListTile<bool>(
                               title: const Text("Não Compareceu", style: TextStyle(fontSize: 13)),
                               value: true,
-                              groupValue: isAbsent,
                               activeColor: Colors.red, 
                               contentPadding: EdgeInsets.zero,
                               visualDensity: VisualDensity.compact,
-                              onChanged: (val) => setStateModal(() => isAbsent = val!),
+
                             ),
                           ),
                         ],
-                      ),
+                      )),
                       const SizedBox(height: 10),
 
                       if (!isAbsent && !isPsychology) ...[
@@ -1075,7 +1075,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                               );
                             }
                             return DropdownButtonFormField<String>(
-                              value: selectedTreatmentId,
+                              initialValue: selectedTreatmentId,
                               isExpanded: true,
                               hint: const Text("Vincular ao Tratamento"),
                               items: plans.map((doc) {
@@ -1101,7 +1101,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                         const SizedBox(height: 15),
                         if (selectedTreatmentId != null) ...[
                           DropdownButtonFormField<String>(
-                            value: selectedProcedureName,
+                            initialValue: selectedProcedureName,
                             isExpanded: true,
                             hint: const Text("Qual procedimento realizado?"),
                             items: proceduresOfPlan.map((item) {
@@ -1193,7 +1193,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       'attendanceStatus': isAbsent ? 'Missed' : 'Attended',
                       'hasMedicalCertificate': certificate,
                     });
+                    if (!ctx.mounted) return;
                     if (mounted) Navigator.pop(ctx);
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(isAbsent ? "Falta registrada no prontuário!" : "Atendimento finalizado com sucesso!")
                     ));

@@ -99,7 +99,9 @@ Map<String, dynamic> buildPortalDebts(List<Map<String, dynamic>> debts,
     if (st == 'cancelado' ||
         st == 'cancelled' ||
         st == 'pago' || st == 'paid' || st == 'quitado' || st == 'anticipated' ||
-        st.contains('substitu')) return false;
+        st.contains('substitu')) {
+      return false;
+    }
     return paid < amount && due != null;
   }).toList();
   // Igual à aba Pagamentos: próximos vencimentos primeiro (sem data por último).
