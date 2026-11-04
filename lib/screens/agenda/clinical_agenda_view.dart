@@ -209,7 +209,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
             SizedBox(height: mobile ? 2 : 6),
             if (daily) ...[
               SizedBox(
-                height: mobile ? 58 : 76,
+                height: mobile ? 48 : 76,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: 7,
@@ -281,7 +281,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(vertical: mobile ? 4 : 12),
+                padding: EdgeInsets.symmetric(vertical: mobile ? 0 : 12),
                 child: Row(
                   children: [
                     Icon(
@@ -500,7 +500,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       if (starts.isEmpty && occupied) continue;
       rows.add(
         Padding(
-          padding: EdgeInsets.only(bottom: compact ? 5 : 12),
+          padding: EdgeInsets.only(bottom: compact ? 0 : 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
