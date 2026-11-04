@@ -27,6 +27,18 @@ void main() {
     expect(() => agendaIntervalSlots(day, 0), throwsArgumentError);
   });
 
+  test('encaixe permite uma ocupação e bloqueia duas, excluindo a própria edição', () {
+    final visits = [visit('one',9,0,duration:60),visit('two',9,30)];
+    expect(busyAgendaSlots(visits,clinicId:'clinic',day:day,dentistId:'dentist',capacity:2), ['09:30']);
+    expect(busyAgendaSlots(visits,clinicId:'clinic',day:day,dentistId:'dentist',capacity:2,excludeId:'one'), isEmpty);
+    expect(agendaSlotOccupancy(visits,clinicId:'clinic',day:day,dentistId:'dentist')['09:00'],1);
+  });
+  test('duas consultas consecutivas dentro da fatia não contam como simultâneas', () {
+    expect(busyAgendaSlots([visit('a',9,0,duration:15),visit('b',9,15,duration:15)],
+      clinicId:'clinic',day:day,dentistId:'dentist',capacity:2), isEmpty);
+    expect(busyAgendaSlots([visit('a',9,15,duration:30),visit('b',9,30)],
+      clinicId:'clinic',day:day,dentistId:'dentist',capacity:2), ['09:30']);
+  });
   test('whole duration occupies slots, end boundary remains free', () {
     expect(busy([visit('a', 9, 0, duration: 90)]), ['09:00', '09:30', '10:00']);
   });

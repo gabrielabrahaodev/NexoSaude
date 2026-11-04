@@ -14,7 +14,7 @@ class ClinicalBookingView extends StatelessWidget {
     required this.onProcedure, this.onNewPatient, this.onChangePatient,
     this.onSave, this.professional, this.patientSummary, this.recordNumber,
     this.procedureCategory, this.procedurePrice, this.risk, this.error,
-    this.loading = false, this.saving = false, this.fitIn = false});
+    this.fitInTimes = const [], this.loading = false, this.saving = false, this.fitIn = false});
   final String title, clinic;
   final String? professional, patientSummary, recordNumber, procedureCategory, error;
   final double? procedurePrice;
@@ -22,7 +22,7 @@ class ClinicalBookingView extends StatelessWidget {
   final Widget? risk;
   final TextEditingController notesController;
   final DateTime selectedDate;
-  final List<String> times, selectedTimes, occupiedTimes;
+  final List<String> times, selectedTimes, occupiedTimes, fitInTimes;
   final ValueChanged<DateTime> onDate;
   final ValueChanged<String> onTime;
   final ValueChanged<bool> onFitIn;
@@ -54,18 +54,19 @@ class ClinicalBookingView extends StatelessWidget {
     final occupiedColor = dark ? const Color(0xffff8798) : const Color(0xffb32742);
     final slots = Wrap(spacing: compact ? 7 : 8, runSpacing: 6, children: [for (final time in times) Builder(builder: (context) {
       final busy = occupiedTimes.contains(time);
+      final fitAvailable = !busy && fitInTimes.contains(time);
       final selected = !busy && selectedTimes.contains(time);
-      return Tooltip(message: busy ? '$time — Ocupado: já existe agendamento' : '$time — ${selected ? 'Selecionado' : 'Livre'}', child: SizedBox(width: compact ? 76 : 72, height: compact ? 30 : 40, child: OutlinedButton(
+      return Tooltip(message: busy ? '$time — Ocupado: já existe agendamento' : '$time — ${fitAvailable ? 'Encaixe disponível (1 agendamento)' : selected ? 'Selecionado' : 'Livre'}', child: SizedBox(width: compact ? 76 : 72, height: compact ? 30 : 40, child: OutlinedButton(
         key: ValueKey('booking-slot-$time'),
         style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          foregroundColor: selected ? onAccent : muted,
+          foregroundColor: selected ? onAccent : fitAvailable ? Colors.orange : muted,
           disabledForegroundColor: busy ? occupiedColor : muted,
           disabledBackgroundColor: busy ? occupiedColor.withValues(alpha: 0.12) : Colors.transparent,
           backgroundColor: selected ? accent : Colors.transparent,
           side: BorderSide(color: busy ? occupiedColor.withValues(alpha: 0.5) : selected ? accent : border),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9))),
         onPressed: saving || loading || busy || error != null ? null : () => onTime(time),
-        child: busy ? Column(mainAxisSize: MainAxisSize.min, children: [Text(time, maxLines: 1, softWrap: false, style: const TextStyle(fontSize: 11, height: 1.1)), const Text('Ocupado', style: TextStyle(fontSize: 9, height: 1.1))]) : Text(time, maxLines: 1, softWrap: false, style: const TextStyle(fontSize: 12)),
+        child: busy || fitAvailable ? Column(mainAxisSize: MainAxisSize.min, children: [Text(time, maxLines: 1, softWrap: false, style: const TextStyle(fontSize: 11, height: 1.1)), Text(busy ? 'Ocupado' : 'Encaixe', style: const TextStyle(fontSize: 9, height: 1.1))]) : Text(time, maxLines: 1, softWrap: false, style: const TextStyle(fontSize: 12)),
       )));
     })]);
     return Scaffold(backgroundColor: bg, body: SafeArea(bottom: false, child: Column(children: [header, Expanded(child: AbsorbPointer(absorbing: saving, child: SingleChildScrollView(key: const ValueKey('booking-scroll'), padding: EdgeInsets.symmetric(horizontal: compact ? 24 : 12, vertical: compact ? 12 : 16), child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1320), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
