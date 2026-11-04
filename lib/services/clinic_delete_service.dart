@@ -80,7 +80,9 @@ class ClinicDeleteStep {
         if (p.startsWith('clinics/$clinicId/settings/') ||
             p == 'clinics/$clinicId/members' ||
             p == 'clinics/$clinicId/members_private' ||
-            p == 'public_clinics/$clinicId/leads') return true;
+            p == 'public_clinics/$clinicId/leads') {
+          return true;
+        }
         // Pacientes e derivados: só ids comprovados da clínica.
         final m = RegExp(r'^(?:patients|anamnesis)/([^/]+)').firstMatch(p);
         if (m != null) return patientIds.contains(m.group(1));
@@ -262,7 +264,7 @@ class ClinicDeleteService {
         case ClinicDeleteStep.kArrayRemove:
           // As Rules negam listagem global de users. Descobre-se a equipe
           // exclusivamente pelas projeções privadas/públicas da própria clínica.
-          stage = 'localizar equipe em clinics/${clinicId}/members';
+          stage = 'localizar equipe em clinics/$clinicId/members';
           final publicMembers = await _db
               .collection('clinics')
               .doc(clinicId)

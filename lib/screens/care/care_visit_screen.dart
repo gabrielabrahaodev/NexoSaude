@@ -768,8 +768,9 @@ class _CareVisitPanelState extends State<CareVisitPanel> {
   }
 
   void _manageContract() async {
-    if (_contract == null || !await _flushBeforeNavigation() || !mounted)
+    if (_contract == null || !await _flushBeforeNavigation() || !mounted) {
       return;
+    }
     await Navigator.push(
       context,
       MaterialPageRoute(

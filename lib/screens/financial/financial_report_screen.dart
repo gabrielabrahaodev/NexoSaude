@@ -84,7 +84,11 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
 
       // Iterar e buscar CPF de cada paciente
       for (var item in transactions) {
-        if (item.isIncome) calcIncome += item.amount; else calcExpense += item.amount;
+        if (item.isIncome) {
+          calcIncome += item.amount;
+        } else {
+          calcExpense += item.amount;
+        }
 
         // Se for receita e tiver ID de paciente, busca o CPF
         String patientCpf = "";
@@ -103,10 +107,11 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
           item.title, // Nome do Paciente
           item.isIncome ? "Consulta/Procedimento" : item.category, // Descrição
           item.paymentMethod, // Dinheiro, Cartão, etc
-          "${formatBRL(item.amount)}"
+          (formatBRL(item.amount))
         ]);
       }
 
+      if (!mounted) return;
       Navigator.pop(context); // Fecha loading
 
       // C. Desenhar o PDF
@@ -149,7 +154,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
               pw.SizedBox(height: 15),
 
               // 2. Dados dos Serviços (Tabela)
-              pw.Table.fromTextArray(
+              pw.TableHelper.fromTextArray(
                 context: context,
                 border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey),
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9, color: PdfColors.white),
@@ -230,7 +235,7 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
         final bytes =  Uint8List.fromList(csvData.codeUnits);
         final blob = html.Blob([bytes]);
         final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)..setAttribute("download", fileName)..click();
+        html.AnchorElement(href: url)..setAttribute("download", fileName)..click();
         html.Url.revokeObjectUrl(url);
         _showSuccess("Arquivo Excel baixado!");
       } else {
@@ -408,10 +413,12 @@ class _FinancialReportScreenState extends State<FinancialReportScreen> {
                     child: Builder(builder: (context) {
                       final visible = flowFilter(
                           transactions, _filter, DateTime.now());
-                      if (transactions.isEmpty)
+                      if (transactions.isEmpty) {
                         return const Center(child: Text("Nenhuma movimentação neste mês.", style: TextStyle(color: Colors.grey)));
-                      if (visible.isEmpty)
+                      }
+                      if (visible.isEmpty) {
                         return const Center(child: Text("Nada neste filtro.", style: TextStyle(color: Colors.grey)));
+                      }
                       return ListView.builder(
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
                           itemCount: visible.length,

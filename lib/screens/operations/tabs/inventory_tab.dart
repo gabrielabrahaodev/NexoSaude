@@ -53,6 +53,7 @@ class _InventoryTabState extends State<InventoryTab> {
               );
               
               await _service.save(newModel);
+              if (!context.mounted) return;
               if (mounted) Navigator.pop(context);
             },
             child: const Text("Salvar"),

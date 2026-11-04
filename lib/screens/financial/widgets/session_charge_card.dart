@@ -75,7 +75,7 @@ class SessionChargeCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("${formatBRL(item.amount)}",
+            Text(formatBRL(item.amount),
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 16)),
             if (onOpenPatient != null)

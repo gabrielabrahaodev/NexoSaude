@@ -49,7 +49,7 @@ class _CardFeesTabState extends State<CardFeesTab> {
   final _anticipationRateCtrl = TextEditingController();
 
   // Regras Dinâmicas
-  List<InstallmentRangeRow> _installmentRanges = [];
+  final List<InstallmentRangeRow> _installmentRanges = [];
 
   @override
   void initState() {
@@ -291,10 +291,12 @@ class _CardFeesTabState extends State<CardFeesTab> {
         .collection('settings').doc('fees')
         .set({'activeProfileId': _selectedProfileId}, SetOptions(merge: true));
     
+    if (!mounted) return;
     setState(() {
       _activeProfileId = _selectedProfileId;
     });
     
+    if (!mounted) return;
     toast(context, "Esta máquina agora é a PADRÃO para cálculos.");
   }
 
@@ -493,7 +495,7 @@ class _CardFeesTabState extends State<CardFeesTab> {
                   ],
                 ),
               );
-            }).toList(),
+            }),
             if (_installmentRanges.isEmpty) const Text("Nenhuma regra cadastrada.", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))
           ],
         ),

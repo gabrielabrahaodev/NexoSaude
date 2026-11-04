@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:odonto_controle/services/session_manager.dart';
 import '../../models/expense_model.dart';
 import '../../services/expense_service.dart';
@@ -49,7 +48,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: "Valor (R\$)"), keyboardType: TextInputType.number),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  value: selectedCategory,
+                  initialValue: selectedCategory,
                   items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                   onChanged: (v) => setStateModal(() => selectedCategory = v!),
                   decoration: const InputDecoration(labelText: "Categoria"),
@@ -100,6 +99,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
                   // O erro do Firebase sumirá com o import lá em cima
                   await FirebaseFirestore.instance.collection('expenses').add(newExpense.toMap());
+                  if (!ctx.mounted) return;
                   if(mounted) Navigator.pop(ctx);
                 },
                 child: const Text("Salvar"),
@@ -123,6 +123,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           ElevatedButton(
             onPressed: () async {
               await _expenseService.markAsPaid(expense.id, DateTime.now());
+              if (!context.mounted) return;
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
@@ -148,9 +149,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             icon: const Icon(Icons.filter_list ),
             onPressed: () {
               setState(() {
-                if (_filterStatus == 'Todos') _filterStatus = 'Pendente';
-                else if (_filterStatus == 'Pendente') _filterStatus = 'Pago';
-                else _filterStatus = 'Todos';
+                if (_filterStatus == 'Todos') {
+                  _filterStatus = 'Pendente';
+                } else if (_filterStatus == 'Pendente') { _filterStatus = 'Pago'; }
+                else { _filterStatus = 'Todos'; }
               });
               toast(context, "Filtrando por: $_filterStatus", duration: const Duration(seconds: 1));
             },
@@ -279,7 +281,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text("${formatBRL(item.amount)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isPaid ? Colors.grey : Colors.red[800])),
+            Text(formatBRL(item.amount), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isPaid ? Colors.grey : Colors.red[800])),
             if (!isPaid)
               InkWell(
                 onTap: () => _confirmPayment(item),

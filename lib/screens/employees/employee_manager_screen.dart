@@ -109,7 +109,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
       }
     } on FirebaseAuthException catch (e) {
       if (!provisioned && createdAuthUser != null) {
-        try { await createdAuthUser!.delete(); } catch (_) {}
+        try { await createdAuthUser.delete(); } catch (_) {}
       }
       String msg = "Erro ao cadastrar";
       if (e.code == 'email-already-in-use') msg = "Este email já está em uso.";
@@ -117,7 +117,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
       if (mounted) toast(context, msg, error: true);
     } catch (e) {
       if (!provisioned && createdAuthUser != null) {
-        try { await createdAuthUser!.delete(); } catch (_) {}
+        try { await createdAuthUser.delete(); } catch (_) {}
       }
       if (mounted) toast(context, "Erro: $e", error: true);
     } finally {
@@ -398,7 +398,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                         if (!snapshot.hasData) return const LinearProgressIndicator();
                         var clinics = snapshot.data!.docs;
                         return DropdownButtonFormField<String>(
-                          value: _selectedClinicId,
+                          initialValue: _selectedClinicId,
                           hint: const Text("Selecione a Clínica"),
                           decoration: const InputDecoration(border: OutlineInputBorder()),
                           items: clinics.map((doc) => DropdownMenuItem(
@@ -425,7 +425,7 @@ class _EmployeeManagerScreenState extends State<EmployeeManagerScreen> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _selectedRole,
+                    initialValue: _selectedRole,
                     decoration: const InputDecoration(labelText: "Função", border: OutlineInputBorder(), prefixIcon: Icon(Icons.work)),
                     items: const [
                       DropdownMenuItem(value: 'recepcionista', child: Text("Recepcionista")),

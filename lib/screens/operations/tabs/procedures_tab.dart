@@ -74,7 +74,7 @@ class _ProceduresTabState extends State<ProceduresTab> {
                           const Text("Repasse Profissional (Comissão)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            value: commissionType,
+                            initialValue: commissionType,
                             isExpanded: true,
                             items: const [DropdownMenuItem(value: 'percent', child: Text('Porcentagem (%)')), DropdownMenuItem(value: 'fixed', child: Text('Valor fixo (R\$)'))],
                             onChanged: saving ? null : (v) => setStateModal(() => commissionType = v!),
@@ -104,7 +104,7 @@ class _ProceduresTabState extends State<ProceduresTab> {
                       subtitle: const Text("Ex: Laboratório, Protético", style: TextStyle(fontSize: 12)),
                       contentPadding: EdgeInsets.zero,
                       value: hasCost,
-                      activeColor: Colors.orange,
+                      activeThumbColor: Colors.orange,
                       onChanged: (val) => setStateModal(() => hasCost = val),
                     ),
                     
@@ -113,7 +113,7 @@ class _ProceduresTabState extends State<ProceduresTab> {
                       subtitle: const Text("Ex: Manutenção Ortodôntica (12x)", style: TextStyle(fontSize: 12)),
                       contentPadding: EdgeInsets.zero,
                       value: generatesMonthlyFee,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: (val) => setStateModal(() => generatesMonthlyFee = val),
                     ),
                   ],
