@@ -458,7 +458,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                     _search = '';
                     _day = a.date.weekday - 1;
                   });
-                  widget.onSelectedDay?.call(a.date);
+                  widget.onSelectedDay?.call(_dayDate(_day));
                   widget.onAppointment(a);
                 }),
               ],
