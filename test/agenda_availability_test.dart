@@ -39,6 +39,10 @@ void main() {
     expect(busyAgendaSlots([visit('a',9,15,duration:30),visit('b',9,30)],
       clinicId:'clinic',day:day,dentistId:'dentist',capacity:2), ['09:30']);
   });
+  test('bloqueio administrativo permanece indisponível para encaixe', () {
+    expect(busyAgendaSlots([visit('block',9,0,status:'Bloqueado')],
+      clinicId:'clinic',day:day,dentistId:'dentist',capacity:2), ['09:00']);
+  });
   test('whole duration occupies slots, end boundary remains free', () {
     expect(busy([visit('a', 9, 0, duration: 90)]), ['09:00', '09:30', '10:00']);
   });

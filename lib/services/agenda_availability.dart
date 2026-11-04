@@ -29,6 +29,9 @@ Map<String, int> agendaSlotOccupancy(
           a.date.add(Duration(minutes: a.durationMinutes > 0 ? a.durationMinutes : 30)).isAfter(point)).length;
       if (count > peak) peak = count;
     }
+    if (overlapping.any((a) => a.status == 'Bloqueado' || a.patientId == 'BLOCKED_SLOT')) {
+      peak = 2;
+    }
     if (peak > 0) {
       busy['${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}'] = peak;
     }
