@@ -640,7 +640,6 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         ],
       ),
     );
-    final quick = entries.where((e) => [1, 2, 12, 5].contains(e.$1)).toList();
     return Scaffold(
       backgroundColor: ClinicalAgendaStyle.background,
       drawer: mobile
@@ -655,54 +654,6 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
               title: brand(),
               toolbarHeight: compactAgenda ? 50 : 64,
               centerTitle: false,
-            )
-          : null,
-      bottomNavigationBar: mobile
-          ? SafeArea(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: ClinicalAgendaStyle.surface,
-                  border: Border(
-                    top: BorderSide(color: ClinicalAgendaStyle.elevated),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    for (final e in quick)
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _onMenuSelect(e.$1),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  e.$4,
-                                  color: e.$1 == _effectiveIndex
-                                      ? ClinicalAgendaStyle.teal
-                                      : ClinicalAgendaStyle.muted,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  e.$3,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: e.$1 == _effectiveIndex
-                                        ? ClinicalAgendaStyle.teal
-                                        : ClinicalAgendaStyle.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             )
           : null,
       body: mobile
