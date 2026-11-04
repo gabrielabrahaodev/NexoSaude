@@ -74,6 +74,42 @@ void main() {
         });
       }
       for (final width in [320.0, 360.0, 390.0, 430.0]) {
+        testWidgets('agenda compacta deixa 10:30 visível em tela baixa $width',
+            (tester) async {
+          tester.view.physicalSize = Size(width, 650);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          await tester.pumpWidget(MaterialApp(
+            theme: ClinicalAgendaStyle.theme,
+            home: Scaffold(
+              body: Column(children: [
+                const SizedBox(height: 110), // AppBar e unidade no mobile.
+                Expanded(child: ClinicalAgendaView(
+                  weekStart: monday,
+                  appointments: const [],
+                  professionalSelector: const Text('Profissional'),
+                  onChangeWeek: (_) {},
+                  onToday: () {},
+                  onEmptySlot: (_, _) {},
+                  onAppointment: (_) {},
+                )),
+                const SizedBox(height: 70), // Navegação inferior.
+              ]),
+            ),
+          ));
+          await tester.tap(find.text('SEG'));
+          await tester.pump();
+          expect(find.text('10:30'), findsOneWidget);
+          expect(tester.getBottomRight(find.text('10:30')).dy,
+              lessThan(580));
+          expect(find.text('Dia'), findsOneWidget);
+          expect(find.text('Mês'), findsOneWidget);
+          expect(find.text('Profissional'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
+      for (final width in [320.0, 360.0, 390.0, 430.0]) {
         testWidgets('busca mobile encontra paciente em outro dia da semana em $width',
             (tester) async {
           tester.view.physicalSize = Size(width, 900);
