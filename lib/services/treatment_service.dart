@@ -55,7 +55,7 @@ class TreatmentService {
 
     // --- CORREÇÃO PONTO 2: CÁLCULO DO VALOR REAL DO CONTRATO ---
     // Soma a entrada + todas as mensalidades geradas
-    double realContractValue = receivables.fold(0, (sum, item) => sum + item.amount);
+    double realContractValue = receivables.fold(0, (subtotal, item) => subtotal + item.amount);
 
     // 1. Cria o Plano de Tratamento
     DocumentReference planRef = _plans.doc('budget_${budget.id}');

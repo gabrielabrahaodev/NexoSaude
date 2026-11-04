@@ -32,7 +32,7 @@ OracleReportSnapshot sample() => OracleReportService.calculateMonth(
   ],
 );
 void main() {
-  for (final dark in [true, false])
+  for (final dark in [true, false]) {
     for (final width in [390.0, 768.0, 1200.0]) {
       testWidgets('report $dark at $width, tabs and filters', (tester) async {
         AppColors.isDark = dark;
@@ -105,6 +105,7 @@ void main() {
         }
       });
     }
+  }
   testWidgets('entry validates BRL and blocks duplicate save and lost focus', (
     tester,
   ) async {
@@ -195,7 +196,7 @@ void main() {
             onExpense: () {},
             onIncome: () {},
             onAnticipate: () {},
-            onEntry: (_, __) {},
+            onEntry: (_, _) {},
             onCashbook: () {},
             loading: loading,
             error: error,

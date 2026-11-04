@@ -2,6 +2,7 @@
 /// `test/subscription_test.dart`). Cobrança por usuário do owner:
 /// R$ 40 o primeiro + R$ 15 por adicional (configurável via
 /// `platform_config/geral`). Trial de 7 dias + bloqueio manual.
+library;
 
 /// Mensalidade: 0 sem usuários; base + extra×(n−1).
 double subscriptionAmount(int users, {double base = 40, double extra = 15}) {

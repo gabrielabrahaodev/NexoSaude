@@ -111,10 +111,18 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
 
   List<ToothModel> _generateAdultTeeth() {
     List<ToothModel> list = [];
-    for (int i = 8; i >= 1; i--) list.add(ToothModel(id: 10 + i));
-    for (int i = 1; i <= 8; i++) list.add(ToothModel(id: 20 + i));
-    for (int i = 8; i >= 1; i--) list.add(ToothModel(id: 40 + i));
-    for (int i = 1; i <= 8; i++) list.add(ToothModel(id: 30 + i));
+    for (int i = 8; i >= 1; i--) {
+      list.add(ToothModel(id: 10 + i));
+    }
+    for (int i = 1; i <= 8; i++) {
+      list.add(ToothModel(id: 20 + i));
+    }
+    for (int i = 8; i >= 1; i--) {
+      list.add(ToothModel(id: 40 + i));
+    }
+    for (int i = 1; i <= 8; i++) {
+      list.add(ToothModel(id: 30 + i));
+    }
     return list;
   }
 
@@ -264,8 +272,9 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
   }
 
   Widget _buildStandardActions(ToothModel tooth, ToothFace face) {
-    if (tooth.isCrownDone && face == ToothFace.occlusal)
+    if (tooth.isCrownDone && face == ToothFace.occlusal) {
       return const Text("Coroa instalada. Ações padrão bloqueadas.");
+    }
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -339,8 +348,9 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
             );
             tooth.facesStatus[ToothFace.occlusal.name] = newStatus!;
           } else if (newStatus == 'missing') {
-            for (var f in ToothFace.values)
+            for (var f in ToothFace.values) {
               tooth.facesStatus[f.name] = 'missing';
+            }
           } else if (newStatus == null) {
             tooth.facesStatus.remove(face.name);
             if (tooth.isMissing) tooth.facesStatus.clear();
@@ -429,7 +439,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadError != null)
+    if (_loadError != null) {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -442,12 +452,14 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
           ],
         ),
       );
-    if (_isLoading)
+    }
+    if (_isLoading) {
       return const SizedBox(
         height: 400,
         child: Center(child: CircularProgressIndicator()),
       );
-    if (clinicalAgendaEnabled)
+    }
+    if (clinicalAgendaEnabled) {
       return LayoutBuilder(
         builder: (context, constraints) {
           if (!_hasInitialFit && constraints.maxWidth.isFinite) {
@@ -459,12 +471,13 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
           return ClinicalOdontogramView(
             teeth: teeth,
             controller: _transformationController,
-            onFaceTap: _saving ? (_, __) {} : _onFaceTap,
+            onFaceTap: _saving ? (_, _) {} : _onFaceTap,
             onSave: _saveOdontogram,
             saving: _saving,
           );
         },
       );
+    }
 
     final q1 = teeth.where((t) => t.id >= 11 && t.id <= 18).toList();
     final q2 = teeth.where((t) => t.id >= 21 && t.id <= 28).toList();
@@ -490,7 +503,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
               // Limita o zoom out para não ficar microscópico, e o zoom in para 1.0
               final finalScale = scale.clamp(0.3, 1.0);
               _transformationController.value = Matrix4.identity()
-                ..scale(finalScale);
+                ..scaleByDouble(finalScale, finalScale, finalScale, 1.0);
             },
           ),
           IconButton(icon: const Icon(Icons.save), onPressed: _saveOdontogram),
@@ -516,7 +529,7 @@ class _OdontogramScreenState extends State<OdontogramScreen> {
                       // Usamos addPostFrameCallback para não dar erro de build
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         _transformationController.value = Matrix4.identity()
-                          ..scale(scale);
+                          ..scaleByDouble(scale, scale, scale, 1.0);
                       });
                     }
                     _hasInitialFit = true;

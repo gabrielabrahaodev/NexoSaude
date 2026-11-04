@@ -46,7 +46,7 @@ class _SuppliersTabState extends State<SuppliersTab> {
                   TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Nome / Razão Social")),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _categories.contains(selectedCategory) ? selectedCategory : _categories.first,
+                    initialValue: _categories.contains(selectedCategory) ? selectedCategory : _categories.first,
                     decoration: const InputDecoration(labelText: "Categoria"),
                     items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     onChanged: (val) => setStateModal(() => selectedCategory = val!),
@@ -61,7 +61,7 @@ class _SuppliersTabState extends State<SuppliersTab> {
                     title: const Text("É Dentista da Equipe?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     subtitle: const Text("Marque se este fornecedor recebe comissão (repasse).", style: TextStyle(fontSize: 12)),
                     value: isProfessional,
-                    activeColor: AppColors.primary,
+                    activeThumbColor: AppColors.primary,
                     contentPadding: EdgeInsets.zero,
                     onChanged: (val) => setStateModal(() => isProfessional = val),
                   )
@@ -86,6 +86,7 @@ class _SuppliersTabState extends State<SuppliersTab> {
                   );
                   
                   await _service.save(newModel);
+                  if (!context.mounted) return;
                   if (mounted) Navigator.pop(context);
                 },
                 child: const Text("Salvar"),
@@ -153,7 +154,7 @@ class _SuppliersTabState extends State<SuppliersTab> {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: list.length,
-            separatorBuilder: (_, __) => const Divider(),
+            separatorBuilder: (_, _) => const Divider(),
             itemBuilder: (context, index) {
               final item = list[index];
               return ListTile(

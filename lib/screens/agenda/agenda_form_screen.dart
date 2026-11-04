@@ -12,7 +12,6 @@ import '../../services/patient_service.dart';
 import '../../services/portal_mirror.dart';
 import '../../models/appointment_model.dart';
 import '../../models/patient_model.dart';
-import '../../ui/app_theme.dart';
 import '../../utils/display.dart';
 import '../../widgets/patient_procedure_tags.dart';
 import '../patients/clinical_patient_view.dart';
@@ -76,7 +75,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   String? _selectedPatientName;
   String? _selectedPatientId;
   late DateTime _selectedDate;
-  List<String> _selectedTimes = [];
+  final List<String> _selectedTimes = [];
 
   // Lista de horários forçados (clicados na tela anterior)
   StreamSubscription<List<String>>? _availabilitySubscription;
@@ -347,12 +346,14 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                       // Falha no espelho é observável (não só debugPrint).
                       if (!await PortalMirrorSync.patient(newRef.id) &&
                           mounted) {
+                        if (!context.mounted) return;
                         toast(context,
                             "Espelho do portal desatualizado — confira no Financeiro.",
                             error: true);
                       }
                     }
 
+                    if (!mounted) return;
                     setState(() {
                       _selectedPatientName = _nameNewCtrl.text.trim();
                       _tags = {};
@@ -361,10 +362,13 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     });
 
                     if (mounted) {
+                      if (!context.mounted) return;
                       Navigator.pop(context);
+                      if (!context.mounted) return;
                       toast(context, "Paciente cadastrado! Selecione-o na busca.");
                     }
                   } catch (e) {
+                    if (!context.mounted) return;
                     if (mounted) toast(context, "Erro ao salvar: $e");
                   }
                 },

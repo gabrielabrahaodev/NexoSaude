@@ -54,11 +54,7 @@ String pixBrCode({
   if (amount != null && amount > 0) {
     payload += _field('54', amount.toStringAsFixed(2));
   }
-  payload += _field('58', 'BR') +
-      _field('59', _norm(nome, 25)) +
-      _field('60', _norm(cidade, 15)) +
-      _field('62', _field('05', txid)) +
-      '6304';
+  payload += '${_field('58', 'BR')}${_field('59', _norm(nome, 25))}${_field('60', _norm(cidade, 15))}${_field('62', _field('05', txid))}6304';
   final crc = crc16(payload).toRadixString(16).toUpperCase().padLeft(4, '0');
   return payload + crc;
 }

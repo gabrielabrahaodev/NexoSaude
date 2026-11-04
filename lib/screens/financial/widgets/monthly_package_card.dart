@@ -109,7 +109,7 @@ class MonthlyPackageCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text("${formatBRL(totalAmount)}",
+                  Text(formatBRL(totalAmount),
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

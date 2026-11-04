@@ -2,7 +2,6 @@ import '../clinical_patient_view.dart';
 import 'dart:async'; // Necessário para o StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart'; 
 import '../../../ui/app_theme.dart';
 import '../../../utils/display.dart';
 import '../../../utils/external_link.dart';
@@ -32,7 +31,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
   bool _hasAllergies = false;
   String _allergiesDesc = '';
 
-  Map<String, bool> _conditions = {
+  final Map<String, bool> _conditions = {
     'Diabetes': false,
     'Hipertensão (Pressão Alta)': false,
     'Problemas Cardíacos': false,
@@ -197,6 +196,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
 
       String message = "Olá $patientName, para agilizar seu atendimento, por favor preencha sua ficha de anamnese online clicando neste link: $link";
 
+      if (!mounted) return;
       final ok = await openWhatsAppSafe(context, tab,
           phone: phone, message: message);
       if (!ok && mounted) {
@@ -306,26 +306,26 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
               SwitchListTile(
                 title: const Text("Fumante?"),
                 value: _smoker,
-                activeColor: Colors.orange,
+                activeThumbColor: Colors.orange,
                 onChanged: (val) => setState(() => _smoker = val),
               ),
               SwitchListTile(
                 title: const Text("Consome álcool com frequência?"),
                 value: _alcohol,
-                activeColor: Colors.orange,
+                activeThumbColor: Colors.orange,
                 onChanged: (val) => setState(() => _alcohol = val),
               ),
               SwitchListTile(
                 title: const Text("Bruxismo / Aperta os dentes?"),
                 value: _bruxism,
-                activeColor: Colors.orange,
+                activeThumbColor: Colors.orange,
                 onChanged: (val) => setState(() => _bruxism = val),
               ),
               SwitchListTile(
                 title: const Text("Gestante ou Lactante?"),
                 subtitle: const Text("Apenas para mulheres"),
                 value: _pregnant,
-                activeColor: Colors.orange,
+                activeThumbColor: Colors.orange,
                 onChanged: (val) => setState(() => _pregnant = val),
               ),
 
@@ -373,7 +373,7 @@ class _AnamnesisTabState extends State<AnamnesisTab> {
         SwitchListTile(
           title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
           value: value,
-          activeColor: Colors.red,
+          activeThumbColor: Colors.red,
           onChanged: onChanged,
           contentPadding: EdgeInsets.zero,
         ),

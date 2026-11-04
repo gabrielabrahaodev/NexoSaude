@@ -397,7 +397,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
       final planIds = <String>{};
       final futureAppts = <DocumentSnapshot>[];
       for (final doc in apptsSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final status = '${data['status']}'.toLowerCase();
         if (status == 'finalizado' || status == 'cancelado') continue;
         final planId = data['planId']?.toString();
@@ -415,7 +415,7 @@ class _PsychologyScheduleFormScreenState extends State<PsychologyScheduleFormScr
             .where('planId', isEqualTo: planId)
             .get();
         for (final doc in finsSnap.docs) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           final status = '${data['status']}';
           if (status == 'pendente' || status == 'pending') {
             pendingFins.add(doc);

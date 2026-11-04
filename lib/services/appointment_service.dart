@@ -24,7 +24,7 @@ class AppointmentService {
         .where('date', isLessThan: end)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => AppointmentModel.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+            .map((doc) => AppointmentModel.fromMap(doc.id, doc.data()))
             .toList());
   }
 
@@ -96,8 +96,7 @@ class AppointmentService {
     var map = appointment.toMap();
     // Nunca (re)carimba nem apaga token pelo app (ver `add`).
     map.remove('portalToken');
-    final old = (await _collection.doc(appointment.id).get()).data()
-        as Map<String, dynamic>?;
+    final old = (await _collection.doc(appointment.id).get()).data();
     // Em update, removemos campos que não queremos sobrescrever acidentalmente, ou enviamos tudo
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final current = await tx.get(_collection.doc(appointment.id));
@@ -137,7 +136,7 @@ class AppointmentService {
   
   Future<void> cancel(String id) async {
     final old =
-        (await _collection.doc(id).get()).data() as Map<String, dynamic>?;
+        (await _collection.doc(id).get()).data();
     await _collection.doc(id).update({'status': 'Cancelado'});
     final oldDate = (old?['date'] as Timestamp?)?.toDate();
     if (oldDate != null) {

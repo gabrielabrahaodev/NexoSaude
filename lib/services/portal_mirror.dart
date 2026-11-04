@@ -84,7 +84,9 @@ Map<String, dynamic> buildPortalMirror({
     final st = '${d['status'] ?? ''}'.toLowerCase();
     if (st == 'cancelado' ||
         st == 'cancelled' ||
-        st.contains('substitu')) return false;
+        st.contains('substitu')) {
+      return false;
+    }
     return paid < amount && due != null;
   }).toList();
   // Igual à aba Pagamentos: próximos vencimentos primeiro (sem data por último).
