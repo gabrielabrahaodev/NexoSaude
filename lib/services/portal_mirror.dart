@@ -135,7 +135,9 @@ Future<bool> syncPortalDebts(FirebaseFirestore db, String patientId,
   final currentToken = patient?['portalToken']?.toString() ?? '';
   final clinicId = patient?['clinicId']?.toString() ?? '';
   if (currentToken.isEmpty || clinicId.isEmpty ||
-      (token != null && token != currentToken)) return true;
+      (token != null && token != currentToken)) {
+    return true;
+  }
   final mirrorRef = db.collection('portal').doc(currentToken);
   if (!(await mirrorRef.get()).exists) return false;
   final result = await db.collection('financial')
