@@ -484,9 +484,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
               Navigator.pop(ctx);
 
               try {
-                // Exclui despesas
-                for (var doc in relatedExpenses) { await doc.reference.delete(); }
-
+                // Despesas e receita são revertidas juntas pelo serviço.
                 // Executa o estorno
                 await _finService.voidPayment(id);
 
@@ -504,7 +502,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
               try {
                 // Mesmo zeramento do estorno...
-                for (var doc in relatedExpenses) { await doc.reference.delete(); }
                 await _finService.voidPayment(id);
               } catch (e) {
                 _toast("Falha ao estornar: $e", error: true);

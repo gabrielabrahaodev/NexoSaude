@@ -38,3 +38,7 @@ Auth, primeiro acesso, troca de papel, onboarding de funcionário.
 - [[main-dashboard]] — destino pós-login
 - [[session-multitenant]] — sessão, clínica e capacidades
 - [[employee-manager]] — onde o acesso do funcionário nasce
+
+## Retorno após logout
+
+`RoleCheckScreen` renderiza `LoginScreen` se não houver usuário autenticado, incluindo o destino dos botões “Voltar ao login” das telas pendente/bloqueada. Isso evita manter o indicador de carregamento após o logout. A Rule de edição do próprio perfil recebe `userId` explicitamente; cargo, status e clínicas continuam imutáveis.

@@ -52,3 +52,7 @@ Grade, criar/editar/cancelar agendamento, presença, encaixe, disponibilidade.
 O diálogo `_showCancellationDialog`, em `lib/screens/agenda/agenda_manager_screen.dart`, faz **duas gravações distintas**: primeiro atualiza `appointments/{id}` para `Cancelado` com `cancelledBy`, `cancellationReason`, `cancellationSource` e `cancelledAt`; depois cria um `clinical_records` com `procedureName = 'Cancelamento de Consulta'`, descrição do motivo, origem e operador. **Não há atomicidade garantida entre elas**. O método genérico `AppointmentService.cancel(id)` é outro caminho: altera o agendamento e o espelho/slots, mas não cria registro clínico. Não concluir que todos os cancelamentos, de qualquer origem, aparecem no prontuário.
 
 **Pendente (não corrigido nesta documentação):** revisar contrato único de cancelamento, tratar falha da segunda gravação, idempotência e isolamento por clínica, e testar cancelamento repetido. O prontuário da variante clínica usa `ClinicalRecordsView` para classificar cancelamentos por campos/títulos efetivamente registrados. Ver [[auditoria-codigo-2026-11-03]] e [[patient-tabs]].
+
+## Remarcação — validação de intervalo
+
+`RemarcacaoService.approve` revalida no servidor todos os blocos de 30 minutos tocados por `durationMinutes`, inclusive início fora da grade e virada de dia, no escopo de `dentistId` e excluindo apenas o próprio agendamento. O espelho público permanece consultivo. A validação prévia não constitui um bloqueio transacional de reservas concorrentes.

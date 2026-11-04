@@ -27,3 +27,26 @@ List<String> busyAgendaSlots(
   }
   return busy;
 }
+
+/// Blocos de meia hora tocados pelo intervalo, inclusive em virada de dia.
+List<DateTime> agendaIntervalSlots(DateTime start, int durationMinutes) {
+  if (durationMinutes <= 0) {
+    throw ArgumentError.value(durationMinutes, 'durationMinutes');
+  }
+  final end = start.add(Duration(minutes: durationMinutes));
+  final first = DateTime(
+    start.year,
+    start.month,
+    start.day,
+    start.hour,
+    (start.minute ~/ 30) * 30,
+  );
+  return [
+    for (
+      var slot = first;
+      slot.isBefore(end);
+      slot = slot.add(const Duration(minutes: 30))
+    )
+      slot,
+  ];
+}

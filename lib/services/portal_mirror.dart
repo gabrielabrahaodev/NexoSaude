@@ -74,6 +74,20 @@ Map<String, dynamic> buildPortalMirror({
       .toList()
     ..sort((a, b) =>
         (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+  return {
+    'clinicId': clinicId,
+    'clinicName': clinicName,
+    'sessions': upcoming.take(3).toList(),
+    ...buildPortalDebts(debts, truncated: debtsTruncated),
+    'pixKey': pixKey,
+    'propostasRecusadas': refusedIso,
+    'updatedAt': now,
+  };
+}
+
+/// Projeção financeira única para rebuild e atualizações após uma mutação.
+Map<String, dynamic> buildPortalDebts(List<Map<String, dynamic>> debts,
+    {bool truncated = false}) {
   // Portal mostra as 3 mais antigas EM ABERTO (vencidas ou não),
   // ordenadas por vencimento: sem data, quitada, cancelada ou
   // substituída não entra.
@@ -84,6 +98,7 @@ Map<String, dynamic> buildPortalMirror({
     final st = '${d['status'] ?? ''}'.toLowerCase();
     if (st == 'cancelado' ||
         st == 'cancelled' ||
+        st == 'pago' || st == 'paid' || st == 'quitado' || st == 'anticipated' ||
         st.contains('substitu')) return false;
     return paid < amount && due != null;
   }).toList();
@@ -103,19 +118,46 @@ Map<String, dynamic> buildPortalMirror({
           ((d['amount'] as num).toDouble() -
               ((d['paidAmount'] as num?)?.toDouble() ?? 0.0)));
   return {
-    'clinicId': clinicId,
-    'clinicName': clinicName,
-    'sessions': upcoming.take(3).toList(),
     'debts': open.take(3).toList(),
     'debtsTotal': total,
     'debtsCount': open.length,
-    // Teto de leitura atingido: o total pode estar incompleto (a tesouraria
-    // confere no Financeiro; reavaliação §9).
-    'debtsTruncated': debtsTruncated,
-    'pixKey': pixKey,
-    'propostasRecusadas': refusedIso,
-    'updatedAt': now,
+    'debtsTruncated': truncated,
   };
+}
+
+/// Reconsulta a origem: o top-3 não contém os dados necessários para
+/// recalcular totais ou repor a quarta cobrança após uma baixa.
+Future<bool> syncPortalDebts(FirebaseFirestore db, String patientId,
+    {String? token}) async {
+  final patient = (await db.collection('patients').doc(patientId).get()).data();
+  final currentToken = patient?['portalToken']?.toString() ?? '';
+  final clinicId = patient?['clinicId']?.toString() ?? '';
+  if (currentToken.isEmpty || clinicId.isEmpty ||
+      (token != null && token != currentToken)) return true;
+  final mirrorRef = db.collection('portal').doc(currentToken);
+  if (!(await mirrorRef.get()).exists) return false;
+  final result = await db.collection('financial')
+      .where('patientId', isEqualTo: patientId)
+      .where('clinicId', isEqualTo: clinicId)
+      .limit(500).get(const GetOptions(source: Source.server));
+  final debts = result.docs.map((d) {
+    final m = d.data();
+    return <String, dynamic>{
+      'id': d.id,
+      'title': m['title']?.toString() ?? 'Lançamento',
+      'amount': (m['amount'] as num?)?.toDouble() ?? 0.0,
+      'paidAmount': (m['paidAmount'] as num?)?.toDouble() ?? 0.0,
+      'dueDate': (m['dueDate'] as Timestamp?)?.toDate(),
+      'status': m['status']?.toString() ?? '',
+    };
+  }).toList();
+  await mirrorRef.set({
+    'patientId': patientId,
+    'clinicId': clinicId,
+    ...buildPortalDebts(debts, truncated: result.docs.length >= 500),
+    'updatedAt': FieldValue.serverTimestamp(),
+  }, SetOptions(merge: true));
+  return true;
 }
 
 /// Livres = grade − ocupados − recusados (strings "HH:mm", ordenado).
@@ -431,33 +473,27 @@ class PortalMirrorSync {
     }
   }
 
-  /// Remove débito do espelho (ex.: filha apagada no estorno de parcial).
+  /// Atualiza lista, total e contagem juntos, preservando outros campos.
+  static Future<void> _syncDebts(String patientId, String? token) async {
+    try {
+      final patched = await syncPortalDebts(_db, patientId, token: token);
+      if (!patched) await patient(patientId);
+    } catch (e) {
+      debugPrint('PortalMirror financeiro falhou: $e');
+    }
+  }
+
   static Future<void> removeDebt({
     required String patientId,
     String? token,
     required String debtId,
-  }) async {
-    token ??= await _tokenOf(patientId);
-    if (token == null || token.isEmpty) return;
-    await _patchList(token, 'debts',
-        (l) => [for (final e in l) if ('${e['id']}' != debtId) e]);
-  }
+  }) => _syncDebts(patientId, token);
 
-  /// Delta de débito (pago/cancelado vira remoção).
-  /// Doc ausente com token válido → rebuild completo (reflete na hora).
   static Future<void> upsertDebt({
     required String patientId,
     String? token,
     required Map<String, dynamic> debt,
-  }) async {
-    token ??= await _tokenOf(patientId);
-    if (token == null || token.isEmpty) return;
-    final patched = await _patchList(
-        token, 'debts', (l) => applyDebtUpsert(l, debt));
-    if (needsFullRebuild(token: token, patched: patched)) {
-      await patient(patientId);
-    }
-  }
+  }) => _syncDebts(patientId, token);
 
   static Future<void> _slotOp({
     required String clinicId,

@@ -268,6 +268,25 @@ describe('matriz reavaliação P0/P1', () => {
     await assertFails(db.doc('financial/f1').update({ amount: 999 }));
   });
 
+  it('P1: staff não transfere financeiro nem vincula paciente de outro tenant', async () => {
+    const db = ctx('staffA').firestore();
+    await assertSucceeds(db.doc('financial/f1').update({ amount: 100 }));
+    await assertFails(db.doc('financial/f1').update({ clinicId: B }));
+    await assertFails(db.doc('financial/f1').update({ patientId: 'p2' }));
+    await assertFails(db.doc('financial/f1').update({ clinicId: B, patientId: 'p2' }));
+    await assertFails(db.doc('financial/f1').update({ clinicId: null }));
+    await assertSucceeds(db.collection('financial')
+      .where('clinicId', '==', A).where('parentId', '==', 'f1').get());
+    await assertFails(db.collection('financial').where('parentId', '==', 'f1').get());
+  });
+
+  it('P2: usuário edita o próprio perfil sem alterar permissões', async () => {
+    const db = ctx('staffA').firestore();
+    await assertSucceeds(db.doc('users/staffA').update({ name: 'Staff A atualizado' }));
+    await assertFails(db.doc('users/staffA').update({ role: 'owner' }));
+    await assertFails(db.doc('users/staffA').update({ allowedClinics: [A, B] }));
+  });
+
   it('P1: aviso financeiro anônimo exige token atual do paciente vinculado', async () => {
     const db = ctx(null).firestore();
     await assertFails(db.doc('financial/f1').update({
