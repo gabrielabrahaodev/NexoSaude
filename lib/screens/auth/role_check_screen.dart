@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:odonto_controle/screens/dashboard/main_web_dashboard.dart';
 import '../../services/session_manager.dart';
+import 'login_screen.dart';
 import '../../services/clinic_trial_policy.dart';
 import '../../services/subscription.dart';
 import '../../services/theme_controller.dart';
@@ -168,7 +169,9 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => const Scaffold(body: Center(child: CircularProgressIndicator()));
+  Widget build(BuildContext context) => FirebaseAuth.instance.currentUser == null
+      ? const LoginScreen()
+      : const Scaffold(body: Center(child: CircularProgressIndicator()));
 }
 
 /// Tela "aguardando aprovação" (cadastro pendente): sem dashboard e sem
