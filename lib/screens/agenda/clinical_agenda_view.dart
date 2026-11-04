@@ -100,6 +100,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   late int _day;
   bool _daily = false;
   String _search = '';
+  final TextEditingController _searchController = TextEditingController();
   int get _visibleDays => widget.appointments.any((a) => a.date.weekday == DateTime.sunday) ? 7 : 6;
   static const _names = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
   static const _startMinute = 510;
@@ -108,6 +109,12 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   void initState() {
     super.initState();
     _day = DateTime.now().weekday - 1;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   String _date(DateTime d) =>
@@ -167,7 +174,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
           widget.onSelectedDay?.call(selected);
         }, child: const Text('Mês')),
       ]);
-      final search = TextField(onChanged: (v) => setState(() => _search = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 18), hintText: 'Buscar paciente ou procedimento…', isDense: true));
+      final search = TextField(controller: _searchController, onChanged: (v) => setState(() => _search = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 18), hintText: 'Buscar paciente ou procedimento…', isDense: true));
       return Padding(
         padding: EdgeInsets.fromLTRB(mobile ? 10 : 16, 4, mobile ? 10 : 16, 0),
         child: Column(
@@ -273,7 +280,9 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                       child: Text(
                         widget.loading
                             ? 'Carregando agenda…'
-                            : '${_events(_day).where((a) => !_blocked(a) && !a.isCancelled).length} agendamentos no dia',
+                            : mobile && _search.trim().isNotEmpty
+                                ? '${widget.appointments.where((a) => !_blocked(a) && _matches(a)).length} resultados nesta semana'
+                                : '${_events(_day).where((a) => !_blocked(a) && !a.isCancelled).length} agendamentos no dia',
                         style: TextStyle(color: ClinicalAgendaStyle.muted),
                       ),
                     ),
@@ -286,6 +295,8 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                   ? Center(child: Text(widget.error!))
                   : widget.loading
                   ? const Center(child: CircularProgressIndicator())
+                  : mobile && _search.trim().isNotEmpty
+                  ? _mobileSearchResults()
                   : daily
                   ? _dailyList()
                   : _weeklyGrid(),
@@ -296,7 +307,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
     },
   );
 
-  Widget _card(AppointmentModel a, {bool compact = false}) {
+  Widget _card(AppointmentModel a, {bool compact = false, VoidCallback? onTap}) {
     final color = _color(a);
     final end = _minute(a) + a.durationMinutes;
     return Semantics(
@@ -309,7 +320,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => widget.onAppointment(a),
+          onTap: onTap ?? () => widget.onAppointment(a),
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 14, vertical: compact ? 2 : 14),
             decoration: BoxDecoration(
@@ -384,6 +395,76 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
           ),
         ),
       ),
+    );
+  }
+
+  // Busca na semana que a agenda já carregou, sem novas consultas ao Firebase.
+  Widget _mobileSearchResults() {
+    final matches = widget.appointments
+        .where((a) => !_blocked(a) && _matches(a))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    if (matches.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off, color: ClinicalAgendaStyle.muted, size: 40),
+              const SizedBox(height: 12),
+              const Text('Nenhum agendamento encontrado nesta semana.',
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text('Confira o termo ou selecione outra semana.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: ClinicalAgendaStyle.muted)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      key: ValueKey('agenda-mobile-search-${_search.trim().toLowerCase()}'),
+      padding: const EdgeInsets.only(bottom: 100),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            matches.length == 1
+                ? '1 agendamento encontrado nesta semana'
+                : '${matches.length} agendamentos encontrados nesta semana',
+            style: TextStyle(color: ClinicalAgendaStyle.muted),
+          ),
+        ),
+        for (final a in matches)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('${_names[a.date.weekday - 1]} ${_date(a.date)}',
+                      style: TextStyle(color: ClinicalAgendaStyle.teal,
+                          fontWeight: FontWeight.w600)),
+                ),
+                _card(a, onTap: () {
+                  FocusScope.of(context).unfocus();
+                  _searchController.clear();
+                  setState(() {
+                    _search = '';
+                    _day = a.date.weekday - 1;
+                  });
+                  widget.onSelectedDay?.call(a.date);
+                  widget.onAppointment(a);
+                }),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
