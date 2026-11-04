@@ -78,14 +78,17 @@ class AgendaProfessionalSelector extends StatelessWidget {
     }
     final selected = professionals.where((u) => u.id == selectedId).firstOrNull;
     final name = selected?.name ?? '';
-    final compactMobile = MediaQuery.sizeOf(context).width < 768;
     final initials = name
         .split(' ')
         .where((p) => p.isNotEmpty)
         .take(2)
         .map((p) => p.characters.first)
         .join();
-    return Container(
+    return LayoutBuilder(builder: (context, constraints) {
+      // Somente o seletor realmente estreito omite o cargo na linha.
+      // No menu/tooltip, o cargo continua disponível.
+      final compactLabel = constraints.maxWidth < 220;
+      return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
         color: ClinicalAgendaStyle.elevated.withValues(alpha: .35),
@@ -115,7 +118,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
                 selectedItemBuilder: (context) => professionals.map((u) =>
                   Tooltip(
                     message: '${u.name.isEmpty ? 'Profissional' : u.name} • ${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
-                    child: compactMobile
+                    child: compactLabel
                         ? Text(
                             u.name.isEmpty ? 'Profissional' : u.name,
                             maxLines: 1,
@@ -155,5 +158,6 @@ class AgendaProfessionalSelector extends StatelessWidget {
         ],
       ),
     );
+    });
   }
 }
