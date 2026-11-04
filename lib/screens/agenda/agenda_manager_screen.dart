@@ -1,3 +1,5 @@
+import 'clinical_appointment_actions.dart';
+import '../../services/care_visit_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
@@ -470,6 +472,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       initialTime: const TimeOfDay(hour: 12, minute: 0),
                     );
                     if (s == null || !mounted) return;
+                    if (!context.mounted) return;
                     final e = await showTimePicker(
                       context: context,
                       initialTime: const TimeOfDay(hour: 14, minute: 0),
@@ -523,6 +526,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     // Token no link: a regra exige o vínculo (anônimo sem token é negado).
     String link = "https://nexosaude.web.app/confirmar.html?id=${appt.id}&t=$portalToken";
     String message = "Olá ${appt.patientName}, por favor confirme sua consulta para o dia ${formatDateAs(appt.date)} clicando neste link: $link";
+    if (!mounted) return;
     final ok = await openWhatsAppSafe(context, blankTab,
         phone: phoneRaw ?? '', message: message);
     if (!ok && mounted) {
@@ -547,32 +551,30 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                   Text("Paciente: ${appt.patientName}", style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 15),
                   const Text("Quem solicitou o cancelamento?", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-                  Row(
+                  RadioGroup<String>(groupValue: cancellationSource, onChanged: (val) { if (val != null) setStateModal(() => cancellationSource = val); }, child: Row(
                     children: [
                       Expanded(
                         child: RadioListTile<String>(
                           title: const Text("Paciente", style: TextStyle(fontSize: 14)),
                           value: 'Paciente',
-                          groupValue: cancellationSource,
                           contentPadding: EdgeInsets.zero,
                           visualDensity: VisualDensity.compact,
                           activeColor: Colors.red,
-                          onChanged: (val) => setStateModal(() => cancellationSource = val!),
+
                         ),
                       ),
                       Expanded(
                         child: RadioListTile<String>(
                           title: const Text("Clínica/Dr(a)", style: TextStyle(fontSize: 14)),
                           value: 'Clínica',
-                          groupValue: cancellationSource,
                           contentPadding: EdgeInsets.zero,
                           visualDensity: VisualDensity.compact,
                           activeColor: Colors.red,
-                          onChanged: (val) => setStateModal(() => cancellationSource = val!),
+
                         ),
                       ),
                     ],
-                  ),
+                  )),
                   const SizedBox(height: 10),
                   const Text("Motivo do Cancelamento:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
                   TextField(
@@ -619,7 +621,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       'date': DateTime.now(),
                     });
                     if (mounted) {
+                      if (!ctx.mounted) return;
                       Navigator.pop(ctx);
+                      if (!context.mounted) return;
                       toast(context, "Agendamento cancelado com sucesso.");
                     }
                   },
@@ -651,6 +655,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                 : "Tornar este horário disponível novamente"),
             onTap: () async {
               await FirebaseFirestore.instance.collection('appointments').doc(appt.id).delete();
+              if (!ctx.mounted) return;
               Navigator.pop(ctx);
             },
           )
@@ -665,6 +670,32 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     
     // Regra do Encaixe: Habilitado apenas se houver somente 1 evento (o próprio)
     bool canFitIn = concurrentCount == 1 && !isCancelled && !isFinished;
+
+    if (ClinicCapabilities.current().isDental && appt.scheduleId == null && !isCancelled && !isFinished) {
+      void closeDialog() => Navigator.pop(context);
+      showDialog(context: context, barrierDismissible: false, builder: (c) => ClinicalAppointmentActions(
+        appointment: appt,
+        onFinalize: (tags, note) => CareVisitService().saveEvolution(appt,
+          description: note.isEmpty ? 'Atendimento realizado. Desfecho dos procedimentos registrado nas Tags clínicas.' : note,
+          psychology: false, finalize: true, procedureTags: tags),
+        onPatient: () { closeDialog(); Navigator.push(context, MaterialPageRoute(builder: (_) => PatientDetailsScreen(patientId: appt.patientId, patientName: appt.patientName, initialTab: 4))); },
+        onConfirm: () async {
+          await FirebaseFirestore.instance.runTransaction((tx) async {
+            final ref = FirebaseFirestore.instance.collection('appointments').doc(appt.id);
+            final snap = await tx.get(ref);
+            if (snap.data()?['clinicId'] != SessionManager().currentClinicId || snap.data()?['patientId'] != appt.patientId || ['Finalizado','Cancelado'].contains(snap.data()?['status'])) throw StateError('Agendamento indisponível.');
+            tx.update(ref, {'status': 'Confirmado'});
+          });
+          _riskFutures.invalidate(appt.patientId);
+        },
+        onWhatsApp: () { closeDialog(); _launchWhatsApp(appt); },
+        onEdit: () { closeDialog(); Navigator.push(context, MaterialPageRoute(builder: (_) => AgendaFormScreen(editAppointmentId: appt.id, initialData: appt.toMap()))); },
+        onFit: canFitIn ? () { closeDialog(); AgendaCellFactory.openForm(context: context, date: appt.date, time: _hhmm(appt.date), selectedDentistId: appt.dentistId ?? _selectedDentistId, fullWeekdayName: _getFullWeekDayName); } : null,
+        onCancel: () { closeDialog(); _showCancellationDialog(appt); },
+        onAbsence: () { closeDialog(); _showFinishAppointmentDialog(appt, initiallyAbsent: true); },
+      ));
+      return;
+    }
 
     // Future capturado UMA vez por abertura: rebuilds da sheet não refazem
     // a query (o `future:` inline anterior recriava a cada rebuild).
@@ -802,7 +833,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                     // Presença mudou: próxima abertura recalcula o risco.
                     _riskFutures.invalidate(appt.patientId);
                     if (mounted) {
+                      if (!context.mounted) return;
                       Navigator.pop(context);
+                      if (!context.mounted) return;
                       toast(context, "Presença confirmada com sucesso!");
                     }
                   },
@@ -971,12 +1004,12 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
     );
   }
 
-  void _showFinishAppointmentDialog(AppointmentModel appt) {
+  void _showFinishAppointmentDialog(AppointmentModel appt, {bool initiallyAbsent = false}) {
     final noteCtrl = TextEditingController();
     String? selectedTreatmentId;
     String? selectedProcedureName;
     List<dynamic> proceduresOfPlan = [];
-    bool isAbsent = false;
+    bool isAbsent = initiallyAbsent;
     bool hasCertificate = false;
     // Psicologia: sem escolha de procedimento — só descrição (usa o vínculo do pacote).
     final bool isPsychology =
@@ -999,35 +1032,30 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       Text("Paciente: ${appt.patientName}", style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 15),
                       const Text("Situação:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-                      Row(
+                      RadioGroup<bool>(groupValue: isAbsent, onChanged: (val) { if (val != null) setStateModal(() { isAbsent = val; if (!isAbsent) hasCertificate = false; }); }, child: Row(
                         children: [
                           Expanded(
                             child: RadioListTile<bool>(
                               title: const Text("Realizado", style: TextStyle(fontSize: 13)),
                               value: false,
-                              groupValue: isAbsent,
                               activeColor: Colors.green,
                               contentPadding: EdgeInsets.zero,
                               visualDensity: VisualDensity.compact,
-                              onChanged: (val) => setStateModal(() {
-                                isAbsent = val!;
-                                if (!isAbsent) hasCertificate = false;
-                              }),
+                              enabled: !initiallyAbsent,
                             ),
                           ),
                           Expanded(
                             child: RadioListTile<bool>(
                               title: const Text("Não Compareceu", style: TextStyle(fontSize: 13)),
                               value: true,
-                              groupValue: isAbsent,
                               activeColor: Colors.red, 
                               contentPadding: EdgeInsets.zero,
                               visualDensity: VisualDensity.compact,
-                              onChanged: (val) => setStateModal(() => isAbsent = val!),
+
                             ),
                           ),
                         ],
-                      ),
+                      )),
                       const SizedBox(height: 10),
 
                       if (!isAbsent && !isPsychology) ...[
@@ -1047,7 +1075,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                               );
                             }
                             return DropdownButtonFormField<String>(
-                              value: selectedTreatmentId,
+                              initialValue: selectedTreatmentId,
                               isExpanded: true,
                               hint: const Text("Vincular ao Tratamento"),
                               items: plans.map((doc) {
@@ -1073,7 +1101,7 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                         const SizedBox(height: 15),
                         if (selectedTreatmentId != null) ...[
                           DropdownButtonFormField<String>(
-                            value: selectedProcedureName,
+                            initialValue: selectedProcedureName,
                             isExpanded: true,
                             hint: const Text("Qual procedimento realizado?"),
                             items: proceduresOfPlan.map((item) {
@@ -1165,7 +1193,9 @@ class _AgendaManagerScreenState extends State<AgendaManagerScreen> {
                       'attendanceStatus': isAbsent ? 'Missed' : 'Attended',
                       'hasMedicalCertificate': certificate,
                     });
+                    if (!ctx.mounted) return;
                     if (mounted) Navigator.pop(ctx);
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(isAbsent ? "Falta registrada no prontuário!" : "Atendimento finalizado com sucesso!")
                     ));

@@ -51,7 +51,7 @@ dependencies:
   universal_html: ^2.2.4 # Para salvar arquivos na Web (caso esteja rodando no Chrome)
   path_provider: ^2.0.15 # Para encontrar pastas no Android/iOS/Windows
   open_file: ^3.3.2      # Para abrir o arquivo após salvar
-  file_picker: ^6.1.1
+  file_picker: ^8.3.7
   image_picker: ^1.0.4
   flutter_image_compress: ^2.1.0
   photo_view: ^0.14.0
@@ -61,6 +61,7 @@ dependencies:
   cloud_firestore: ^6.10.0
   google_sign_in: ^7.2.0
 
+  crypto: ^3.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

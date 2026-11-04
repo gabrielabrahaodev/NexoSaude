@@ -80,7 +80,9 @@ class ClinicDeleteStep {
         if (p.startsWith('clinics/$clinicId/settings/') ||
             p == 'clinics/$clinicId/members' ||
             p == 'clinics/$clinicId/members_private' ||
-            p == 'public_clinics/$clinicId/leads') return true;
+            p == 'public_clinics/$clinicId/leads') {
+          return true;
+        }
         // Pacientes e derivados: só ids comprovados da clínica.
         final m = RegExp(r'^(?:patients|anamnesis)/([^/]+)').firstMatch(p);
         if (m != null) return patientIds.contains(m.group(1));
@@ -124,6 +126,8 @@ List<ClinicDeleteStep> clinicDeletePlan(
       ClinicDeleteStep.subcollection('patients/$pid/clinical_data'),
     for (final pid in patientIds)
       ClinicDeleteStep.subcollection('patients/$pid/docs'),
+    for (final pid in patientIds)
+      ClinicDeleteStep.subcollection('patients/$pid/procedure_tags'),
     for (final pid in patientIds) ClinicDeleteStep.doc('patients/$pid'),
     ClinicDeleteStep.subcollection(
         'clinics/$clinicId/settings/fees/profiles'),
@@ -191,6 +195,10 @@ class ClinicDeleteService {
       );
       if (deleteBlockReason != null) throw StateError(deleteBlockReason);
 
+      for (final collection in ['clinical_records', 'financial', 'treatment_plans', 'procedures']) {
+        final evidence = await _db.collection(collection).where('clinicId', isEqualTo: clinicId).limit(1).get();
+        if (evidence.docs.isNotEmpty) throw StateError('Clínica com histórico ou catálogo. Exclusão exige revisão administrativa de retenção.');
+      }
       // 1. Pacientes comprovados da clínica (base do resto do plano).
       stage = 'localizar pacientes';
       onStage?.call('Localizando pacientes...');
@@ -205,6 +213,10 @@ class ClinicDeleteService {
     stage = 'verificar documentos remotos legados';
     final remoteDocPaths = <String>[];
     for (final patient in pats.docs) {
+      for (final child in ['clinical_data', 'procedure_tags']) {
+        final evidence = await patient.reference.collection(child).limit(1).get();
+        if (evidence.docs.isNotEmpty) throw StateError('Clínica com dados clínicos ou Tags. Exclusão bloqueada para preservar histórico.');
+      }
       final docSnap = await patient.reference.collection('docs').get();
       for (final fileDoc in docSnap.docs) {
         if (requiresRemoteStorageCleanup(fileDoc.data())) {
@@ -252,7 +264,7 @@ class ClinicDeleteService {
         case ClinicDeleteStep.kArrayRemove:
           // As Rules negam listagem global de users. Descobre-se a equipe
           // exclusivamente pelas projeções privadas/públicas da própria clínica.
-          stage = 'localizar equipe em clinics/${clinicId}/members';
+          stage = 'localizar equipe em clinics/$clinicId/members';
           final publicMembers = await _db
               .collection('clinics')
               .doc(clinicId)

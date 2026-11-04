@@ -92,7 +92,7 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                         }
 
                         return DropdownButtonFormField<String>(
-                          value: _selectedTreatmentId,
+                          initialValue: _selectedTreatmentId,
                           hint: const Text("Selecione o Tratamento"),
                           isExpanded: true,
                           items: activePlans.map((doc) {
@@ -121,7 +121,7 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
                   // 2. SELECIONAR PROCEDIMENTO (Baseado no tratamento)
                   if (_selectedTreatmentId != null || docToEdit != null) ...[
                     DropdownButtonFormField<String>(
-                      value: _selectedProcedure,
+                      initialValue: _selectedProcedure,
                       hint: const Text("Procedimento Realizado"),
                       isExpanded: true,
                       items: _proceduresOfSelectedPlan.isEmpty && docToEdit != null
@@ -214,7 +214,7 @@ class _ClinicalRecordTabState extends State<ClinicalRecordTab> {
           final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(title: const Text('Excluir registro?'), content: const Text('Esta ação remove o registro do prontuário.'), actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Excluir'))]));
           if (confirm != true || !mounted || clinic != SessionManager().currentClinicId) return;
           try { await _service.delete(id); }
-          catch (_) { if (mounted) toast(context, 'Não foi possível excluir o registro.', error: true); }
+          catch (_) { if (mounted && context.mounted) toast(context, 'Não foi possível excluir o registro.', error: true); }
         },
       );
     },

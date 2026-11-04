@@ -55,8 +55,11 @@ class ToothWidget extends StatelessWidget {
 
     if (tooth.isUpper) {
       // Superior: Raiz está no topo (0 a 30%)
-      if (position.dy < rootHeight) hitRoot = true;
-      else localY = position.dy - rootHeight; // Normaliza Y para cálculo das faces
+      if (position.dy < rootHeight) {
+        hitRoot = true;
+      } else {
+        localY = position.dy - rootHeight; // Normaliza Y para cálculo das faces
+      }
     } else {
       // Inferior: Raiz está na base (70% a 100%)
       if (position.dy > crownHeight) hitRoot = true;

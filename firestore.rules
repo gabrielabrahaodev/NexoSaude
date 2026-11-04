@@ -269,7 +269,7 @@ service cloud.firestore {
       allow create: if isSuperAdmin();
       // Update: superadmin tudo; próprio SÓ perfil (cargo, clínicas e
       // status travados); gestor administra a equipe da própria clínica.
-      allow update: if isSuperAdmin() || _selfProfileUpdate() || _teamUserManage() || _selfResubmitRejectedOwner(userId);
+      allow update: if isSuperAdmin() || _selfProfileUpdate(userId) || _teamUserManage() || _selfResubmitRejectedOwner(userId);
       // Delete: SÓ plataforma, + auto-limpeza do próprio cadastro pendente
       // (falha no trial: apaga o doc órfão para tentar de novo).
       allow delete: if isSuperAdmin() ||
@@ -300,7 +300,7 @@ service cloud.firestore {
     // A0b. Próprio usuário: só campos de perfil (nunca role/clínicas/
     // status — e NUNCA menuAccess: ele autoriza pixKey/gradeConfig/
     // whatsappNumber; self-grant escalava privilégio — reavaliação P1).
-    function _selfProfileUpdate() {
+    function _selfProfileUpdate(userId) {
       return isAuthenticated() && request.auth.uid == userId &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(
           ['name', 'email', 'phone', 'whatsapp', 'cpf', 'theme',
@@ -693,9 +693,9 @@ service cloud.firestore {
           ['avisoPagamento', 'updatedAt']);
     }
     match /financial/{docId} {
-      allow update: if (isAuthenticated() &&
-          clinicScoped(_docClinic(resource.data, request.resource.data))) ||
-        _financialPortalNoticeOk();
+      // Updates da equipe usam o match operacional abaixo, que preserva
+      // clinicId e valida o vínculo do paciente. Matches são unidos por OR.
+      allow update: if _financialPortalNoticeOk();
     }
 
     // E. ANAMNESE ONLINE (P0 reavaliação: SEM leitura pública do prontuário).
@@ -903,8 +903,25 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // 3. SUBCOLEÇÕES (Odontograma, Prontuário dentro de Paciente)
     // ---------------------------------------------------------
+    match /patients/{patientId}/procedure_tags/{tagId} {
+      allow read: if isAuthenticated() && patientClinicOk(patientId);
+      allow create: if isAuthenticated() && patientClinicOk(patientId) &&
+          request.resource.data.patientId == patientId &&
+          request.resource.data.clinicId == get(/databases/$(database)/documents/patients/$(patientId)).data.clinicId &&
+          request.resource.data.status == 'pending';
+      allow update: if isAuthenticated() && patientClinicOk(patientId) &&
+          resource.data.status in ['pending', 'in_progress'] &&
+          request.resource.data.status in ['in_progress', 'completed'] &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'sessionCount', 'lastAppointmentId', 'lastAttendedAt',
+            'lastProfessionalId', 'lastOperatorId', 'updatedAt', 'completedAt'
+          ]) && request.resource.data.sessionCount == resource.data.sessionCount + 1 &&
+          request.resource.data.lastOperatorId == request.auth.uid;
+      // Contracted Tags are retained along with their clinical history.
+      allow delete: if false;
+    }
     match /patients/{patientId}/{subcollection}/{docId} {
-       allow read, write: if
+       allow read, write: if subcollection != 'procedure_tags' &&
           isAuthenticated() &&
           exists(/databases/$(database)/documents/patients/$(patientId)) &&
           patientClinicOk(patientId);

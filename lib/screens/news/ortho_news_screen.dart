@@ -7,8 +7,10 @@ import '../../models/news_model.dart';
 import '../../services/news_service.dart';
 
 class OrthoNewsScreen extends StatefulWidget {
+  const OrthoNewsScreen({super.key});
+
   @override
-  _OrthoNewsScreenState createState() => _OrthoNewsScreenState();
+  State<OrthoNewsScreen> createState() => _OrthoNewsScreenState();
 }
 
 class _OrthoNewsScreenState extends State<OrthoNewsScreen> {

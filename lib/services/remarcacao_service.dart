@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../models/appointment_model.dart';
 import 'appointment_service.dart';
+import 'agenda_availability.dart';
 import 'portal_mirror.dart';
 import '../utils/display.dart';
 
@@ -59,15 +60,19 @@ class RemarcacaoService {
       return "Data proposta já passou. Recuse e peça outra data.";
     }
     try {
-      final busy = await AppointmentService().getBusySlots(
-        appt.clinicId,
-        proposed,
-        excludeId: appt.id,
-      );
-      final want =
-          "${proposed.hour.toString().padLeft(2, '0')}:${proposed.minute.toString().padLeft(2, '0')}";
-      if (busy.contains(want)) {
-        return "Horário ocupado no vivo. Recuse e peça outra data.";
+      final busyByDay = <DateTime, List<String>>{};
+      for (final slot in agendaIntervalSlots(proposed, appt.durationMinutes)) {
+        final day = DateTime(slot.year, slot.month, slot.day);
+        final busy = busyByDay[day] ??= await AppointmentService().getBusySlots(
+          appt.clinicId,
+          day,
+          excludeId: appt.id,
+          dentistId: appt.dentistId,
+        );
+        final want = DateFormat('HH:mm').format(slot);
+        if (busy.contains(want)) {
+          return 'Intervalo ocupado no vivo. Recuse e peça outra data.';
+        }
       }
       await _db.collection('appointments').doc(appt.id).update({
         'date': Timestamp.fromDate(proposed),

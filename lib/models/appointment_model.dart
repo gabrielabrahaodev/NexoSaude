@@ -22,6 +22,8 @@ class AppointmentModel {
   final DateTime? proposedDate; // Proposta do portal (status 'remarcar')
   final String? portalToken; // Token do espelho (p/ atualizar recusas)
   final bool hasMedicalCertificate;
+  final List<String> procedureTagIds;
+  final bool isFitIn;
 
   AppointmentModel({
     required this.id,
@@ -41,6 +43,8 @@ class AppointmentModel {
     this.proposedDate,
     this.portalToken,
     this.hasMedicalCertificate = false,
+    this.procedureTagIds = const [],
+    this.isFitIn = false,
   });
 
   bool get isPast => DateTime.now().isAfter(date);
@@ -68,6 +72,8 @@ class AppointmentModel {
       dentistId: map['dentistId'] ?? map['userId'], // Mantém compatibilidade com legado
       durationMinutes: map['durationMinutes'] ?? 30,
       notes: map['notes'],
+      isFitIn: _toBool(map['isFitIn']),
+      procedureTagIds: (map['procedureTagIds'] is List ? (map['procedureTagIds'] as List).whereType<String>().toList() : const []),
       scheduleId: map['scheduleId']?.toString(),
       planId: map['planId']?.toString(),
       monthlyPeriod: map['monthlyPeriod']?.toString(),
@@ -89,6 +95,8 @@ class AppointmentModel {
       'dentistId': dentistId,
       'durationMinutes': durationMinutes,
       'notes': notes,
+      'procedureTagIds': procedureTagIds,
+      'isFitIn': isFitIn,
       'scheduleId': scheduleId,
       'planId': planId,
       'monthlyPeriod': monthlyPeriod,

@@ -96,7 +96,7 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
                     
                     // --- NOVO SELETOR DE TIPO ---
                     DropdownButtonFormField<String>(
-                      value: selectedType,
+                      initialValue: selectedType,
                       decoration: const InputDecoration(
                         labelText: "Especialidade / Tipo",
                         border: OutlineInputBorder(),
@@ -422,7 +422,6 @@ class _ClinicManagementScreenState extends State<ClinicManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: AppColors.background,

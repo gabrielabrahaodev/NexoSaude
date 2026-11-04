@@ -2,7 +2,6 @@ import '../clinical_patient_view.dart';
 import '../../agenda/clinical_agenda_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
-import 'package:url_launcher/url_launcher.dart'; 
 import '../../../ui/app_theme.dart';
 import '../../../utils/display.dart';
 import '../../../utils/external_link.dart';
@@ -183,7 +182,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _procedureFilter,
+                      initialValue: _procedureFilter,
                       isExpanded: true,
                       decoration: InputDecoration(
                         labelText: "Procedimento",
@@ -205,7 +204,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _sortMode,
+                      initialValue: _sortMode,
                       isExpanded: true,
                       decoration: InputDecoration(
                         labelText: "Ordenar por",
@@ -309,6 +308,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       if (!phone.startsWith('55')) phone = '55$phone';
       
       String msg = "Olá, lembrete da parcela de ${formatBRL(FinancialService.partialRemainder(amount: item.amount, paidAmount: item.paidAmount, payValue: 0))} vencendo em ${formatDateShort(item.dueDate ?? DateTime.now())}.";
+      if (!mounted) return;
       final ok = await openWhatsAppSafe(context, tab,
           phone: phone, message: msg);
       if (!ok) {
@@ -352,6 +352,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 at: DateTime.now(),
               ),
             );
+            if (!mounted) return;
             toast(context, "Lembrete registrado no prontuário.",
                 ok: true);
           } catch (e) {
@@ -420,7 +421,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
     // Verifica despesas do recebimento vinculadas (com erro visível:
     // antes, falha aqui travava no loading sem dizer nada).
-    late final relatedResult;
+    late final List<QueryDocumentSnapshot<Object?>> relatedResult;
     try {
       relatedResult = await relatedDocs(id);
     } catch (e) {
@@ -484,9 +485,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
               Navigator.pop(ctx);
 
               try {
-                // Exclui despesas
-                for (var doc in relatedExpenses) { await doc.reference.delete(); }
-
+                // Despesas e receita são revertidas juntas pelo serviço.
                 // Executa o estorno
                 await _finService.voidPayment(id);
 
@@ -504,7 +503,6 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
 
               try {
                 // Mesmo zeramento do estorno...
-                for (var doc in relatedExpenses) { await doc.reference.delete(); }
                 await _finService.voidPayment(id);
               } catch (e) {
                 _toast("Falha ao estornar: $e", error: true);
@@ -797,7 +795,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
     }
     final prog = FinancialService.familyProgress(kids);
     final isCard =
-        (item.paymentMethod ?? '').toLowerCase().contains('cart');
+        item.paymentMethod.toLowerCase().contains('cart');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -814,7 +812,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("${parent?.title ?? item.title}",
+                    Text(parent?.title ?? item.title,
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 4),
@@ -972,9 +970,8 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
   // --- TIMELINE ITEM ---
   Widget _buildTimelineItem(dynamic item, bool isIncome,
       {List<FinancialModel>? allDocs}) {
-    String itemId = item.id;
     DateTime date = isIncome ? item.date : (item as ExpenseModel).dueDate; 
-    String title = isIncome ? (item as FinancialModel).title : "${(item as ExpenseModel).category} (${(item as ExpenseModel).description})";
+    String title = isIncome ? (item as FinancialModel).title : "${(item as ExpenseModel).category} (${(item).description})";
     double amount = item.amount;
     
     // Status seguro
@@ -993,7 +990,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       // --- MÁGICA DA ARQUITETURA (VISÃO PACIENTE VS TESOURARIA) ---
       // Se for Cartão de Crédito/Débito, a dívida do paciente está quitada.
       // Mantemos o status real intacto (pending) para a Antecipação funcionar nos bastidores.
-      bool isCard = (fin.paymentMethod ?? '').toLowerCase().contains('cart');
+      bool isCard = fin.paymentMethod.toLowerCase().contains('cart');
 
       isPaid = !isCancelled &&
           !isReplaced &&
@@ -1138,7 +1135,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                 }),
 
               const SizedBox(height: 4),
-              Text("${formatBRL(amount)}", 
+              Text(formatBRL(amount),
                 style: TextStyle(
                   color: isIncome ? (isPending ? Colors.red : Colors.green[700]) : Colors.orange[800], 
                   fontWeight: FontWeight.bold,
@@ -1267,7 +1264,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
       final String targetName = item.title.trim().toLowerCase();
 
       for (var doc in allDocs.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         // A interrogação dupla aqui impede o crash se 'name' não existir
         final String procName = (data['name']?.toString() ?? '').trim().toLowerCase();
         
@@ -1460,7 +1457,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                     if (selectedMethod == "Débito" || selectedMethod == "Cartão de Crédito") ...[
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
-                        value: selectedProfileId,
+                        initialValue: selectedProfileId,
                         isExpanded: true,
                         decoration: InputDecoration(labelText: "Selecione a Máquina", border: OutlineInputBorder(), isDense: true, prefixIcon: Icon(Icons.settings_remote)),
                         items: _machineProfiles.map((p) => DropdownMenuItem(value: p['id'] as String, child: Text(p['machine_name'] ?? 'Sem Nome'))).toList(),
@@ -1562,7 +1559,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text("Valor Líquido Total:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                Text("${formatBRL(totalNetValue)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                Text(formatBRL(totalNetValue), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                               ],
                             ),
                           ],
@@ -1581,7 +1578,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                           const Text("Repasse Profissional & Custos", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange)),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                              value: selectedProfessionalId,
+                              initialValue: selectedProfessionalId,
                               isExpanded: true,
                               hint: const Text("Quem executou?"),
                               items: _dentists.map((user) => DropdownMenuItem(value: user.id, child: Text(user.name))).toList(),
@@ -1601,7 +1598,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                      const Align(alignment: Alignment.centerLeft, child: Text("Custo Operacional", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.brown))),
                                      const SizedBox(height: 5),
                                      DropdownButtonFormField<String>(
-                                        value: selectedSupplierId,
+                                        initialValue: selectedSupplierId,
                                         isExpanded: true,
                                         hint: const Text("Fornecedor"),
                                         items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
@@ -1698,12 +1695,10 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                 // parcelas duplicadas)
                                 setStateModal(
                                     () => isProcessingPayment = true);
-                                bool popped = false;
 
                                 final scaffoldMessenger =
                                     ScaffoldMessenger.of(context);
                                 Navigator.pop(context);
-                                popped = true;
 
                                 String? dentistName;
                           if (selectedProfessionalId != null) {
@@ -1811,12 +1806,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                             );
 
                           } catch (e) {
-                            // Erro antes do pop: destrava p/ tentar de novo.
-                            // (Após o pop o dialog foi descartado: sem reset.)
-                            if (!popped && mounted) {
-                              setStateModal(
-                                  () => isProcessingPayment = false);
-                            }
+                            // O modal foi fechado antes do processamento; não atualizar seu estado.
                             scaffoldMessenger.showSnackBar(
                               SnackBar(
                                 content: Text("Erro ao registrar recebimento: $e"),
@@ -1889,6 +1879,7 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                   _showFamilyModal(item, docs);
                 } else {
                   final amount = widget.initialReceiveAmount;
+                  if (!context.mounted) return;
                   _showReceiveDialog(context, item, preFilledData: amount == null ? null : {'amount': amount});
                 }
               });
@@ -2080,9 +2071,9 @@ class _PatientFinancialTabState extends State<PatientFinancialTab> {
                                              width: 12, height: 12,
                                              decoration: BoxDecoration(
                                                color: isIncome
-                                                   ? (FinancialModel.isReplaced((item as FinancialModel).status)
+                                                   ? (FinancialModel.isReplaced((item).status)
                                                        ? Colors.blueGrey
-                                                       : ((item as FinancialModel).status == 'pending' ? Colors.red : Colors.green))
+                                                       : ((item).status == 'pending' ? Colors.red : Colors.green))
                                                    : Colors.orange,
                                                shape: BoxShape.circle,
                                                border: Border.all(color: Colors.white, width: 2)

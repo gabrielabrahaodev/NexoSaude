@@ -3,11 +3,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import '../../../ui/app_theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:photo_view/photo_view.dart';
 
 // Importações do seu projeto
@@ -55,8 +53,9 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
       if (result != null) {
         PlatformFile pFile = result.files.single;
         fileName = pFile.name;
-        if (kIsWeb) fileBytes = pFile.bytes;
-        else if (pFile.path != null) fileMobile = File(pFile.path!);
+        if (kIsWeb) {
+          fileBytes = pFile.bytes;
+        } else if (pFile.path != null) { fileMobile = File(pFile.path!); }
       }
     }
 
@@ -70,8 +69,9 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
     String category = "Exames"; 
 
     int size = 0;
-    if (fileBytes != null) size = fileBytes.length;
-    else if (fileMobile != null) size = fileMobile.lengthSync();
+    if (fileBytes != null) {
+      size = fileBytes.length;
+    } else if (fileMobile != null) { size = fileMobile.lengthSync(); }
 
     showDialog(
       context: context,
@@ -90,7 +90,7 @@ class _PatientDocsTabState extends State<PatientDocsTab> {
                   ),
                   const SizedBox(height: 15),
                   DropdownButtonFormField<String>(
-                    value: category,
+                    initialValue: category,
                     decoration: const InputDecoration(labelText: "Categoria", border: OutlineInputBorder()),
                     items: _categories.where((c) => c != "Todos").map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     onChanged: (val) => setStateDialog(() => category = val!),

@@ -18,8 +18,9 @@ List<int> treatmentLinkedTeeth(Map<String, dynamic> plan) {
     if (id != null &&
         [1, 2, 3, 4].contains(id ~/ 10) &&
         id % 10 >= 1 &&
-        id % 10 <= 8)
+        id % 10 <= 8) {
       ids.add(id);
+    }
   }
 
   void fromRecord(Map record) {

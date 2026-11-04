@@ -3,6 +3,7 @@ import '../models/financial_model.dart';
 import '../models/budget_model.dart'; 
 import '../models/expense_model.dart'; // Importante: Agora lidamos com Despesas
 import 'session_manager.dart';
+import 'procedure_tags.dart';
 
 class TreatmentService {
   final CollectionReference<Map<String, dynamic>> _plans = 
@@ -37,14 +38,27 @@ class TreatmentService {
     required List<FinancialModel> receivables, // Lista completa vinda do Wizard
     required List<ExpenseModel> payables,
   }) async {
-    WriteBatch batch = FirebaseFirestore.instance.batch();
+    final db = FirebaseFirestore.instance;
+    if (budget.clinicId != SessionManager().currentClinicId) throw StateError('Unidade alterada.');
+    if (budget.items.length + receivables.length + payables.length + 2 > 450) throw StateError('Orçamento excede o limite de uma aprovação.');
+    final catalog = await db.collection('procedures').where('clinicId', isEqualTo: budget.clinicId).get();
+    final definitions = {for (final p in catalog.docs) p.id: procedureTagDefinition(p.data(), p.id)};
+    await db.runTransaction((batch) async {
+      final current = await batch.get(_budgets.doc(budget.id));
+      if (current.data()?['clinicId'] != budget.clinicId || current.data()?['patientId'] != budget.patientId) throw StateError('Orçamento fora do contexto.');
+      if (['aprovado', 'approved'].contains('${current.data()?['status']}'.toLowerCase())) return;
+      if (['cancelado','cancelled','recusado','rejected','expirado'].contains('${current.data()?['status']}'.toLowerCase())) throw StateError('Orçamento indisponível para aprovação.');
+      // Reject stale item/total snapshots before generating receivables.
+      if (BudgetModel.fromMap(budget.id, current.data()!).total != budget.total || tagSnapshotKey(current.data()?['items']) != tagSnapshotKey(budget.items)) throw StateError('Orçamento alterado. Reabra a aprovação.');
+      final patient = await batch.get(db.collection('patients').doc(budget.patientId));
+      if (patient.data()?['clinicId'] != budget.clinicId) throw StateError('Paciente de outra unidade.');
 
     // --- CORREÇÃO PONTO 2: CÁLCULO DO VALOR REAL DO CONTRATO ---
     // Soma a entrada + todas as mensalidades geradas
-    double realContractValue = receivables.fold(0, (sum, item) => sum + item.amount);
+    double realContractValue = receivables.fold(0, (subtotal, item) => subtotal + item.amount);
 
     // 1. Cria o Plano de Tratamento
-    DocumentReference planRef = _plans.doc();
+    DocumentReference planRef = _plans.doc('budget_${budget.id}');
     
     List<Map<String, dynamic>> planItems = budget.items.map((item) {
       return {
@@ -61,6 +75,15 @@ class TreatmentService {
       };
     }).toList();
 
+    for (var i = 0; i < budget.items.length; i++) {
+      final line = Map<String, dynamic>.from(budget.items[i]);
+      final tagId = patientTagId(budget.id, i);
+      planItems[i]['procedureTagId'] = tagId;
+      batch.set(db.collection('patients').doc(budget.patientId).collection('procedure_tags').doc(tagId), {
+        ...patientProcedureTag(clinicId: budget.clinicId, patientId: budget.patientId, patientName: budget.patientName, budgetId: budget.id, planId: planRef.id, index: i, line: line, definition: definitions['${line['id']}'] ?? {}),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
     batch.set(planRef, {
       'clinicId': budget.clinicId,
       'patientId': budget.patientId,
@@ -99,25 +122,12 @@ class TreatmentService {
       batch.set(expRef, data);
     }
 
-    await batch.commit();
+    });
   }
 
   // Adicione este método à sua classe existente
+  @Deprecated('Use approveBudgetWithFinancials para gerar plano e Tags atomicamente')
   Future<String> createFromBudget(BudgetModel budget) async {
-    final clinicId = SessionManager().currentClinicId;
-    
-    DocumentReference ref = await _plans.add({
-      'clinicId': clinicId,
-      'patientId': budget.patientId,
-      'patientName': budget.patientName,
-      'originBudgetId': budget.id,
-      'status': 'active', // Em andamento
-      'startDate': FieldValue.serverTimestamp(),
-      'totalValue': budget.total,
-      'items': budget.items, // Lista de procedimentos
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    return ref.id;
+    throw UnsupportedError('Use a aprovação de orçamento para gerar plano e Tags.');
   }
 }

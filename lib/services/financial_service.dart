@@ -215,16 +215,21 @@ class FinancialService {
     final ref = _db.collection('financial').doc(id);
     final snap = await ref.get();
     final m = snap.data();
-    final amount = (m?['amount'] as num?)?.toDouble() ?? 0.0;
-    final paidAmount = (m?['paidAmount'] as num?)?.toDouble() ?? 0.0;
-    final status = '${m?['status'] ?? ''}';
-    final pid = '${m?['patientId'] ?? ''}';
+    final clinicId = m?['clinicId']?.toString() ?? '';
+    if (m == null || clinicId.isEmpty ||
+        clinicId != SessionManager().currentClinicId) {
+      throw StateError('Lançamento indisponível na clínica atual.');
+    }
+    final amount = (m['amount'] as num?)?.toDouble() ?? 0.0;
+    final paidAmount = (m['paidAmount'] as num?)?.toDouble() ?? 0.0;
+    final status = '${m['status'] ?? ''}';
 
     final kids = FinancialModel.isReplaced(status)
         ? <QueryDocumentSnapshot<Map<String, dynamic>>>[]
         : (await _db
                 .collection('financial')
                 .where('parentId', isEqualTo: id)
+                .where('clinicId', isEqualTo: clinicId)
                 .get())
             .docs;
     var kidsSum = 0.0;
@@ -237,7 +242,29 @@ class FinancialService {
       kidsSum: kidsSum,
     );
 
+    // Leia todos os vínculos antes de gravar: se qualquer leitura falhar,
+    // nenhuma despesa nem receita foi modificada. O commit é atômico.
+    final chargeIds = [id, ...kids.map((k) => k.id)];
+    final expenses = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    for (var i = 0; i < chargeIds.length; i += 10) {
+      final end = i + 10 < chargeIds.length ? i + 10 : chargeIds.length;
+      final result = await _db.collection('expenses')
+          .where('clinicId', isEqualTo: clinicId)
+          .where('relatedFinancialId', whereIn: chargeIds.sublist(i, end))
+          .get();
+      expenses.addAll(result.docs.where((d) => d.data()['source'] != 'lab_order'));
+    }
+    // Não dividir um estorno em commits: isso perderia a atomicidade.
+    if (kids.length + expenses.length + 1 > 500) {
+      throw StateError('Estorno excede o limite de uma operação atômica.');
+    }
+    if (SessionManager().currentClinicId != clinicId) {
+      throw StateError('Clínica alterada durante o estorno.');
+    }
     final batch = _db.batch();
+    for (final expense in expenses) {
+      batch.delete(expense.reference);
+    }
     for (final k in kids) {
       batch.delete(k.reference);
     }
@@ -256,15 +283,7 @@ class FinancialService {
     });
     await batch.commit();
 
-    // Espelho: filhas saem, pai ressincroniza como pendente.
-    if (pid.isNotEmpty) {
-      for (final k in kids) {
-        try {
-          await PortalMirrorSync.removeDebt(
-              patientId: pid, debtId: k.id);
-        } catch (_) {}
-      }
-    }
+    // Uma reconstrução financeira repõe o top-3 e atualiza os totais.
     await _syncDebtOfCharge(id);
   }
 

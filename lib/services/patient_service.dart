@@ -41,7 +41,7 @@ class PatientService {
       int missed = 0;
 
       for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         // Falta com atestado não conta como falta (docs antigos sem o campo caem em false).
         final bool excused =
             '${data['hasMedicalCertificate']}'.toLowerCase() == 'true';
@@ -92,6 +92,7 @@ class PatientService {
   static const _patientSubcollections = [
     'clinical_data',
     'docs',
+    'procedure_tags',
   ];
 
   // --- EXCLUSÃO EM CASCATA DO PACIENTE ---
@@ -100,6 +101,20 @@ class PatientService {
   // estourasse o limite de 500 writes do batch.)
   Future<void> deletePatientCascade(String patientId, String clinicId) async {
     final db = FirebaseFirestore.instance;
+    final parent = await _collection.doc(patientId).get(const GetOptions(source: Source.server));
+    if (clinicId != SessionManager().currentClinicId || parent.data()?['clinicId'] != clinicId) {
+      throw StateError('Paciente fora da unidade ativa.');
+    }
+    // Conservative retention policy until an authorized archival workflow exists.
+    for (final child in ['clinical_data', 'procedure_tags']) {
+      final evidence = await parent.reference.collection(child).limit(1).get();
+      if (evidence.docs.isNotEmpty) throw StateError('Paciente com dados clínicos ou Tags. Preserve o cadastro e o histórico.');
+    }
+    for (final collection in ['clinical_records', 'financial', 'treatment_plans']) {
+      final evidence = await db.collection(collection).where('clinicId', isEqualTo: clinicId)
+          .where('patientId', isEqualTo: patientId).limit(1).get();
+      if (evidence.docs.isNotEmpty) throw StateError('Paciente com histórico clínico ou financeiro. Exclusão bloqueada.');
+    }
     final deletes = <DocumentReference>[];
     List<Map<String, dynamic>> docsMeta = [];
 
@@ -129,7 +144,7 @@ class PatientService {
     // Não remova o paciente nem seus metadados se ainda houver binários
     // no Cloudinary: isso perderia o caminho necessário para a exclusão
     // remota posterior. Este preflight ocorre antes do primeiro commit.
-    final remoteDocs = docsMeta.where(requiresRemoteCloudinaryCleanup).length;
+    final remoteDocs = docsMeta.where(requiresRemoteStorageCleanup).length;
     if (remoteDocs > 0) {
       throw StateError(
         'Exclusão cancelada antes de qualquer escrita: existem $remoteDocs '
@@ -144,7 +159,7 @@ class PatientService {
     // Portal: revoga o link junto (espelho por token, fora da cascata).
     try {
       final pdata =
-          (await patientRef.get()).data() as Map<String, dynamic>?;
+          (await patientRef.get()).data();
       final token = '${pdata?['portalToken'] ?? ''}';
       if (token.isNotEmpty) {
         deletes.add(db.collection('portal').doc(token));

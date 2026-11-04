@@ -53,13 +53,13 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
             ListTile(
               leading: const Icon(Icons.receipt_long, color: Colors.grey),
               title: const Text("Valor do Contrato"),
-              trailing: Text("${formatBRL(total)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+              trailing: Text(formatBRL(total), style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.arrow_circle_up, color: Colors.green),
               title: const Text("Recebido do Paciente"),
-              trailing: Text("${formatBRL(paid)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+              trailing: Text(formatBRL(paid), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
             ),
             ListTile(
               leading: const Icon(Icons.science, color: Colors.red),
@@ -180,11 +180,11 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                         f.isPaid &&
                         f.status.toLowerCase() != 'cancelado' &&
                         !FinancialModel.isReplaced(f.status))
-                    .fold(0.0, (sum, f) => sum + f.amount);
+                    .fold(0.0, (subtotal, f) => subtotal + f.amount);
                 
                 // Separa Custos e Comissões
-                double localLabCost = planExpenses.where((e) => !e.isCommission).fold(0.0, (sum, e) => sum + e.amount);
-                double localCommCost = planExpenses.where((e) => e.isCommission).fold(0.0, (sum, e) => sum + e.amount);
+                double localLabCost = planExpenses.where((e) => !e.isCommission).fold(0.0, (subtotal, e) => subtotal + e.amount);
+                double localCommCost = planExpenses.where((e) => e.isCommission).fold(0.0, (subtotal, e) => subtotal + e.amount);
                 
                 double totalCost = localLabCost + localCommCost;
                 double localMarginValue = planTotal - totalCost;
@@ -198,7 +198,8 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                 int paidInstallments = installmentsList.where((f) => f.isPaid).length;
                 String installmentStatus = totalInstallments > 0 ? "$paidInstallments/$totalInstallments Pagas" : "";
 
-                if (clinicalAgendaEnabled) return ClinicalTreatmentCard(
+                if (clinicalAgendaEnabled) {
+                  return ClinicalTreatmentCard(
                   start: knownStartDate == null ? 'data não informada' : formatDateFull(knownStartDate), active: status == 'active', items: items,
                   total: planTotal, paid: localPaid, margin: localPercent, installments: installmentStatus,
                   onFinancial: () => _showLocalFinancialSummary(context, localPaid, localLabCost, localCommCost, planTotal),
@@ -212,6 +213,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                     if (confirm == true) await _treatService.closePlan(doc.id);
                   },
                 );
+                }
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
                   elevation: 4, 
@@ -298,7 +300,7 @@ class _TreatmentsTabState extends State<TreatmentsTab> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("${formatBRL(localPaid)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                Text(formatBRL(localPaid), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                                 Text("de ${formatBRL(planTotal)}", style: const TextStyle(color: Colors.grey)),
                               ],
                             ),

@@ -64,7 +64,7 @@ class ProcedureModel {
     if (commissionType == 'percent') {
       return '${commissionValue.toStringAsFixed(1)}%';
     } else {
-      return '${formatBRL(commissionValue)}';
+      return formatBRL(commissionValue);
     }
   }
   

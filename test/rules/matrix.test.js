@@ -268,6 +268,25 @@ describe('matriz reavaliação P0/P1', () => {
     await assertFails(db.doc('financial/f1').update({ amount: 999 }));
   });
 
+  it('P1: staff não transfere financeiro nem vincula paciente de outro tenant', async () => {
+    const db = ctx('staffA').firestore();
+    await assertSucceeds(db.doc('financial/f1').update({ amount: 100 }));
+    await assertFails(db.doc('financial/f1').update({ clinicId: B }));
+    await assertFails(db.doc('financial/f1').update({ patientId: 'p2' }));
+    await assertFails(db.doc('financial/f1').update({ clinicId: B, patientId: 'p2' }));
+    await assertFails(db.doc('financial/f1').update({ clinicId: null }));
+    await assertSucceeds(db.collection('financial')
+      .where('clinicId', '==', A).where('parentId', '==', 'f1').get());
+    await assertFails(db.collection('financial').where('parentId', '==', 'f1').get());
+  });
+
+  it('P2: usuário edita o próprio perfil sem alterar permissões', async () => {
+    const db = ctx('staffA').firestore();
+    await assertSucceeds(db.doc('users/staffA').update({ name: 'Staff A atualizado' }));
+    await assertFails(db.doc('users/staffA').update({ role: 'owner' }));
+    await assertFails(db.doc('users/staffA').update({ allowedClinics: [A, B] }));
+  });
+
   it('P1: aviso financeiro anônimo exige token atual do paciente vinculado', async () => {
     const db = ctx(null).firestore();
     await assertFails(db.doc('financial/f1').update({
@@ -745,6 +764,38 @@ describe('matriz reavaliação P0/P1', () => {
       assert.equal((await adb.doc('clinical_records/collection_reject').get()).exists, false);
       assert.equal((await adb.doc('patients/p1/clinical_data/collection_reject').get()).exists, false);
     });
+  });
+
+  it('Tags impedem adulteração de contrato, reabertura e exclusão direta', async () => {
+    const db = ctx('staffA').firestore();
+    const ref = db.doc('patients/p1/procedure_tags/immutable_tag');
+    await assertSucceeds(ref.set({clinicId:A, patientId:'p1', budgetId:'contract',
+      status:'pending', sessionCount:0, lineSnapshot:{price:100}}));
+    await assertFails(ref.update({budgetId:'other'}));
+    await assertFails(ref.update({clinicId:B}));
+    await assertFails(ref.update({lineSnapshot:{price:0}}));
+    await assertFails(ref.update({status:'completed',sessionCount:10,lastOperatorId:'staffA'}));
+    await assertFails(ref.delete());
+    await assertFails(db.doc('patients/p1/procedure_tags/foreign').set({clinicId:B,patientId:'p1',status:'pending'}));
+    await assertFails(ref.update({status:'completed'}));
+  });
+
+  it('Tags de catálogo/paciente e histórico mantêm o escopo existente da clínica', async () => {
+    const db = ctx('staffA').firestore();
+    const batch = db.batch();
+    batch.set(db.doc('procedures/tag_proc'), {clinicId:A,name:'Procedimento'});
+    batch.set(db.doc('procedures/tag_proc/tags/definition'), {clinicId:A,procedureId:'tag_proc',name:'Procedimento'});
+    batch.set(db.doc('patients/p1/procedure_tags/budget_test_line_0'), {clinicId:A,patientId:'p1',budgetId:'test',status:'pending',name:'Procedimento'});
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(db.collection('patients/p1/procedure_tags').where('clinicId','==',A).get());
+    await assertFails(ctx('staffB').firestore().doc('patients/p1/procedure_tags/budget_test_line_0').get());
+    await assertFails(ctx('staffB').firestore().doc('procedures/tag_proc/tags/definition').get());
+    await assertFails(db.doc('patients/p2/procedure_tags/invalid').set({clinicId:A,patientId:'p1'}));
+    const invalid = db.batch();
+    invalid.update(db.doc('patients/p1/procedure_tags/budget_test_line_0'), {status:'completed'});
+    invalid.set(db.doc('patients/p2/clinical_data/tag_visit_invalid'), {clinicId:B});
+    await assertFails(invalid.commit());
+    assert.equal((await db.doc('patients/p1/procedure_tags/budget_test_line_0').get()).data().status,'pending');
   });
 
 });

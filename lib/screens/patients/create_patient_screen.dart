@@ -209,7 +209,7 @@ class _CreatePatientScreenState extends State<CreatePatientScreen> {
                         fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<TherapeuticStatus>(
-                  value: _therapeuticStatus,
+                  initialValue: _therapeuticStatus,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.psychology),

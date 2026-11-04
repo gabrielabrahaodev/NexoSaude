@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../utils/display.dart';
 import '../../utils/external_link.dart';
 import '../../ui/app_theme.dart';
 // import 'package:flutter_web_plugins/flutter_web_plugins.dart'; // Descomente se configurou web plugins
 
 class PublicEvaluationScreen extends StatefulWidget {
-  const PublicEvaluationScreen({Key? key}) : super(key: key);
+  const PublicEvaluationScreen({super.key});
 
   @override
-  _PublicEvaluationScreenState createState() => _PublicEvaluationScreenState();
+  State<PublicEvaluationScreen> createState() => _PublicEvaluationScreenState();
 }
 
 class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
@@ -23,7 +22,7 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
   int _currentIndex = 0;
   
   int _score = 0; 
-  List<String> _answers = []; 
+  final List<String> _answers = [];
   bool _isSaving = false;
 
   // Perguntas do Questionário
@@ -144,6 +143,7 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
       
     } catch (e) {
       debugPrint("Erro Firestore: $e");
+      if (!mounted) return;
       toast(context, "Erro ao salvar.");
       setState(() => _isSaving = false);
     }
@@ -173,6 +173,7 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
     
     final ok = await openWhatsAppSafe(context, tab,
         phone: finalPhone, message: message);
+    if (!mounted) return;
     if (!ok) {
       setState(() => _isSaving = false);
       showDialog(
@@ -241,7 +242,7 @@ class _PublicEvaluationScreenState extends State<PublicEvaluationScreen> {
                                     child: Text(option['text'], style: const TextStyle(fontSize: 18)),
                                   ),
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ),
                         );

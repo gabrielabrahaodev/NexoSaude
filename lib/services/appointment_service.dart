@@ -1,9 +1,12 @@
+import 'agenda_availability.dart';
+import 'procedure_tags.dart';
+import 'session_manager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/appointment_model.dart';
 import 'portal_mirror.dart';
 
 class AppointmentService {
-  final CollectionReference _collection = FirebaseFirestore.instance.collection('appointments');
+  final CollectionReference<Map<String, dynamic>> _collection = FirebaseFirestore.instance.collection('appointments');
 
   /// Repete na próxima semana: +7 dias, mesmo horário (puro e testado).
   static DateTime repeatNextWeek(DateTime from) =>
@@ -21,42 +24,36 @@ class AppointmentService {
         .where('date', isLessThan: end)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => AppointmentModel.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+            .map((doc) => AppointmentModel.fromMap(doc.id, doc.data()))
             .toList());
   }
 
-  // NOVO: Verifica disponibilidade (Para o Formulário)
-  // Com dentistId, considera só os slots DESSE profissional.
+  Query<Map<String, dynamic>> _availabilityQuery(String clinicId, DateTime day) {
+    final start = DateTime(day.year, day.month, day.day);
+    return _collection.where('clinicId', isEqualTo: clinicId)
+        // Includes overnight visits that began on the previous day.
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime(day.year, day.month, day.day - 1)))
+        .where('date', isLessThan: Timestamp.fromDate(DateTime(start.year, start.month, start.day + 1)));
+  }
+
+  List<String> _busy(QuerySnapshot<Map<String, dynamic>> snapshot,
+      String clinicId, DateTime day, String? dentistId, String? excludeId) =>
+      busyAgendaSlots(snapshot.docs.map((d) => AppointmentModel.fromMap(d.id, d.data())),
+          clinicId: clinicId, day: day, dentistId: dentistId, excludeId: excludeId);
+
+  /// Fresh server check before writing; offline/cache data cannot clear a slot.
   Future<List<String>> getBusySlots(String clinicId, DateTime date,
       {String? excludeId, String? dentistId}) async {
-    DateTime startOfDay = DateTime(date.year, date.month, date.day, 0, 0);
-    DateTime endOfDay = DateTime(date.year, date.month, date.day, 23, 59);
-
-    var snapshot = await _collection
-        .where('clinicId', isEqualTo: clinicId)
-        .where('date', isGreaterThanOrEqualTo: startOfDay)
-        .where('date', isLessThan: endOfDay)
-        .get();
-
-    List<String> busy = [];
-    for (var doc in snapshot.docs) {
-      if (excludeId != null && doc.id == excludeId) continue;
-      if ('${doc['status']}'.toLowerCase() == 'cancelado') continue;
-      if (dentistId != null &&
-          dentistId.isNotEmpty &&
-          '${doc['dentistId'] ?? ''}' != dentistId) continue;
-
-      DateTime d = (doc['date'] as Timestamp).toDate();
-      int duration = doc['durationMinutes'] ?? 30;
-      int slotsOccupied = (duration / 30).ceil();
-
-      for (int i = 0; i < slotsOccupied; i++) {
-        DateTime slotTime = d.add(Duration(minutes: 30 * i));
-        busy.add("${slotTime.hour.toString().padLeft(2,'0')}:${slotTime.minute.toString().padLeft(2,'0')}");
-      }
-    }
-    return busy;
+    final snapshot = await _availabilityQuery(clinicId, date)
+        .get(const GetOptions(source: Source.server));
+    return _busy(snapshot, clinicId, date, dentistId, excludeId);
   }
+
+  Stream<List<String>> watchBusySlots(String clinicId, DateTime date,
+      {String? excludeId, String? dentistId}) =>
+      _availabilityQuery(clinicId, date).snapshots(includeMetadataChanges: true)
+          .where((s) => !s.metadata.isFromCache)
+          .map((s) => _busy(s, clinicId, date, dentistId, excludeId));
 
   Future<void> add(AppointmentModel appointment) async {
     // Convertemos o model para mapa, removendo o ID que será gerado.
@@ -64,8 +61,19 @@ class AppointmentService {
     // carimbar permitiria confirmar sem o link — reavaliação P1).
     var map = appointment.toMap();
     map.remove('portalToken');
-    final ref = _collection.doc();
-    await ref.set(map);
+    final ref = _collection.doc(appointment.id.isEmpty ? null : appointment.id);
+    final receipt = FirebaseFirestore.instance.collection('patients').doc(appointment.patientId).collection('clinical_data').doc('booking_${ref.id}');
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final exists = await tx.get(receipt);
+      if (exists.exists) {
+        if (exists.data()?['payloadKey'] != tagSnapshotKey(map)) throw StateError('Este agendamento já foi gravado. Reabra-o pela Agenda para editar.');
+        return;
+      }
+      if (appointment.clinicId != SessionManager().currentClinicId) throw StateError('Unidade alterada.');
+      if (appointment.procedureTagIds.isNotEmpty) await ProcedureTags.readForVisit(tx, FirebaseFirestore.instance, appointment.patientId, appointment.clinicId, appointment.procedureTagIds);
+      tx.set(ref, map);
+      tx.set(receipt, {'clinicId': appointment.clinicId, 'patientId': appointment.patientId, 'appointmentId': ref.id, 'payloadKey': tagSnapshotKey(map), 'createdAt': FieldValue.serverTimestamp()});
+    });
     // Espelho (delta, sem scan): a sessão entra com os dados em mãos.
     await PortalMirrorSync.upsertSession(
       patientId: appointment.patientId,
@@ -88,10 +96,15 @@ class AppointmentService {
     var map = appointment.toMap();
     // Nunca (re)carimba nem apaga token pelo app (ver `add`).
     map.remove('portalToken');
-    final old = (await _collection.doc(appointment.id).get()).data()
-        as Map<String, dynamic>?;
+    final old = (await _collection.doc(appointment.id).get()).data();
     // Em update, removemos campos que não queremos sobrescrever acidentalmente, ou enviamos tudo
-    await _collection.doc(appointment.id).update(map);
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final current = await tx.get(_collection.doc(appointment.id));
+      final d = current.data();
+      if (d == null || d['clinicId'] != appointment.clinicId || d['patientId'] != appointment.patientId || appointment.clinicId != SessionManager().currentClinicId || d['status'] == 'Finalizado' || d['status'] == 'Cancelado') throw StateError('Agendamento alterado ou indisponível.');
+      if (appointment.procedureTagIds.isNotEmpty) await ProcedureTags.readForVisit(tx, FirebaseFirestore.instance, appointment.patientId, appointment.clinicId, appointment.procedureTagIds);
+      tx.update(_collection.doc(appointment.id), map);
+    });
     // Troca de data/dentista: libera o slot antigo, ocupa o novo.
     final oldDate = (old?['date'] as Timestamp?)?.toDate();
     final oldDentist = '${old?['dentistId'] ?? ''}';
@@ -123,7 +136,7 @@ class AppointmentService {
   
   Future<void> cancel(String id) async {
     final old =
-        (await _collection.doc(id).get()).data() as Map<String, dynamic>?;
+        (await _collection.doc(id).get()).data();
     await _collection.doc(id).update({'status': 'Cancelado'});
     final oldDate = (old?['date'] as Timestamp?)?.toDate();
     if (oldDate != null) {

@@ -131,6 +131,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
         item.patientName, remaining, item.dueDate ?? DateTime.now());
 
     // 3. Abre WhatsApp
+    if (!mounted) return;
     final success = await openWhatsAppSafe(context, tab,
         phone: phone, message: message);
 
@@ -144,6 +145,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
         _pendingRecordPatientName = item.patientName;
       });
     } else {
+      if (!mounted) return;
       toast(context, "Não foi possível abrir o WhatsApp.");
     }
   }
@@ -254,6 +256,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
         _pendingPackageDocs = items;
       });
     } else {
+      if (!mounted) return;
       toast(context, "Não foi possível abrir o WhatsApp.");
     }
   }
@@ -308,6 +311,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
       // Abre WhatsApp com valor parcial
       final message =
           WhatsAppHelper.getMessage(patientName, amount, DateTime.now());
+      if (!mounted) return;
       final success = await openWhatsAppSafe(context, partialTab,
           phone: phone, message: message);
 
@@ -433,8 +437,10 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
           {'date': DateTime.now().toIso8601String(), 'method': 'whatsapp_manual'}
         ])
       });
+      if (!mounted) return;
       toast(context, "Status atualizado com sucesso!");
     } catch (e) {
+      if (!mounted) return;
       toast(context, "Erro ao atualizar status.");
     }
   }
@@ -736,9 +742,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                           }
                           final bill = billSnap.data!;
                           final totalAmount = bill.amountDue;
-                          final detail = bill == null
-                              ? null
-                              : "${bill.describe()} • ${formatBRL(bill.amountDue)}"
+                          final detail = "${bill.describe()} • ${formatBRL(bill.amountDue)}"
                                   "${bill.isPartial ? " (parcial)" : ""}";
 
                             return MonthlyPackageCard(
@@ -746,13 +750,13 @@ class _CollectionsScreenState extends State<CollectionsScreen> with WidgetsBindi
                               periodLabel: periodLabel,
                               installmentNumber: installmentNumber,
                               sessionCount:
-                                  bill?.previstas ?? items.length,
+                                  bill.previstas,
                               dueDate:
                                   (data['dueDate'] as Timestamp).toDate(),
                               totalAmount: totalAmount,
                               fullAmount: packageAmount,
                               billingDetail: detail,
-                              isPartial: bill?.isPartial ?? false,
+                              isPartial: bill.isPartial,
                               contactedToday: contactedToday,
                               onOpenPatient: () => Navigator.push(
                                   context,

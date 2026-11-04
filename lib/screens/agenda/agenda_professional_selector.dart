@@ -84,7 +84,11 @@ class AgendaProfessionalSelector extends StatelessWidget {
         .take(2)
         .map((p) => p.characters.first)
         .join();
-    return Container(
+    return LayoutBuilder(builder: (context, constraints) {
+      // Somente o seletor realmente estreito omite o cargo na linha.
+      // No menu/tooltip, o cargo continua disponível.
+      final compactLabel = constraints.maxWidth < 220;
+      return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
         color: ClinicalAgendaStyle.elevated.withValues(alpha: .35),
@@ -114,19 +118,26 @@ class AgendaProfessionalSelector extends StatelessWidget {
                 selectedItemBuilder: (context) => professionals.map((u) =>
                   Tooltip(
                     message: '${u.name.isEmpty ? 'Profissional' : u.name} • ${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
-                    child: Row(children: [
-                      Expanded(flex: 3, child: Text(
-                        u.name.isEmpty ? 'Profissional' : u.name,
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                      )),
-                      const SizedBox(width: 8),
-                      Flexible(flex: 2, child: Text(
-                        '${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 11),
-                      )),
-                    ]),
+                    child: compactLabel
+                        ? Text(
+                            u.name.isEmpty ? 'Profissional' : u.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          )
+                        : Row(children: [
+                            Expanded(flex: 3, child: Text(
+                              u.name.isEmpty ? 'Profissional' : u.name,
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            )),
+                            const SizedBox(width: 8),
+                            Flexible(flex: 2, child: Text(
+                              '${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 11),
+                            )),
+                          ]),
                   ),
                 ).toList(),
                 items: professionals
@@ -147,5 +158,6 @@ class AgendaProfessionalSelector extends StatelessWidget {
         ],
       ),
     );
+    });
   }
 }

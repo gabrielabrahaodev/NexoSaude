@@ -41,13 +41,13 @@ class ClinicalDashboardView extends StatelessWidget {
       padding: const EdgeInsets.all(11), decoration: BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha: .25))),
       child: Icon(icon, color: ink(color), size: 24));
     Widget metric(String label, String value, String caption, String tag, IconData icon, Color color, String footer, String link, int target) => panel(Column(
-      crossAxisAlignment: CrossAxisAlignment.start, children: [
+      mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [iconBox(icon, color), const Spacer(), badge(tag, color)]),
         const SizedBox(height: 20),
         FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w800, fontSize: 28, color: label == 'Inadimplência' ? ink(red) : null))),
         const SizedBox(height: 6), Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4), Text(caption, style: TextStyle(color: label == 'Inadimplência' ? ink(red) : muted, fontSize: 13)),
-        const Spacer(), Divider(color: border, height: 24),
+        const SizedBox(height: 14), Divider(color: border, height: 24),
         Row(children: [Expanded(child: Text(footer, style: TextStyle(color: muted, fontSize: 12))), action(link, target, color: color)]),
       ]));
     Widget exception(IconData icon, String title, String subtitle, int target, String link) => panel(
@@ -70,7 +70,7 @@ class ClinicalDashboardView extends StatelessWidget {
               child: LayoutBuilder(builder: (context, size) {
                 final text = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${row['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)), Text('${row['title']}${due == null ? ' • Sem vencimento' : ' • Vence ${formatDateShort(due)}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: muted, fontSize: 13))]);
                 final amount = Text(reportMoney((row['amount'] as num).toDouble()), style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700));
-                return size.maxWidth < 530 ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [text, const SizedBox(height: 10), Row(children: [badge(late ? 'ATRASADO' : due == null ? 'SEM DATA' : 'A VENCER', color), const Spacer(), amount])]) : Row(children: [Icon(Icons.circle, size: 12, color: ink(color)), const SizedBox(width: 14), Expanded(child: text), const SizedBox(width: 10), badge(late ? 'ATRASADO' : due == null ? 'SEM DATA' : 'A VENCER', color), const SizedBox(width: 22), amount, const SizedBox(width: 16), Icon(Icons.chat_bubble_outline, size: 19, color: muted)]);
+                return size.maxWidth < 530 ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [text, const SizedBox(height: 10), Wrap(alignment: WrapAlignment.spaceBetween, spacing: 12, runSpacing: 8, children: [badge(late ? 'ATRASADO' : due == null ? 'SEM DATA' : 'A VENCER', color), amount])]) : Row(children: [Icon(Icons.circle, size: 12, color: ink(color)), const SizedBox(width: 14), Expanded(child: text), const SizedBox(width: 10), badge(late ? 'ATRASADO' : due == null ? 'SEM DATA' : 'A VENCER', color), const SizedBox(width: 22), amount, const SizedBox(width: 16), Icon(Icons.chat_bubble_outline, size: 19, color: muted)]);
               })));
           }),
         ]
@@ -100,7 +100,7 @@ class ClinicalDashboardView extends StatelessWidget {
       ];
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 14, runSpacing: 10, crossAxisAlignment: WrapCrossAlignment.center, children: [Text('Dashboard', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)), badge(monthLabel, green), FilledButton.icon(onPressed: onNewAppointment, icon: const Icon(Icons.add), label: const Text('Novo agendamento'))]),
-        const SizedBox(height: 28), Wrap(spacing: 20, runSpacing: 20, children: cards.map((card) => SizedBox(width: (size.maxWidth - (columns - 1) * 20) / columns, height: columns == 4 ? 270 : 290, child: card)).toList()),
+        const SizedBox(height: 28), Wrap(spacing: 20, runSpacing: 20, children: cards.map((card) => SizedBox(width: (size.maxWidth - (columns - 1) * 20) / columns, child: card)).toList()),
         const SizedBox(height: 30),
         if (oldOverdueCount > 0 || unconfirmedCount > 0 || debtorsTodayCount > 0) ...[
           Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [Icon(Icons.error_outline, size: 20, color: ink(red)), Text('Exceções de hoje', style: TextStyle(color: ink(red), fontWeight: FontWeight.w700, fontSize: 16)), Text('• Ações clínicas prioritárias', style: TextStyle(color: muted))]), const SizedBox(height: 16),

@@ -115,10 +115,10 @@ class PsychologyKanbanBoard extends StatelessWidget {
           // Área de Drop (DragTarget)
           Expanded(
             child: DragTarget<DocumentSnapshot>(
-              onWillAccept: (data) => true, // Aceita qualquer card de paciente
-              onAccept: (patientDoc) {
+              onWillAcceptWithDetails: (data) => true, // Aceita qualquer card de paciente
+              onAcceptWithDetails: (patientDoc) {
                 // AQUI ACONTECE A MÁGICA DA TRANSIÇÃO SEGURA
-                _handleStatusTransition(context, patientDoc, status);
+                _handleStatusTransition(context, patientDoc.data, status);
               },
               builder: (context, candidateData, rejectedData) {
                 // Stream dedicado para esta coluna (filtra clínica + estágio

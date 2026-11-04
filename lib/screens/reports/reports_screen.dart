@@ -659,12 +659,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     if (snap.hasError) return Text("Erro: ${snap.error}", style: const TextStyle(color: Colors.red));
                     
                     if (snap.hasData) {
-                      availableTotal = snap.data!.docs.fold(0.0, (sum, doc) {
+                      availableTotal = snap.data!.docs.fold(0.0, (subtotal, doc) {
                         final data = doc.data() as Map<String, dynamic>; 
                         if (reportCanAnticipate(data, DateTime.now())) {
-                          return sum + parseBRL(data['amount']);
+                          return subtotal + parseBRL(data['amount']);
                         }
-                        return sum;
+                        return subtotal;
                       });
                     }
                     return Container(
@@ -740,7 +740,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     try {
        final settings = await FirebaseFirestore.instance.collection('clinics').doc(clinicId).collection('settings').doc('fees').get();
        if (settings.exists) monthlyRate = (double.tryParse(settings.data()?['anticipation_rate'].toString() ?? '') ?? 2.29);
-    } catch(e){}
+    } catch(e){ debugPrint('Configuração de antecipação indisponível; usando taxa padrão: $e'); }
 
     for (var doc in validDocs) {
       if (remainingToAnticipate <= 0.01) break; 
@@ -784,6 +784,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     if (!mounted) return;
     
+    if (!context.mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false, 
@@ -804,7 +805,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: parcelsToAnticipate.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final p = parcelsToAnticipate[index];
                       final dateStr = formatDateShortYear(p.dueDate);
@@ -915,10 +916,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 if (ctx.mounted) Navigator.pop(ctx); 
                 if (context.mounted) Navigator.pop(context); 
                 
+                if (!context.mounted) return;
                 toast(context, "Antecipação realizada! O valor bruto foi para as receitas e as taxas para as despesas.", ok: true);
               
               } catch(e) {
+                if (!ctx.mounted) return;
                 Navigator.pop(ctx); 
+                if (!ctx.mounted) return;
                 ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Erro ao gravar: $e"), backgroundColor: Colors.red));
               }
             }, 

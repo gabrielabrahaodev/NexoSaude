@@ -21,6 +21,8 @@ jobs:
       # Gate = 0 erros (avisos/infos pré-existentes não bloqueiam).
       - run: flutter analyze --no-pub --no-fatal-warnings --no-fatal-infos
       - run: flutter test
+      - name: Validate web release build
+        run: flutter build web --release
 
   rules:
     runs-on: ubuntu-latest

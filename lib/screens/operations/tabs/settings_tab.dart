@@ -634,7 +634,7 @@ class _SettingsTabState extends State<SettingsTab> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: DropdownButtonFormField<int>(
-                        value: _gradeSlot,
+                        initialValue: _gradeSlot,
                         decoration: InputDecoration(
                             labelText: "Slot",
                             border: OutlineInputBorder(

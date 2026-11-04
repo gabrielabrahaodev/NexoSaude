@@ -66,3 +66,9 @@ O cálculo deve distinguir **valor original**, **recebido** e **restante**. `Fin
 No formato novo, `amount` pode guardar o saldo restante e filhas registram pagamentos: **não** somar filhas ao saldo nem contar baixa duas vezes. Confirmar valor exibido, mensagem WhatsApp, Pix efetivamente gerado, Livro Caixa, oráculo, filtros, estorno e cobrança de pacote antes de liberar. Contato no WhatsApp e `avisoPagamento` público são avisos, **não comprovação de liquidação**.
 
 Na variante clínica, `CollectionQueueService` usa consultas explícitas por `clinicId` e um inspetor de cobranças; regras de apresentação não substituem a autorização das Firestore Rules. Pedidos de laboratório com custo geram despesas pelo serviço de laboratório, não pelo recebimento de pacientes. Consulte [[auditoria-codigo-2026-11-03]] e [[remodelagem-plano-testes]].
+
+- Aprovação de orçamento: agora transacional e idempotente por budgetId, com conferência do snapshot atual e geração das Tags clínicas por linha junto de plano/receitas/despesas. Concluir Tag não recebe nem quita valores. Modelo/migração: docs/design/agenda/TAGS.md.
+
+## Correção do estorno — auditoria
+
+`voidPayment` resolve a clínica pelo lançamento e exige a mesma unidade ativa. Consultas de filhas e despesas incluem `clinicId`; receita, filhas e despesas de recebimento são alteradas em um único batch, com limite de 500 operações e sem commits parciais. Falhas de leitura/commit preservam todos os documentos. Custos e pedidos de laboratório permanecem independentes. A tela não exclui despesas antes de chamar o serviço. As Rules impedem mudar a clínica do lançamento ou referenciar paciente de outra clínica, inclusive no match específico de `financial`.
