@@ -250,6 +250,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                               _names[i],
                               style: TextStyle(
                                 fontSize: 11,
+                                height: mobile ? 1.0 : null,
                                 color: _day == i
                                     ? Colors.white
                                     : ClinicalAgendaStyle.text,
@@ -262,6 +263,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                                     ? Colors.white
                                     : ClinicalAgendaStyle.text,
                                 fontSize: 21,
+                                height: mobile ? 1.0 : null,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -270,7 +272,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                             ).any((a) => !_blocked(a) && !a.isCancelled))
                               Icon(
                                 Icons.circle,
-                                size: 6,
+                                size: mobile ? 4 : 6,
                                 color: ClinicalAgendaStyle.teal,
                               ),
                           ],
