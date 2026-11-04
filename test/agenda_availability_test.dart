@@ -14,6 +14,19 @@ void main() {
       busyAgendaSlots(visits, clinicId: 'clinic', day: day,
           dentistId: 'dentist', excludeId: exclude);
 
+  test('remarcação verifica também o segundo bloco e horários fora da grade', () {
+    final requested = agendaIntervalSlots(DateTime(2026, 11, 3, 10), 60);
+    expect(requested, [DateTime(2026, 11, 3, 10), DateTime(2026, 11, 3, 10, 30)]);
+    final occupied = busy([visit('occupied', 10, 30)]);
+    expect(requested.any((s) => occupied.contains('${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}')), isTrue);
+    expect(agendaIntervalSlots(DateTime(2026, 11, 3, 10, 15), 30), requested);
+  });
+  test('intervalo preserva virada de dia e rejeita duração inválida', () {
+    expect(agendaIntervalSlots(DateTime(2026, 11, 3, 23, 45), 30),
+        [DateTime(2026, 11, 3, 23, 30), DateTime(2026, 11, 4)]);
+    expect(() => agendaIntervalSlots(day, 0), throwsArgumentError);
+  });
+
   test('whole duration occupies slots, end boundary remains free', () {
     expect(busy([visit('a', 9, 0, duration: 90)]), ['09:00', '09:30', '10:00']);
   });

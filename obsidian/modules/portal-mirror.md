@@ -50,3 +50,7 @@ Ver [[portal-page]], [[remarcar-dialog]], [[atendimento]].
 Na variante clínica, `buildPortalMirror` remove sessões canceladas da lista de próximas e considera dívidas com valor em aberto: o total somado usa `amount - paidAmount`, excluindo cobranças canceladas/substituídas e quitadas. Conferir especialmente registros legados com `amount` integral e `paidAmount` parcial, e registros recentes representados por saldo remanescente + filhas. Evitar somar novamente o valor pago ou exibir Pix integral de cobrança parcialmente recebida. Esse cálculo puro não comprova a publicação do espelho nem o fluxo real do Pix.
 
 A fonte de autorização e revogação está em `firestore.rules` e no token atual do paciente. O espelho é **consultivo**; confirmação/remarcação e slots devem ser revalidados no dado vivo. Exigir testes do emulador e do navegador antes da liberação; ver [[auditoria-codigo-2026-11-03]] e [[financial]].
+
+## Correção da projeção financeira — auditoria
+
+Atualizações de débitos consultam novamente `financial` por paciente + clínica (servidor, teto 500), em vez de calcular o estado usando apenas o top-3 já visível. `syncPortalDebts` grava lista, total, contagem e flag de truncamento juntos, preservando sessões e pedidos públicos com merge. Pagamentos/cancelamentos repõem a quarta dívida e atualizam o saldo, inclusive zero. O custo de leitura financeira passa de delta constante para uma consulta limitada por paciente. A sincronização continua best-effort: falhas são registradas e exigem retry/rebuild; ela não é uma confirmação bancária.
