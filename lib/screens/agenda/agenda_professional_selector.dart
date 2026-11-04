@@ -78,6 +78,7 @@ class AgendaProfessionalSelector extends StatelessWidget {
     }
     final selected = professionals.where((u) => u.id == selectedId).firstOrNull;
     final name = selected?.name ?? '';
+    final compactMobile = MediaQuery.sizeOf(context).width < 768;
     final initials = name
         .split(' ')
         .where((p) => p.isNotEmpty)
@@ -114,19 +115,26 @@ class AgendaProfessionalSelector extends StatelessWidget {
                 selectedItemBuilder: (context) => professionals.map((u) =>
                   Tooltip(
                     message: '${u.name.isEmpty ? 'Profissional' : u.name} • ${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
-                    child: Row(children: [
-                      Expanded(flex: 3, child: Text(
-                        u.name.isEmpty ? 'Profissional' : u.name,
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                      )),
-                      const SizedBox(width: 8),
-                      Flexible(flex: 2, child: Text(
-                        '${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 11),
-                      )),
-                    ]),
+                    child: compactMobile
+                        ? Text(
+                            u.name.isEmpty ? 'Profissional' : u.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          )
+                        : Row(children: [
+                            Expanded(flex: 3, child: Text(
+                              u.name.isEmpty ? 'Profissional' : u.name,
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            )),
+                            const SizedBox(width: 8),
+                            Flexible(flex: 2, child: Text(
+                              '${agendaProfessionalRoleLabel(u.role)} • $appointmentCount consultas',
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: ClinicalAgendaStyle.muted, fontSize: 11),
+                            )),
+                          ]),
                   ),
                 ).toList(),
                 items: professionals
