@@ -59,3 +59,8 @@ Antes de salvar há nova consulta ao servidor; se algum horário tiver sido ocup
 ## Auditoria de integridade em andamento
 
 Consulte `docs/design/agenda/AUDITORIA-INTEGRIDADE.md`. Exclusões de contratos/histórico estão bloqueadas conservadoramente. Catálogo usa desativação lógica. Locks transacionais, reconciliação do portal e invariantes completas das Rules continuam pendentes. Não publicar esta revisão isoladamente.
+
+
+## Encaixe — limite de duas consultas simultâneas
+
+No formulário odontológico, 0 consultas ativas libera horário, 1 permite encaixe (identificado no botão), 2 ou mais bloqueiam. Conta o pico simultâneo em cada intervalo, preserva unidade/profissional e desconsidera cancelados e o próprio agendamento na edição. Escolher intervalo com uma consulta marca isFitIn automaticamente. A consulta ao servidor repete a verificação antes de salvar. A garantia transacional contra dois clientes concorrentes continua pendente conforme auditoria.

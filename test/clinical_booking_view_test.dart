@@ -19,7 +19,7 @@ void main() {
           patientField:const TextField(decoration:InputDecoration(isDense:true,hintText:'Paciente selecionado')),procedureField:const TextField(decoration:InputDecoration(isDense:true,hintText:'Manutenção ortodôntica')),
           patientSummary:'CPF: 341.***.***-08 • WhatsApp: (11) 98421-4402',recordNumber:'4092',procedureCategory:'Ortodontia',procedurePrice:220,
           tags:Container(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Tags de Procedimentos Vinculadas'),Wrap(spacing:8,children:[for(var i=0;i<8;i++)Chip(label:Text('Procedimento do orçamento • item $i'))])])),
-          notesController:notes,selectedDate:DateTime(2026,8,5),times:times,selectedTimes:const ['11:00'],occupiedTimes:const ['09:00'],
+          notesController:notes,selectedDate:DateTime(2026,8,5),times:times,selectedTimes:const ['11:00'],occupiedTimes:const ['09:00'],fitInTimes:const ['10:00'],
           onDate:(_){},onTime:(s)=>selectedTime=s,onFitIn:(v)=>fit=v,onCancel:(){},onProcedure:(){},onNewPatient:()=>newPatient++,onChangePatient:()=>changed++,onSave:()=>saved++,
         )));
         await t.pumpAndSettle();
@@ -33,6 +33,7 @@ void main() {
         expect(t.widget<OutlinedButton>(occupied).onPressed,isNull);
         expect(find.descendant(of:occupied,matching:find.text('Ocupado')),findsOneWidget);
         expect(t.widget<OutlinedButton>(find.byKey(const ValueKey('booking-slot-10:00'))).onPressed,isNotNull);
+        expect(find.text('Encaixe'), findsOneWidget);
         await t.tap(find.text('10:00')); expect(selectedTime,'10:00');
         await t.tap(find.byType(Checkbox)); expect(fit,true);
         expect(t.takeException(),isNull);
