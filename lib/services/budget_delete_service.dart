@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'portal_mirror.dart';
+import 'session_manager.dart';
+
+bool budgetDeletionBlocked(Map<String, dynamic> data, {required bool approved}) =>
+    approved || ['aprovado', 'approved'].contains('${data['status']}'.toLowerCase()) ||
+    '${data['relatedPlanId'] ?? ''}'.isNotEmpty;
 
 /// Uma query filha da cascata de orçamento.
 /// `values` com 1 item = `isEqualTo`; com N = chunk de `whereIn`.
@@ -39,8 +43,7 @@ List<BudgetDeleteQuery> budgetChildQueries({
   return out;
 }
 
-/// Executor: orçamento pendente apaga só o doc; aprovado apaga em cadeia
-/// (tratamentos, pagamentos, custos, filhas) + limpa o espelho.
+/// Pending budgets are deleted atomically; approved contracts are retained.
 class BudgetDeleteService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -84,84 +87,21 @@ class BudgetDeleteService {
     required bool approved,
     void Function(String stage)? onStage,
   }) async {
-    if (budgetId.isEmpty) throw ArgumentError('budgetId vazio');
-    var stage = 'início';
-    try {
-      final bdoc =
-          await _db.collection('budgets').doc(budgetId).get();
-      final planId = '${(bdoc.data() ?? {})['relatedPlanId'] ?? ''}';
-
-      if (!approved || planId.isEmpty) {
-        stage = 'apagar orçamento';
-        onStage?.call('Apagando orçamento...');
-        await _db.collection('budgets').doc(budgetId).delete();
-        onStage?.call('Concluído.');
-        return;
+    if (budgetId.isEmpty || patientId.isEmpty) throw ArgumentError('Orçamento/paciente vazio');
+    final clinicId = SessionManager().currentClinicId;
+    await _db.runTransaction((tx) async {
+      final ref = _db.collection('budgets').doc(budgetId);
+      final snapshot = await tx.get(ref);
+      if (!snapshot.exists) return;
+      final data = snapshot.data()!;
+      if (clinicId == null || data['clinicId'] != clinicId || data['patientId'] != patientId) {
+        throw StateError('Orçamento fora da unidade ou paciente.');
       }
-
-      stage = 'localizar vinculados';
-      onStage?.call('Localizando vinculados...');
-      final fins = await _db
-          .collection('financial')
-          .where('planId', isEqualTo: planId)
-          .get();
-      final finIds = [for (final d in fins.docs) d.id];
-      final queries = budgetChildQueries(
-          budgetId: budgetId, planId: planId, financialIds: finIds);
-
-      stage = 'mapear vinculados';
-      onStage?.call('Mapeando vinculados...');
-      final toDelete = <DocumentReference>[];
-      final mirrorIds = <String>{...finIds};
-      for (final q in queries) {
-        stage = 'ler ${q.collection} (${q.field})';
-        final snap = q.values.length == 1
-            ? await _db
-                .collection(q.collection)
-                .where(q.field, isEqualTo: q.values.first)
-                .get()
-            : await _db
-                .collection(q.collection)
-                .where(q.field, whereIn: q.values)
-                .get();
-        toDelete.addAll(snap.docs.map((d) => d.reference));
-        if (q.collection == 'financial') {
-          mirrorIds.addAll([for (final d in snap.docs) d.id]);
-        }
+      if (budgetDeletionBlocked(data, approved: approved)) {
+        throw StateError('Orçamento aprovado possui contrato e histórico vinculados. Exclusão bloqueada.');
       }
-
-      var done = 0;
-      while (done < toDelete.length) {
-        stage = 'apagar lote ${done + 1}–'
-            '${(done + 450).clamp(1, toDelete.length)}'
-            ' de ${toDelete.length}';
-        onStage?.call(
-            'Apagando ${done + 1}–${(done + 450).clamp(1, toDelete.length)} de ${toDelete.length}...');
-        final batch = _db.batch();
-        for (final ref in toDelete.skip(done).take(450)) {
-          batch.delete(ref);
-        }
-        await batch.commit();
-        done += 450;
-      }
-
-      stage = 'apagar orçamento';
-      onStage?.call('Apagando orçamento...');
-      await _db.collection('budgets').doc(budgetId).delete();
-
-      // Espelho: financeiros apagados saem da lista do portal.
-      if (patientId.isNotEmpty) {
-        stage = 'limpar espelho';
-        for (final fid in mirrorIds) {
-          try {
-            await PortalMirrorSync.removeDebt(
-                patientId: patientId, debtId: fid);
-          } catch (_) {}
-        }
-      }
-      onStage?.call('Concluído.');
-    } catch (e) {
-      throw Exception('orçamento [$stage]: $e');
-    }
+      tx.delete(ref);
+    });
+    onStage?.call('Concluído.');
   }
 }

@@ -100,6 +100,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   late int _day;
   bool _daily = false;
   String _search = '';
+  final TextEditingController _searchController = TextEditingController();
   int get _visibleDays => widget.appointments.any((a) => a.date.weekday == DateTime.sunday) ? 7 : 6;
   static const _names = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
   static const _startMinute = 510;
@@ -108,6 +109,12 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   void initState() {
     super.initState();
     _day = DateTime.now().weekday - 1;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   String _date(DateTime d) =>
@@ -167,32 +174,46 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
           widget.onSelectedDay?.call(selected);
         }, child: const Text('Mês')),
       ]);
-      final search = TextField(onChanged: (v) => setState(() => _search = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 18), hintText: 'Buscar paciente ou procedimento…', isDense: true));
+      final search = TextField(controller: _searchController, onChanged: (v) => setState(() => _search = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 18), hintText: 'Buscar paciente ou procedimento…', isDense: true));
       return Padding(
-        padding: EdgeInsets.fromLTRB(mobile ? 10 : 16, 4, mobile ? 10 : 16, 0),
+        padding: EdgeInsets.fromLTRB(mobile ? 6 : 16, mobile ? 0 : 4, mobile ? 6 : 16, 0),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: mobile ? 8 : 10, vertical: mobile ? 2 : 4),
               decoration: BoxDecoration(color: ClinicalAgendaStyle.surface, borderRadius: BorderRadius.circular(18)),
               child: constraints.maxWidth >= 1000
                 ? Row(children: [modes, const SizedBox(width: 16), Expanded(child: widget.professionalSelector), const SizedBox(width: 20), SizedBox(width: 290, child: weekNavigation), const SizedBox(width: 12), SizedBox(width: 200, child: search)])
-                : Column(children: [
-                    Row(children: [modes, const Spacer()]),
-                    const SizedBox(height: 8),
-                    widget.professionalSelector,
-                    weekNavigation,
-                    search,
-                  ]),
+                : mobile
+                  ? Column(children: [
+                      Row(children: [
+                        Flexible(flex: 4, child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: modes,
+                        )),
+                        const SizedBox(width: 6),
+                        Expanded(flex: 5, child: widget.professionalSelector),
+                      ]),
+                      weekNavigation,
+                      search,
+                    ])
+                  : Column(children: [
+                      Row(children: [Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: modes))]),
+                      const SizedBox(height: 8),
+                      widget.professionalSelector,
+                      weekNavigation,
+                      search,
+                    ]),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: mobile ? 2 : 6),
             if (daily) ...[
               SizedBox(
-                height: 76,
+                height: mobile ? 48 : 76,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: 7,
-                  separatorBuilder: (_, i) => const SizedBox(width: 8),
+                  separatorBuilder: (_, i) => SizedBox(width: mobile ? 6 : 8),
                   itemBuilder: (context, i) => Semantics(
                     selected: _day == i,
                     child: InkWell(
@@ -229,6 +250,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                               _names[i],
                               style: TextStyle(
                                 fontSize: 11,
+                                height: mobile ? 1.0 : null,
                                 color: _day == i
                                     ? Colors.white
                                     : ClinicalAgendaStyle.text,
@@ -241,6 +263,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                                     ? Colors.white
                                     : ClinicalAgendaStyle.text,
                                 fontSize: 21,
+                                height: mobile ? 1.0 : null,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -249,7 +272,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                             ).any((a) => !_blocked(a) && !a.isCancelled))
                               Icon(
                                 Icons.circle,
-                                size: 6,
+                                size: mobile ? 4 : 6,
                                 color: ClinicalAgendaStyle.teal,
                               ),
                           ],
@@ -260,7 +283,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(vertical: mobile ? 0 : 12),
                 child: Row(
                   children: [
                     Icon(
@@ -273,7 +296,9 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                       child: Text(
                         widget.loading
                             ? 'Carregando agenda…'
-                            : '${_events(_day).where((a) => !_blocked(a) && !a.isCancelled).length} agendamentos no dia',
+                            : mobile && _search.trim().isNotEmpty
+                                ? '${widget.appointments.where((a) => !_blocked(a) && _matches(a)).length} resultados nesta semana'
+                                : '${_events(_day).where((a) => !_blocked(a) && !a.isCancelled).length} agendamentos no dia',
                         style: TextStyle(color: ClinicalAgendaStyle.muted),
                       ),
                     ),
@@ -286,6 +311,8 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                   ? Center(child: Text(widget.error!))
                   : widget.loading
                   ? const Center(child: CircularProgressIndicator())
+                  : mobile && _search.trim().isNotEmpty
+                  ? _mobileSearchResults()
                   : daily
                   ? _dailyList()
                   : _weeklyGrid(),
@@ -296,7 +323,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
     },
   );
 
-  Widget _card(AppointmentModel a, {bool compact = false}) {
+  Widget _card(AppointmentModel a, {bool compact = false, VoidCallback? onTap}) {
     final color = _color(a);
     final end = _minute(a) + a.durationMinutes;
     return Semantics(
@@ -309,7 +336,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => widget.onAppointment(a),
+          onTap: onTap ?? () => widget.onAppointment(a),
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 14, vertical: compact ? 2 : 14),
             decoration: BoxDecoration(
@@ -387,7 +414,78 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
     );
   }
 
+  // Busca na semana que a agenda já carregou, sem novas consultas ao Firebase.
+  Widget _mobileSearchResults() {
+    final matches = widget.appointments
+        .where((a) => !_blocked(a) && _matches(a))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    if (matches.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off, color: ClinicalAgendaStyle.muted, size: 40),
+              const SizedBox(height: 12),
+              const Text('Nenhum agendamento encontrado nesta semana.',
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text('Confira o termo ou selecione outra semana.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: ClinicalAgendaStyle.muted)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      key: ValueKey('agenda-mobile-search-${_search.trim().toLowerCase()}'),
+      padding: const EdgeInsets.only(bottom: 100),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            matches.length == 1
+                ? '1 agendamento encontrado nesta semana'
+                : '${matches.length} agendamentos encontrados nesta semana',
+            style: TextStyle(color: ClinicalAgendaStyle.muted),
+          ),
+        ),
+        for (final a in matches)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('${_names[a.date.weekday - 1]} ${_date(a.date)}',
+                      style: TextStyle(color: ClinicalAgendaStyle.teal,
+                          fontWeight: FontWeight.w600)),
+                ),
+                _card(a, onTap: () {
+                  FocusScope.of(context).unfocus();
+                  _searchController.clear();
+                  setState(() {
+                    _search = '';
+                    _day = a.date.weekday - 1;
+                  });
+                  widget.onSelectedDay?.call(_dayDate(_day));
+                  widget.onAppointment(a);
+                }),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _dailyList() {
+    final compact = MediaQuery.sizeOf(context).width < 768;
     final events = _events(_day);
     final rows = <Widget>[];
     for (var minute = _startMinute; minute < _endMinute; minute += 30) {
@@ -404,14 +502,14 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       if (starts.isEmpty && occupied) continue;
       rows.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: compact ? 0 : 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 52,
+                width: compact ? 48 : 52,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: EdgeInsets.only(top: compact ? 10 : 12),
                   child: Text(
                     _time(minute),
                     style: TextStyle(
@@ -443,7 +541,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                         children: [
                           for (final a in starts)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding: EdgeInsets.only(bottom: compact ? 4 : 6),
                               child: _card(a),
                             ),
                         ],

@@ -747,4 +747,36 @@ describe('matriz reavaliação P0/P1', () => {
     });
   });
 
+  it('Tags impedem adulteração de contrato, reabertura e exclusão direta', async () => {
+    const db = ctx('staffA').firestore();
+    const ref = db.doc('patients/p1/procedure_tags/immutable_tag');
+    await assertSucceeds(ref.set({clinicId:A, patientId:'p1', budgetId:'contract',
+      status:'pending', sessionCount:0, lineSnapshot:{price:100}}));
+    await assertFails(ref.update({budgetId:'other'}));
+    await assertFails(ref.update({clinicId:B}));
+    await assertFails(ref.update({lineSnapshot:{price:0}}));
+    await assertFails(ref.update({status:'completed',sessionCount:10,lastOperatorId:'staffA'}));
+    await assertFails(ref.delete());
+    await assertFails(db.doc('patients/p1/procedure_tags/foreign').set({clinicId:B,patientId:'p1',status:'pending'}));
+    await assertFails(ref.update({status:'completed'}));
+  });
+
+  it('Tags de catálogo/paciente e histórico mantêm o escopo existente da clínica', async () => {
+    const db = ctx('staffA').firestore();
+    const batch = db.batch();
+    batch.set(db.doc('procedures/tag_proc'), {clinicId:A,name:'Procedimento'});
+    batch.set(db.doc('procedures/tag_proc/tags/definition'), {clinicId:A,procedureId:'tag_proc',name:'Procedimento'});
+    batch.set(db.doc('patients/p1/procedure_tags/budget_test_line_0'), {clinicId:A,patientId:'p1',budgetId:'test',status:'pending',name:'Procedimento'});
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(db.collection('patients/p1/procedure_tags').where('clinicId','==',A).get());
+    await assertFails(ctx('staffB').firestore().doc('patients/p1/procedure_tags/budget_test_line_0').get());
+    await assertFails(ctx('staffB').firestore().doc('procedures/tag_proc/tags/definition').get());
+    await assertFails(db.doc('patients/p2/procedure_tags/invalid').set({clinicId:A,patientId:'p1'}));
+    const invalid = db.batch();
+    invalid.update(db.doc('patients/p1/procedure_tags/budget_test_line_0'), {status:'completed'});
+    invalid.set(db.doc('patients/p2/clinical_data/tag_visit_invalid'), {clinicId:B});
+    await assertFails(invalid.commit());
+    assert.equal((await db.doc('patients/p1/procedure_tags/budget_test_line_0').get()).data().status,'pending');
+  });
+
 });

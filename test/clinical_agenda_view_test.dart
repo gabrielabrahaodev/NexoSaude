@@ -73,6 +73,115 @@ void main() {
           expect(tester.takeException(), isNull);
         });
       }
+      for (final width in [320.0, 360.0, 390.0, 430.0]) {
+        testWidgets('agenda compacta deixa 10:30 visível em tela baixa $width',
+            (tester) async {
+          tester.view.physicalSize = Size(width, 650);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          await tester.pumpWidget(MaterialApp(
+            theme: ClinicalAgendaStyle.theme,
+            home: Scaffold(
+              body: Column(children: [
+                const SizedBox(height: 110), // AppBar e unidade no mobile.
+                Expanded(child: ClinicalAgendaView(
+                  weekStart: monday,
+                  appointments: const [],
+                  professionalSelector: const Text('Profissional'),
+                  onChangeWeek: (_) {},
+                  onToday: () {},
+                  onEmptySlot: (_, _) {},
+                  onAppointment: (_) {},
+                )),
+                const SizedBox(height: 70), // Navegação inferior.
+              ]),
+            ),
+          ));
+          await tester.tap(find.text('SEG'));
+          await tester.pump();
+          expect(find.text('10:30'), findsOneWidget);
+          expect(tester.getBottomRight(find.text('10:30')).dy,
+              lessThan(580));
+          expect(find.text('Dia'), findsOneWidget);
+          expect(find.text('Mês'), findsOneWidget);
+          expect(find.text('Profissional'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
+      for (final width in [320.0, 360.0, 390.0, 430.0]) {
+        testWidgets('busca mobile encontra paciente em outro dia da semana em $width',
+            (tester) async {
+          tester.view.physicalSize = Size(width, 900);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          DateTime? selectedDay;
+          String? selectedAppointment;
+          await tester.pumpWidget(MaterialApp(
+            theme: ClinicalAgendaStyle.theme,
+            home: Scaffold(
+              body: ClinicalAgendaView(
+                weekStart: monday,
+                appointments: [appt('Tereza', 9, 0), appt('Bruna', 13, 0)],
+                professionalSelector: const Text('Profissional da clínica'),
+                onChangeWeek: (_) {},
+                onToday: () {},
+                onEmptySlot: (_, _) {},
+                onSelectedDay: (day) => selectedDay = day,
+                onAppointment: (a) => selectedAppointment = a.id,
+              ),
+            ),
+          ));
+          // Terça-feira não tem consultas, mas a busca deve localizar segunda.
+          await tester.tap(find.text('TER'));
+          await tester.pump();
+          expect(find.text('Paciente Tereza'), findsNothing);
+          await tester.enterText(find.byType(TextField), 'tere');
+          await tester.pump();
+          expect(find.text('Paciente Tereza'), findsOneWidget);
+          expect(find.text('SEG 26/10'), findsOneWidget);
+          expect(find.text('1 agendamento encontrado nesta semana'), findsOneWidget);
+          expect(find.text('Paciente Bruna'), findsNothing);
+          expect(find.text('+ Disponível'), findsNothing);
+          await tester.tap(find.text('Paciente Tereza'));
+          await tester.pump();
+          expect(selectedAppointment, 'Tereza');
+          expect(selectedDay, monday);
+          expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+              isEmpty);
+          expect(tester.takeException(), isNull);
+        });
+
+        testWidgets('busca mobile vazia informa resultado e oculta vagas em $width',
+            (tester) async {
+          tester.view.physicalSize = Size(width, 900);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          await tester.pumpWidget(MaterialApp(
+            theme: ClinicalAgendaStyle.theme,
+            home: Scaffold(
+              body: ClinicalAgendaView(
+                weekStart: monday,
+                appointments: [appt('Tereza', 9, 0)],
+                professionalSelector: const Text('Profissional'),
+                onChangeWeek: (_) {},
+                onToday: () {},
+                onEmptySlot: (_, _) {},
+                onAppointment: (_) {},
+              ),
+            ),
+          ));
+          await tester.enterText(find.byType(TextField), 'nao existe');
+          await tester.pump();
+          expect(find.text('Nenhum agendamento encontrado nesta semana.'),
+              findsOneWidget);
+          expect(find.text('0 resultados nesta semana'), findsOneWidget);
+          expect(find.text('+ Disponível'), findsNothing);
+          expect(tester.takeException(), isNull);
+        });
+      }
       testWidgets(
         'grade preserva encaixes, cancelados, bloqueios e horários extras',
         (tester) async {

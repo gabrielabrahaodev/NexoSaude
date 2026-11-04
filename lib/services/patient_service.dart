@@ -92,6 +92,7 @@ class PatientService {
   static const _patientSubcollections = [
     'clinical_data',
     'docs',
+    'procedure_tags',
   ];
 
   // --- EXCLUSÃO EM CASCATA DO PACIENTE ---
@@ -100,6 +101,20 @@ class PatientService {
   // estourasse o limite de 500 writes do batch.)
   Future<void> deletePatientCascade(String patientId, String clinicId) async {
     final db = FirebaseFirestore.instance;
+    final parent = await _collection.doc(patientId).get(const GetOptions(source: Source.server));
+    if (clinicId != SessionManager().currentClinicId || parent.data()?['clinicId'] != clinicId) {
+      throw StateError('Paciente fora da unidade ativa.');
+    }
+    // Conservative retention policy until an authorized archival workflow exists.
+    for (final child in ['clinical_data', 'procedure_tags']) {
+      final evidence = await parent.reference.collection(child).limit(1).get();
+      if (evidence.docs.isNotEmpty) throw StateError('Paciente com dados clínicos ou Tags. Preserve o cadastro e o histórico.');
+    }
+    for (final collection in ['clinical_records', 'financial', 'treatment_plans']) {
+      final evidence = await db.collection(collection).where('clinicId', isEqualTo: clinicId)
+          .where('patientId', isEqualTo: patientId).limit(1).get();
+      if (evidence.docs.isNotEmpty) throw StateError('Paciente com histórico clínico ou financeiro. Exclusão bloqueada.');
+    }
     final deletes = <DocumentReference>[];
     List<Map<String, dynamic>> docsMeta = [];
 

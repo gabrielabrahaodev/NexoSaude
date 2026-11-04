@@ -333,7 +333,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     }
   }
 
-  Widget _buildClinicSelector(bool isCompact, {bool clinical = false}) {
+  Widget _buildClinicSelector(bool isCompact, {bool clinical = false, bool compactClinical = false}) {
     if (!_canSwitchClinic) return const SizedBox.shrink();
 
     final user = FirebaseAuth.instance.currentUser;
@@ -389,7 +389,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         }
 
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          margin: EdgeInsets.symmetric(horizontal: 15, vertical: compactClinical ? 4 : 10),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: clinical ? ClinicalAgendaStyle.elevated.withValues(alpha: .35) : AppColors.surface,
@@ -403,7 +403,7 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
             child: DropdownButton<String>(
               value: _currentClinicId,
               isExpanded: true,
-              itemHeight: clinical ? 60 : kMinInteractiveDimension,
+              itemHeight: clinical ? (compactClinical ? 48 : 60) : kMinInteractiveDimension,
               selectedItemBuilder: clinical ? (context) => clinics.map((doc) => Row(children: [
                 Icon(Icons.apartment, color: ClinicalAgendaStyle.teal, size: 22),
                 const SizedBox(width: 12),
@@ -533,6 +533,8 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
     final showingDetail = _detailOpen && widget.detail != null && widget.detailClinicId == SessionManager().currentClinicId && _canShow('pacientes');
     final screen = Theme(data: contentTheme, child: showingDetail ? widget.detail! : _screens[_effectiveIndex]);
     final mobile = MediaQuery.sizeOf(context).width < 768;
+    // Só a agenda mobile fica compacta; demais páginas preservam os cabeçalhos.
+    final compactAgenda = mobile && _effectiveIndex == 1 && !showingDetail;
     final entries = <(int, String, String, IconData)>[
       (1, 'agenda', 'Agenda', Icons.calendar_today_outlined),
       (2, 'pacientes', 'Pacientes', Icons.people_outline),
@@ -562,9 +564,9 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         }
       },
     );
-    Widget clinic() => _canSwitchClinic ? _buildClinicSelector(false, clinical: true) : Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(14),
+    Widget clinic({bool compact = false}) => _canSwitchClinic ? _buildClinicSelector(false, clinical: true, compactClinical: compact) : Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 4 : 8),
+      padding: EdgeInsets.all(compact ? 8 : 14),
       decoration: BoxDecoration(color: ClinicalAgendaStyle.elevated.withValues(alpha: .35), borderRadius: BorderRadius.circular(14)),
       child: Row(children: [Icon(Icons.apartment, color: ClinicalAgendaStyle.teal), const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -638,7 +640,6 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
         ],
       ),
     );
-    final quick = entries.where((e) => [1, 2, 12, 5].contains(e.$1)).toList();
     return Scaffold(
       backgroundColor: ClinicalAgendaStyle.background,
       drawer: mobile
@@ -651,62 +652,14 @@ class _MainWebDashboardState extends State<MainWebDashboard> {
           ? AppBar(
               backgroundColor: ClinicalAgendaStyle.surface,
               title: brand(),
-              toolbarHeight: 64,
+              toolbarHeight: compactAgenda ? 50 : 64,
               centerTitle: false,
-            )
-          : null,
-      bottomNavigationBar: mobile
-          ? SafeArea(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: ClinicalAgendaStyle.surface,
-                  border: Border(
-                    top: BorderSide(color: ClinicalAgendaStyle.elevated),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    for (final e in quick)
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _onMenuSelect(e.$1),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  e.$4,
-                                  color: e.$1 == _effectiveIndex
-                                      ? ClinicalAgendaStyle.teal
-                                      : ClinicalAgendaStyle.muted,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  e.$3,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: e.$1 == _effectiveIndex
-                                        ? ClinicalAgendaStyle.teal
-                                        : ClinicalAgendaStyle.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             )
           : null,
       body: mobile
           ? Column(
               children: [
-                clinic(),
+                clinic(compact: compactAgenda),
                 Expanded(child: screen),
               ],
             )

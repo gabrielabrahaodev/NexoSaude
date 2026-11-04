@@ -66,3 +66,5 @@ O cálculo deve distinguir **valor original**, **recebido** e **restante**. `Fin
 No formato novo, `amount` pode guardar o saldo restante e filhas registram pagamentos: **não** somar filhas ao saldo nem contar baixa duas vezes. Confirmar valor exibido, mensagem WhatsApp, Pix efetivamente gerado, Livro Caixa, oráculo, filtros, estorno e cobrança de pacote antes de liberar. Contato no WhatsApp e `avisoPagamento` público são avisos, **não comprovação de liquidação**.
 
 Na variante clínica, `CollectionQueueService` usa consultas explícitas por `clinicId` e um inspetor de cobranças; regras de apresentação não substituem a autorização das Firestore Rules. Pedidos de laboratório com custo geram despesas pelo serviço de laboratório, não pelo recebimento de pacientes. Consulte [[auditoria-codigo-2026-11-03]] e [[remodelagem-plano-testes]].
+
+- Aprovação de orçamento: agora transacional e idempotente por budgetId, com conferência do snapshot atual e geração das Tags clínicas por linha junto de plano/receitas/despesas. Concluir Tag não recebe nem quita valores. Modelo/migração: docs/design/agenda/TAGS.md.
