@@ -184,13 +184,27 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
               decoration: BoxDecoration(color: ClinicalAgendaStyle.surface, borderRadius: BorderRadius.circular(18)),
               child: constraints.maxWidth >= 1000
                 ? Row(children: [modes, const SizedBox(width: 16), Expanded(child: widget.professionalSelector), const SizedBox(width: 20), SizedBox(width: 290, child: weekNavigation), const SizedBox(width: 12), SizedBox(width: 200, child: search)])
-                : Column(children: [
-                    Row(children: [Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: modes))]),
-                    SizedBox(height: mobile ? 2 : 8),
-                    widget.professionalSelector,
-                    weekNavigation,
-                    search,
-                  ]),
+                : mobile
+                  ? Column(children: [
+                      Row(children: [
+                        Flexible(flex: 4, child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: modes,
+                        )),
+                        const SizedBox(width: 6),
+                        Expanded(flex: 5, child: widget.professionalSelector),
+                      ]),
+                      weekNavigation,
+                      search,
+                    ])
+                  : Column(children: [
+                      Row(children: [Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: modes))]),
+                      const SizedBox(height: 8),
+                      widget.professionalSelector,
+                      weekNavigation,
+                      search,
+                    ]),
             ),
             SizedBox(height: mobile ? 2 : 6),
             if (daily) ...[
