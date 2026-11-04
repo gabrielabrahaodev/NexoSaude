@@ -176,30 +176,30 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       ]);
       final search = TextField(controller: _searchController, onChanged: (v) => setState(() => _search = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 18), hintText: 'Buscar paciente ou procedimento…', isDense: true));
       return Padding(
-        padding: EdgeInsets.fromLTRB(mobile ? 10 : 16, 4, mobile ? 10 : 16, 0),
+        padding: EdgeInsets.fromLTRB(mobile ? 6 : 16, mobile ? 0 : 4, mobile ? 6 : 16, 0),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: mobile ? 8 : 10, vertical: mobile ? 2 : 4),
               decoration: BoxDecoration(color: ClinicalAgendaStyle.surface, borderRadius: BorderRadius.circular(18)),
               child: constraints.maxWidth >= 1000
                 ? Row(children: [modes, const SizedBox(width: 16), Expanded(child: widget.professionalSelector), const SizedBox(width: 20), SizedBox(width: 290, child: weekNavigation), const SizedBox(width: 12), SizedBox(width: 200, child: search)])
                 : Column(children: [
                     Row(children: [Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: modes))]),
-                    const SizedBox(height: 8),
+                    SizedBox(height: mobile ? 2 : 8),
                     widget.professionalSelector,
                     weekNavigation,
                     search,
                   ]),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: mobile ? 2 : 6),
             if (daily) ...[
               SizedBox(
-                height: 76,
+                height: mobile ? 58 : 76,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: 7,
-                  separatorBuilder: (_, i) => const SizedBox(width: 8),
+                  separatorBuilder: (_, i) => SizedBox(width: mobile ? 6 : 8),
                   itemBuilder: (context, i) => Semantics(
                     selected: _day == i,
                     child: InkWell(
@@ -267,7 +267,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(vertical: mobile ? 4 : 12),
                 child: Row(
                   children: [
                     Icon(
@@ -469,6 +469,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
   }
 
   Widget _dailyList() {
+    final compact = MediaQuery.sizeOf(context).width < 768;
     final events = _events(_day);
     final rows = <Widget>[];
     for (var minute = _startMinute; minute < _endMinute; minute += 30) {
@@ -485,14 +486,14 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
       if (starts.isEmpty && occupied) continue;
       rows.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: compact ? 5 : 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 52,
+                width: compact ? 48 : 52,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: EdgeInsets.only(top: compact ? 10 : 12),
                   child: Text(
                     _time(minute),
                     style: TextStyle(
@@ -524,7 +525,7 @@ class _ClinicalAgendaViewState extends State<ClinicalAgendaView> {
                         children: [
                           for (final a in starts)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding: EdgeInsets.only(bottom: compact ? 4 : 6),
                               child: _card(a),
                             ),
                         ],
