@@ -55,6 +55,21 @@ class AppointmentService {
           .where((s) => !s.metadata.isFromCache)
           .map((s) => _busy(s, clinicId, date, dentistId, excludeId));
 
+  Future<Map<String, int>> getSlotOccupancy(String clinicId, DateTime date,
+      {String? excludeId, String? dentistId}) async {
+    final snapshot = await _availabilityQuery(clinicId, date)
+        .get(const GetOptions(source: Source.server));
+    return agendaSlotOccupancy(snapshot.docs.map((d) => AppointmentModel.fromMap(d.id, d.data())),
+        clinicId: clinicId, day: date, dentistId: dentistId, excludeId: excludeId);
+  }
+
+  Stream<Map<String, int>> watchSlotOccupancy(String clinicId, DateTime date,
+      {String? excludeId, String? dentistId}) =>
+      _availabilityQuery(clinicId, date).snapshots(includeMetadataChanges: true)
+          .where((s) => !s.metadata.isFromCache)
+          .map((s) => agendaSlotOccupancy(s.docs.map((d) => AppointmentModel.fromMap(d.id, d.data())),
+              clinicId: clinicId, day: date, dentistId: dentistId, excludeId: excludeId));
+
   Future<void> add(AppointmentModel appointment) async {
     // Convertemos o model para mapa, removendo o ID que será gerado.
     // SEM carimbo de portalToken (fonte única = patients/{id}.portalToken;
