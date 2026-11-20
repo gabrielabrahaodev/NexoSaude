@@ -78,7 +78,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
   final List<String> _selectedTimes = [];
 
   // Lista de horários forçados (clicados na tela anterior)
-  StreamSubscription<List<String>>? _availabilitySubscription;
+  StreamSubscription<Map<String, int>>? _availabilitySubscription;
 
   // Aceite LGPD no cadastro rápido (default desmarcado).
   bool _lgpdQuickConsent = false;
@@ -208,7 +208,10 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
       role: SessionManager().userRole, userId: SessionManager().userId,
       selectedId: widget.initialData?['dentistId']?.toString());
 
-  void _applyBusySlots(List<String> busy) {
+  List<String> _fitInSlots = [];
+  void _applyBusySlots(Map<String, int> occupancy) {
+    final busy = occupancy.entries.where((e) => e.value >= 2).map((e) => e.key).toList();
+    _fitInSlots = occupancy.entries.where((e) => e.value == 1).map((e) => e.key).toList();
     _occupiedSlots = busy;
     _selectedTimes.removeWhere(busy.contains);
   }
@@ -222,7 +225,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
       setState(() { _isLoadingSlots = false; _slotsError = 'Selecione um profissional na Agenda e reabra o formulário.'; });
       return;
     }
-    _availabilitySubscription = _apptService.watchBusySlots(_openedClinic, _selectedDate,
+    _availabilitySubscription = _apptService.watchSlotOccupancy(_openedClinic, _selectedDate,
       excludeId: widget.editAppointmentId, dentistId: _bookingProfessional).listen((busy) {
         if (!mounted || version != _availabilityVersion || SessionManager().currentClinicId != _openedClinic) return;
         setState(() { _applyBusySlots(busy); _isLoadingSlots = false; _slotsError = null; });
@@ -402,12 +405,13 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     selectedId: widget.initialData?['dentistId']?.toString());
                   if (finalDentistId == null) { setState(() => _saving = false); toast(context, 'Selecione um profissional na Agenda antes de agendar.'); return; }
                   final chosenTimes = _selectedTimes.toList();
-                  final busy = await _apptService.getBusySlots(clinicId, _selectedDate,
+                  final occupancy = await _apptService.getSlotOccupancy(clinicId, _selectedDate,
                       excludeId: widget.editAppointmentId, dentistId: finalDentistId);
+                  final busy = occupancy.entries.where((e) => e.value >= 2).map((e) => e.key).toList();
                   if (!mounted) return;
                   if (SessionManager().currentClinicId != _openedClinic) throw StateError('Unidade alterada. Reabra a Agenda.');
                   if (chosenTimes.any(busy.contains) || chosenTimes.any((t) => !_selectedTimes.contains(t))) {
-                    setState(() { _applyBusySlots(busy); _saving = false; });
+                    setState(() { _applyBusySlots(occupancy); _saving = false; });
                     toast(context, 'Este horário foi ocupado. Selecione outro horário livre.', error: true);
                     return;
                   }
@@ -415,6 +419,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                   String startTime = _selectedTimes.first;
                   DateTime finalDT = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
                       int.parse(startTime.split(':')[0]), int.parse(startTime.split(':')[1]));
+                  final isFitIn = _fitIn || chosenTimes.any((t) => (occupancy[t] ?? 0) == 1);
                   final appt = AppointmentModel(
                     id: widget.editAppointmentId ?? _bookingId,
                     patientId: _selectedPatientId!,
@@ -425,8 +430,8 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
                     clinicId: clinicId,
                     dentistId: finalDentistId,
                     procedureTagIds: _tags.keys.toList(),
-                    isFitIn: _fitIn,
-                    notes: '${_fitIn ? '[Encaixe / Urgência] ' : ''}${_notesCtrl.text.trim()}',
+                    isFitIn: isFitIn,
+                    notes: '${isFitIn ? '[Encaixe / Urgência] ' : ''}${_notesCtrl.text.trim()}',
                     durationMinutes: _selectedTimes.length * 30,
                   );
                   if (isEditing) {
@@ -476,7 +481,7 @@ class _AgendaFormScreenState extends State<AgendaFormScreen> {
       onProcedure: _chooseProcedure,
       tags: _selectedPatientId == null ? const Padding(padding: EdgeInsets.all(12), child: Text('Selecione o paciente para vincular as Tags do plano.', style: TextStyle(fontSize: 12))) : PatientProcedureTags(key: ValueKey(_selectedPatientId), patientId: _selectedPatientId!, selected: _tags, compact: compact, onChanged: (v) => setState(() => _tags = v)),
       risk: risk, notesController: _notesCtrl, selectedDate: _selectedDate,
-      times: _timeSlots, selectedTimes: _selectedTimes, occupiedTimes: _occupiedSlots,
+      times: _timeSlots, selectedTimes: _selectedTimes, occupiedTimes: _occupiedSlots, fitInTimes: _fitInSlots,
       loading: _isLoadingSlots, error: _slotsError, saving: _saving, fitIn: _fitIn,
       onFitIn: (v) => setState(() => _fitIn = v),
       onDate: (d) { setState(() { _selectedDate = d; _selectedTimes.clear(); _occupiedSlots = []; }); _checkAvailability(); },
